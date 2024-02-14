@@ -15,7 +15,7 @@ while (my $line = <$fileHandle>) {
     my $transformedLine = qq{<a href="$line">$line</a>};
 
     # Append the transformed line to the result
-    $result .= $transformedLine . "\n";
+    $result .= $transformedLine . "<br/>\n";
 }
 
 # Close the file
