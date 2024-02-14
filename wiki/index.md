@@ -1,0 +1,4 @@
+[[printf]]
+[[scanf]]
+[[fopen]]
+[[strcmp]]
