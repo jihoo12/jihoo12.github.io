@@ -10,6 +10,7 @@ hello.c
 hi.c
 index.html
 link.sh
+list.html
 list.txt
 main.go
 o.c

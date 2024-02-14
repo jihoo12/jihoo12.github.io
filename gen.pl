@@ -1,25 +1,25 @@
 use strict;
 use warnings;
 
-# 파일 열기
-open(my $파일핸들, '<', 'list.txt') or die "파일 열기 실패: $!";
+# Open the file
+open(my $fileHandle, '<', 'list.txt') or die "Failed to open the file: $!";
 
-# 결과를 저장할 변수 초기화
-my $결과 = '';
+# Initialize a variable to store the result
+my $result = '';
 
-# 파일 내용을 한 줄씩 읽어오며 처리
-while (my $줄 = <$파일핸들>) {
-    chomp $줄;  # 개행 문자 제거
+# Read the file line by line and process
+while (my $line = <$fileHandle>) {
+    chomp $line;  # Remove the newline character
 
-    # value를 <a href="value">value</a>로 바꾸기
-    my $변환된줄 = qq{<a href="$줄">$줄</a>};
+    # Transform the value into <a href="value">value</a>
+    my $transformedLine = qq{<a href="$line">$line</a>};
 
-    # 결과에 변환된 줄 추가
-    $결과 .= $변환된줄 . "\n";
+    # Append the transformed line to the result
+    $result .= $transformedLine . "\n";
 }
 
-# 파일 닫기
-close($파일핸들);
+# Close the file
+close($fileHandle);
 
-# 변환된 결과 출력
-print $결과;
+# Print the transformed result
+print $result;
