@@ -3,3 +3,4 @@
 [[fopen]]
 [[strcmp]]
 [[todolist]]
+[[rust]]

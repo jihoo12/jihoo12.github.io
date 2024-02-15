@@ -1,2 +1,2 @@
 make search panel
-make listbar
+make listbar:y
