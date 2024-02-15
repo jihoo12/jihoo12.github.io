@@ -4,3 +4,4 @@
 [[strcmp]]
 [[todolist]]
 [[rust]]
+[[nvim]]
