@@ -17,4 +17,6 @@ main.go
 o.c
 parser.c
 shell.c
+test.c
+test1.c
 wiki
