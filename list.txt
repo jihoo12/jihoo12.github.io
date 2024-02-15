@@ -2,6 +2,7 @@ README.md
 any.c
 auto.sh
 autogit.sh
+blockchain
 croll.js
 file.c
 gen.pl
