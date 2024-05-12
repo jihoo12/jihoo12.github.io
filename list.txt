@@ -8,6 +8,7 @@ file.c
 gen.pl
 githelp.md
 hello.c
+hello.txt
 hi.c
 index.html
 link.sh
@@ -17,6 +18,7 @@ main.go
 o.c
 parser.c
 shell.c
+snippetsave.vim
 test.c
 test1.c
 wiki
