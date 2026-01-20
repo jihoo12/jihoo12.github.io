@@ -4,70 +4,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="DORO's Personal Space - Explore the creative world of DORO.">
-    <title>DORO | Personal Portfolio</title>
-    <!-- Google Fonts -->
+    <meta name="description"
+        content="MyLang - A powerful toy compiler featuring primitive types, implicit casting, and inline LLVM assembly.">
+    <title>MyLang | Precision Meets Simplicity</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <!-- Lucide Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Custom Style -->
     <link rel="stylesheet" href="index.css">
 </head>
 
 <body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
     <div class="container">
-        <div class="profile-img-container">
-            <img src="smile.jpg" alt="My Profile" class="profile-img" id="profile-img">
-        </div>
-        <h1>Hello</h1>
-        <p class="subtitle">Welcome to my creative space. Stay tuned for more updates.</p>
-        <div class="social-links">
-        </div>
+        <nav>
+            <div class="logo">MyLang</div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#syntax">Syntax</a>
+                <a href="#docs">Documentation</a>
+                <a href="https://github.com/jihoo12/mylang" class="btn btn-secondary">GitHub</a>
+            </div>
+        </nav>
+
+        <section class="hero">
+            <img src="hero-bg.png" alt="Abstract Tech Background" class="hero-image">
+            <h1>Precision Meets<br><span style="color: var(--primary)">Simplicity</span></h1>
+            <p>MyLang is a high-performance toy compiler designed for clarity. Experience the power of LLVM with a
+                clean, modern syntax that doesn't get in your way.</p>
+            <div class="btn-group">
+                <a href="#docs" class="btn btn-primary">Get Started</a>
+                <a href="#syntax" class="btn btn-secondary">View Syntax</a>
+            </div>
+        </section>
+
+        <section id="features" class="features">
+            <div class="feature-card">
+                <i data-lucide="zap" size="32"></i>
+                <h3>Fast Arithmetic</h3>
+                <p>Native speed for i32, i64, and double operations with LLVM optimization passes.</p>
+            </div>
+            <div class="feature-card">
+                <i data-lucide="layers" size="32"></i>
+                <h3>Implicit Casting</h3>
+                <p>Automatic promotion of integers to doubles and truncated assignments for seamless development.</p>
+            </div>
+            <div class="feature-card">
+                <i data-lucide="cpu" size="32"></i>
+                <h3>Inline Assembly</h3>
+                <p>Directly inject GCC-style LLVM assembly strings with variable operand mapping.</p>
+            </div>
+        </section>
+
+        <section id="syntax" class="code-section">
+            <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem;">Clean Syntax, No Fluff</h2>
+            <div class="code-window">
+                <div class="code-header">
+                    <div class="dot dot-red"></div>
+                    <div class="dot dot-yellow"></div>
+                    <div class="dot dot-green"></div>
+                    <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 1rem;">example.ml</span>
+                </div>
+                <div class="code-content">
+                    <div class="line"><span class="comment">// Mixed-type arithmetic with implicit casting</span></div>
+                    <div class="line"><span class="keyword">let</span> <span class="type">i32</span> <span
+                            class="variable">a</span> = <span class="number">10</span></div>
+                    <div class="line"><span class="keyword">let</span> <span class="type">double</span> <span
+                            class="variable">b</span> = <span class="number">3.14</span></div>
+                    <div class="line"><span class="keyword">let</span> <span class="type">double</span> <span
+                            class="variable">res</span> = <span class="variable">a</span> + <span
+                            class="variable">b</span> <span class="comment">// a is auto-promoted to double</span></div>
+                    <div class="line">&nbsp;</div>
+                    <div class="line"><span class="comment">// Inline assembly support</span></div>
+                    <div class="line"><span class="keyword">let</span> <span class="type">i32</span> <span
+                            class="variable">val</span> = <span class="number">10</span></div>
+                    <div class="line"><span class="keyword">asm</span> <span class="string">"mov $20, %0"</span>, <span
+                            class="variable">val</span></div>
+                    <div class="line">&nbsp;</div>
+                    <div class="line"><span class="keyword">return</span> <span class="variable">res</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="docs" style="padding: 6rem 0; border-top: 1px solid var(--border);">
+            <div style="max-width: 800px; margin: 0 auto;">
+                <h2 style="margin-bottom: 2rem;">Documentation</h2>
+                <div class="feature-card" style="margin-bottom: 2rem;">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">Variable Declaration</h4>
+                    <pre
+                        style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; font-family: var(--font-mono);">let &lt;Type&gt; &lt;VariableName&gt; = &lt;Expression&gt;</pre>
+                </div>
+                <div class="feature-card">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">Supported Types</h4>
+                    <ul style="list-style: none; padding: 0; color: var(--text-muted);">
+                        <li style="margin-bottom: 0.5rem;"><code style="color: var(--text);">i32</code>: 32-bit signed
+                            integer</li>
+                        <li style="margin-bottom: 0.5rem;"><code style="color: var(--text);">i64</code>: 64-bit signed
+                            integer</li>
+                        <li><code style="color: var(--text);">double</code>: Double-precision floating point</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <footer
+            style="padding: 4rem 0; text-align: center; color: var(--text-muted); border-top: 1px solid var(--border);">
+            <p>&copy; 2026 MyLang Compiler Project. Built with LLVM.</p>
+        </footer>
     </div>
+
     <script>
         lucide.createIcons();
-
-        const profileImg = document.getElementById('profile-img');
-        const themes = [
-            {
-                primary: '#268bd2', cyan: '#2aa198', green: '#859900', blue: '#268bd2',
-                bg: '#002b36', magenta: '#d33682'
-            }, // Default Solarized Dark
-            {
-                primary: '#cb4b16', cyan: '#ce5c00', green: '#e9b96e', blue: '#ef2929',
-                bg: '#2e3436', magenta: '#ad7fa8'
-            }, // Midnight Slate
-            {
-                primary: '#859900', cyan: '#4e9a06', green: '#8ae234', blue: '#729fcf',
-                bg: '#0a0f0d', magenta: '#5c3566'
-            }, // Deep Forest
-            {
-                primary: '#d33682', cyan: '#75507b', green: '#f57900', blue: '#729fcf',
-                bg: '#1a0a1a', magenta: '#ce5c00'
-            }  // Royal Purple
-        ];
-        let currentTheme = 0;
-
-        profileImg.addEventListener('click', () => {
-            currentTheme = (currentTheme + 1) % themes.length;
-            const theme = themes[currentTheme];
-
-            document.documentElement.style.setProperty('--primary', theme.primary);
-            document.documentElement.style.setProperty('--cyan', theme.cyan);
-            document.documentElement.style.setProperty('--green', theme.green);
-            document.documentElement.style.setProperty('--blue', theme.blue);
-            document.documentElement.style.setProperty('--bg', theme.bg);
-            document.documentElement.style.setProperty('--magenta', theme.magenta);
-
-            // Add a little pop animation
-            profileImg.style.transform = 'scale(1.1)';
-            setTimeout(() => {
-                profileImg.style.transform = 'scale(1)';
-            }, 200);
-        });
-
     </script>
 </body>
 
