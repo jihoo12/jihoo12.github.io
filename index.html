@@ -19,7 +19,7 @@
 <body>
     <div class="container">
         <div class="profile-img-container">
-            <img src="smile.jpg" alt="My Profile" class="profile-img">
+            <img src="smile.jpg" alt="My Profile" class="profile-img" id="profile-img">
         </div>
         <h1>Hello</h1>
         <p class="subtitle">Welcome to my creative space. Stay tuned for more updates.</p>
@@ -28,6 +28,46 @@
     </div>
     <script>
         lucide.createIcons();
+
+        const profileImg = document.getElementById('profile-img');
+        const themes = [
+            {
+                primary: '#268bd2', cyan: '#2aa198', green: '#859900', blue: '#268bd2',
+                bg: '#002b36', magenta: '#d33682'
+            }, // Default Solarized Dark
+            {
+                primary: '#cb4b16', cyan: '#ce5c00', green: '#e9b96e', blue: '#ef2929',
+                bg: '#2e3436', magenta: '#ad7fa8'
+            }, // Midnight Slate
+            {
+                primary: '#859900', cyan: '#4e9a06', green: '#8ae234', blue: '#729fcf',
+                bg: '#0a0f0d', magenta: '#5c3566'
+            }, // Deep Forest
+            {
+                primary: '#d33682', cyan: '#75507b', green: '#f57900', blue: '#729fcf',
+                bg: '#1a0a1a', magenta: '#ce5c00'
+            }  // Royal Purple
+        ];
+        let currentTheme = 0;
+
+        profileImg.addEventListener('click', () => {
+            currentTheme = (currentTheme + 1) % themes.length;
+            const theme = themes[currentTheme];
+
+            document.documentElement.style.setProperty('--primary', theme.primary);
+            document.documentElement.style.setProperty('--cyan', theme.cyan);
+            document.documentElement.style.setProperty('--green', theme.green);
+            document.documentElement.style.setProperty('--blue', theme.blue);
+            document.documentElement.style.setProperty('--bg', theme.bg);
+            document.documentElement.style.setProperty('--magenta', theme.magenta);
+
+            // Add a little pop animation
+            profileImg.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                profileImg.style.transform = 'scale(1)';
+            }, 200);
+        });
+
     </script>
 </body>
 

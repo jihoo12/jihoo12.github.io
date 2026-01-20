@@ -1,3 +1,39 @@
+@property --primary {
+    syntax: '<color>';
+    initial-value: #268bd2;
+    inherits: true;
+}
+
+@property --cyan {
+    syntax: '<color>';
+    initial-value: #2aa198;
+    inherits: true;
+}
+
+@property --green {
+    syntax: '<color>';
+    initial-value: #859900;
+    inherits: true;
+}
+
+@property --blue {
+    syntax: '<color>';
+    initial-value: #268bd2;
+    inherits: true;
+}
+
+@property --bg {
+    syntax: '<color>';
+    initial-value: #002b36;
+    inherits: true;
+}
+
+@property --magenta {
+    syntax: '<color>';
+    initial-value: #d33682;
+    inherits: true;
+}
+
 :root {
     /* Solarized Dark Palette */
     --base03: #002b36;
@@ -27,6 +63,7 @@
     --border: rgba(147, 161, 161, 0.1);
     --glass-bg: rgba(7, 54, 66, 0.6);
     --glass-border: rgba(147, 161, 161, 0.2);
+    transition: --primary 0.5s ease, --cyan 0.5s ease, --green 0.5s ease, --blue 0.5s ease, --bg 0.8s ease, --magenta 0.8s ease;
 }
 
 * {
@@ -117,6 +154,8 @@ body::after {
     border-radius: 50%;
     border: 4px solid var(--bg);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 h1 {
