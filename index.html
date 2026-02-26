@@ -1,3 +1,58 @@
-<p>hello</p>
-<a href="https://github.com/jihoo12/ros">rust os</a>
-<a href="https://github.com/jihoo12/draw_graph">draw_graph</a>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jihoo's Projects</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        .glass { 
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            border-color: #38bdf8;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6">
+
+    <header class="text-center mb-12">
+        <h1 class="text-5xl font-extrabold tracking-tight mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+            Hello, I'm Jihoo
+        </h1>
+        <p class="text-slate-400 text-lg">Software Developer & Systems Enthusiast</p>
+    </header>
+
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
+        
+        <a href="https://github.com/jihoo12/ros" target="_blank" class="glass p-6 rounded-2xl card-hover group">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-xs font-mono text-blue-400 border border-blue-400 px-2 py-1 rounded">Rust</span>
+                <svg class="w-6 h-6 text-slate-500 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Rust OS</h2>
+            <p class="text-slate-400 text-sm">A custom operating system written in Rust. Exploring low-level memory management and kernel development.</p>
+        </a>
+
+        <a href="https://github.com/jihoo12/draw_graph" target="_blank" class="glass p-6 rounded-2xl card-hover group">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-xs font-mono text-emerald-400 border border-emerald-400 px-2 py-1 rounded">Visualization</span>
+                <svg class="w-6 h-6 text-slate-500 group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Draw Graph</h2>
+            <p class="text-slate-400 text-sm">A tool for visualizing complex data structures and graph algorithms with clean UI.</p>
+        </a>
+
+    </main>
+
+    <footer class="mt-16 text-slate-500 text-sm italic">
+        Check out more on <a href="https://github.com/jihoo12" class="underline hover:text-white">GitHub</a>
+    </footer>
+
+</body>
+</html>
