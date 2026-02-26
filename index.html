@@ -3,55 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jihoo's Projects</title>
+    <title>Jihoo | Portfolio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; }
-        .glass { 
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        /* Catppuccin Mocha Palette Variables */
+        :root {
+            --base: #1e1e2e;
+            --mantle: #181825;
+            --crust: #11111b;
+            --text: #cdd6f4;
+            --subtext0: #a6adc8;
+            --mauve: #cba6f7;
+            --blue: #89b4fa;
+            --peach: #fab387;
+            --teal: #94e2d5;
+            --surface0: #313244;
         }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            border-color: #38bdf8;
-            transition: all 0.3s ease;
+
+        body { 
+            background-color: var(--base); 
+            color: var(--text); 
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-card { 
+            background: var(--mantle);
+            border: 1px solid var(--surface0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--mauve);
+            box-shadow: 0 10px 30px -10px rgba(203, 166, 247, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(90deg, var(--mauve), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-6">
 
     <header class="text-center mb-12">
-        <h1 class="text-5xl font-extrabold tracking-tight mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-            Hello, I'm Jihoo
+        <h1 class="text-6xl font-black tracking-tight mb-3 gradient-text">
+            jihoo12
         </h1>
-        <p class="text-slate-400 text-lg">Software Developer & Systems Enthusiast</p>
+        <p class="text-[--subtext0] font-medium tracking-wide uppercase text-sm">
+            Systems & Visualization Specialist
+        </p>
     </header>
 
     <main class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
         
-        <a href="https://github.com/jihoo12/ros" target="_blank" class="glass p-6 rounded-2xl card-hover group">
-            <div class="flex justify-between items-start mb-4">
-                <span class="text-xs font-mono text-blue-400 border border-blue-400 px-2 py-1 rounded">Rust</span>
-                <svg class="w-6 h-6 text-slate-500 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        <a href="https://github.com/jihoo12/ros" target="_blank" class="glass-card p-8 rounded-3xl group">
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-xs font-bold uppercase tracking-widest text-[--peach] bg-[--peach]/10 px-3 py-1 rounded-full border border-[--peach]/20">
+                    Rust
+                </span>
+                <svg class="w-5 h-5 text-[--subtext0] group-hover:text-[--mauve]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
             </div>
-            <h2 class="text-2xl font-bold mb-2">Rust OS</h2>
-            <p class="text-slate-400 text-sm">A custom operating system written in Rust. Exploring low-level memory management and kernel development.</p>
+            <h2 class="text-2xl font-bold mb-3 text-[--blue]">rust_os</h2>
+            <p class="text-[--subtext0] leading-relaxed">
+                A low-level operating system kernel implementation focusing on memory safety and concurrency.
+            </p>
         </a>
 
-        <a href="https://github.com/jihoo12/draw_graph" target="_blank" class="glass p-6 rounded-2xl card-hover group">
-            <div class="flex justify-between items-start mb-4">
-                <span class="text-xs font-mono text-emerald-400 border border-emerald-400 px-2 py-1 rounded">Visualization</span>
-                <svg class="w-6 h-6 text-slate-500 group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        <a href="https://github.com/jihoo12/draw_graph" target="_blank" class="glass-card p-8 rounded-3xl group">
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-xs font-bold uppercase tracking-widest text-[--teal] bg-[--teal]/10 px-3 py-1 rounded-full border border-[--teal]/20">
+                    Graphics
+                </span>
+                <svg class="w-5 h-5 text-[--subtext0] group-hover:text-[--mauve]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
             </div>
-            <h2 class="text-2xl font-bold mb-2">Draw Graph</h2>
-            <p class="text-slate-400 text-sm">A tool for visualizing complex data structures and graph algorithms with clean UI.</p>
+            <h2 class="text-2xl font-bold mb-3 text-[--blue]">draw_graph</h2>
+            <p class="text-[--subtext0] leading-relaxed">
+                Interactive tool for rendering complex graph data structures with optimized layout algorithms.
+            </p>
         </a>
 
     </main>
 
-    <footer class="mt-16 text-slate-500 text-sm italic">
-        Check out more on <a href="https://github.com/jihoo12" class="underline hover:text-white">GitHub</a>
+    <footer class="mt-20 flex flex-col items-center gap-4">
+        <div class="h-px w-12 bg-[--surface0]"></div>
+        <p class="text-[--subtext0] text-sm">
+            Built with <span class="text-[--mauve]">♥</span> and Catppuccin
+        </p>
     </footer>
 
 </body>
