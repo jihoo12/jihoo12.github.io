@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jihoo | Portfolio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
-        /* Catppuccin Mocha Palette Variables */
+        /* Catppuccin Mocha Palette */
         :root {
             --base: #1e1e2e;
             --mantle: #181825;
@@ -20,22 +21,10 @@
             --surface0: #313244;
         }
 
-        body { 
-            background-color: var(--base); 
-            color: var(--text); 
+        body {
+            background-color: var(--base);
+            color: var(--text);
             font-family: 'Inter', sans-serif;
-        }
-
-        .glass-card { 
-            background: var(--mantle);
-            border: 1px solid var(--surface0);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .glass-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--mauve);
-            box-shadow: 0 10px 30px -10px rgba(203, 166, 247, 0.2);
         }
 
         .gradient-text {
@@ -45,41 +34,40 @@
         }
     </style>
 </head>
+
 <body class="min-h-screen flex flex-col items-center justify-center p-6">
 
-    <header class="text-center mb-12">
+    <header class="text-center mb-16">
         <h1 class="text-6xl font-black tracking-tight mb-3 gradient-text">
             jihoo
         </h1>
     </header>
 
-    <main class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
-        
-        <a href="https://github.com/jihoo12/ros" target="_blank" class="glass-card p-8 rounded-3xl group">
-            <div class="flex justify-between items-center mb-6">
-                <span class="text-xs font-bold uppercase tracking-widest text-[--peach] bg-[--peach]/10 px-3 py-1 rounded-full border border-[--peach]/20">
-                    Rust
-                </span>
-                <svg class="w-5 h-5 text-[--subtext0] group-hover:text-[--mauve]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-            </div>
-            <h2 class="text-2xl font-bold mb-3 text-[--blue]">rust_os</h2>
+    <main class="flex flex-col gap-12 max-w-3xl w-full text-center">
+
+        <section>
+            <span class="text-xs font-bold uppercase tracking-widest text-[--peach]">
+                Rust
+            </span>
+            <h2 class="text-2xl font-bold mt-3 mb-3 text-[--blue]">
+                rust_os
+            </h2>
             <p class="text-[--subtext0] leading-relaxed">
                 A low-level operating system kernel implementation focusing on memory safety and concurrency.
             </p>
-        </a>
+        </section>
 
-        <a href="https://github.com/jihoo12/draw_graph" target="_blank" class="glass-card p-8 rounded-3xl group">
-            <div class="flex justify-between items-center mb-6">
-                <span class="text-xs font-bold uppercase tracking-widest text-[--teal] bg-[--teal]/10 px-3 py-1 rounded-full border border-[--teal]/20">
-                    Graphics
-                </span>
-                <svg class="w-5 h-5 text-[--subtext0] group-hover:text-[--mauve]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-            </div>
-            <h2 class="text-2xl font-bold mb-3 text-[--blue]">draw_graph</h2>
+        <section>
+            <span class="text-xs font-bold uppercase tracking-widest text-[--teal]">
+                Graphics
+            </span>
+            <h2 class="text-2xl font-bold mt-3 mb-3 text-[--blue]">
+                draw_graph
+            </h2>
             <p class="text-[--subtext0] leading-relaxed">
                 Interactive tool for rendering complex graph data structures with optimized layout algorithms.
             </p>
-        </a>
+        </section>
 
     </main>
 
