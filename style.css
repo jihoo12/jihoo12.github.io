@@ -1,0 +1,94 @@
+/* 1. The Foundation */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #1a1a1a;
+    --border-color: #000000;
+    --accent: #222222;
+    --gray-light: #f0f0f0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    letter-spacing: -0.02em;
+}
+
+/* 2. Static Layout Container */
+search {
+    width: 100%;
+    max-width: 450px;
+    padding: 0 20px;
+}
+
+#searchForm {
+    /* No shadows, just a solid border */
+    border: 2px solid var(--border-color);
+    padding: 40px;
+    background: var(--bg-color);
+}
+
+/* 3. Typography - Bold and Fixed */
+h1 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    margin-bottom: 30px;
+    font-weight: 700;
+    text-align: left;
+}
+
+/* 4. Input - Flat and Rectangular */
+input[type="search"] {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    background-color: var(--gray-light);
+    padding: 15px;
+    font-size: 16px;
+    border-radius: 0; /* Square edges feel more static */
+    outline: none;
+    box-sizing: border-box;
+    transition: background-color 0.2s;
+}
+
+input[type="search"]:focus {
+    background-color: #ffffff;
+    border-width: 2px;
+}
+
+/* 5. Button - High Contrast */
+button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 15px;
+    background-color: var(--border-color);
+    color: #ffffff;
+    border: none;
+    border-radius: 0;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: var(--accent);
+}
+
+button:active {
+    background-color: #444;
+}
+
+/* 6. Results area */
+#result {
+    margin-top: 20px;
+    font-size: 14px;
+    border-top: 1px solid var(--gray-light);
+    padding-top: 15px;
+}
