@@ -1,5 +1,5 @@
 const database = [
-    { title: "test", url: "/test.html" },
+    { title: "test", url: "/documents/test.html" },
 ];
 
 document.getElementById('searchForm').addEventListener('submit', function(e) {
