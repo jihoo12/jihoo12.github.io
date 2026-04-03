@@ -1,7 +1,6 @@
 const database = [
     { title: "test", url: "/documents/test.html" },
     { title: "japaness", url: "/documents/japaness.html" },
-    { title: "social_communication",url: "/documents/social_communication.html"},
 ];
 
 document.getElementById('searchForm').addEventListener('submit', function(e) {
