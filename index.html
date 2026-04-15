@@ -1,58 +1,176 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>✨ my cute space ✨</title>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500&display=swap" rel="stylesheet">
+    <title>୨୧ ぴんくわーるど ୨୧</title>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&family=Quicksand:wght@500&display=swap" rel="stylesheet">
     
     <style>
+        :root {
+            --bg-pink: #fff0f3;
+            --main-pink: #ffc2d1;
+            --dark-pink: #ff85a1;
+            --white: #ffffff;
+            --shadow: rgba(255, 133, 161, 0.2);
+        }
+
         body {
-            background-color: #fff0f6; /* Soft pastel pink */
-            font-family: 'Quicksand', sans-serif;
+            background-color: var(--bg-pink);
+            background-image: radial-gradient(#ffc2d1 0.8px, transparent 0.8px);
+            background-size: 20px 20px;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            color: #ff85a2;
+            overflow: hidden;
+        }
+
+        .sakura-fall {
+            position: fixed;
+            top: -10%;
+            pointer-events: none;
+            z-index: 0;
+            animation: fall 8s linear infinite;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
         }
 
         .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 30px;
-            box-shadow: 0 10px 20px rgba(255, 182, 193, 0.4);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 3rem 2rem;
+            border-radius: 40px; 
+            border: 4px solid var(--white);
+            outline: 2px solid var(--main-pink);
+            box-shadow: 0 15px 35px var(--shadow);
             text-align: center;
-            max-width: 80%;
-        }
-
-        /* Making the badges look like little stickers */
-        img {
-            margin: 5px;
+            max-width: 350px;
+            position: relative;
+            z-index: 10;
             transition: transform 0.3s ease;
-            border-radius: 8px;
         }
 
-        img:hover {
-            transform: scale(1.2) rotate(5deg); /* Pops out when hovered! */
+        .container:hover {
+            transform: scale(1.02);
         }
 
-        .sparkle {
-            color: #ffb6c1;
+        .container::before {
+            content: "୨୧┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈୨୧";
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            font-size: 0.8rem;
+            color: var(--dark-pink);
+        }
+
+        h2 {
+            color: var(--dark-pink);
+            font-size: 1.8rem;
+            margin: 20px 0;
+            text-shadow: 2px 2px 0px var(--white);
+        }
+
+        .status-tag {
+            background: var(--main-pink);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-block;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 0 var(--dark-pink);
+        }
+
+        .badges {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .badges img {
+            border-radius: 12px;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .code-snippet {
+            font-family: 'Quicksand', sans-serif;
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            color: var(--dark-pink);
+            border: 2px dashed var(--main-pink);
+            display: inline-block;
+            margin-top: 15px;
+        }
+
+        .kira-kira {
+            display: inline-block;
+            animation: bounce 1.5s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .footer-text {
+            margin-top: 25px;
+            font-size: 0.7rem;
+            color: var(--dark-pink);
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    55 48 89 e5
-        <h2 class="sparkle">~ 私は可愛い ~</h2>
-        I am studying the following
-        <div class="badges">
-            <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
-            <img src="https://img.shields.io/badge/OCaml-EC6847?style=for-the-badge&logo=ocaml&logoColor=white" alt="OCaml">
-        </div>
-    c3
 
+    <div class="sakura-fall" style="left:10%; animation-delay:0s">🌸</div>
+    <div class="sakura-fall" style="left:30%; animation-delay:2s">🌸</div>
+    <div class="sakura-fall" style="left:50%; animation-delay:4s">✨</div>
+    <div class="sakura-fall" style="left:70%; animation-delay:1s">🌸</div>
+    <div class="sakura-fall" style="left:90%; animation-delay:3s">🎀</div>
+
+    <div class="container">
+        <div class="status-tag">♥ My Status ♥</div>
+        
+        <h2>
+            <span class="kira-kira">✨</span>
+            超かわいい
+            <span class="kira-kira">✨</span>
+        </h2>
+        
+        <p style="font-size: 0.9rem; color: #888;">〜 お勉強中だよ 〜</p>
+        
+        <div class="badges">
+            <img src="https://img.shields.io/badge/OCaml-FF85A1?style=for-the-badge&logo=ocaml&logoColor=white" alt="OCaml">
+        </div>
+
+        <div class="code-snippet">
+            print_endline "Hello World!"
+        </div>
+
+        <div class="footer-text">🎀 <span id="current-date"></span> 🎀</div>
+    </div>
+    <script>
+        function updateDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+        
+            const dateString = `${year}.${month}.${day}`;
+            document.getElementById('current-date').textContent = dateString;
+        }
+        updateDate();
+    </script>
 </body>
 </html>
