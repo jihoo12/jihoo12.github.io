@@ -1,123 +1,16 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>about</title>
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Quicksand:wght@600&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-pink: #ffe5ec;
-            --main-pink: #ffc2d1;
-            --dark-pink: #ff85a1;
-            --accent: #fb6f92;
-            --white: rgba(255, 255, 255, 0.9);
-        }
-
-        body {
-            background-color: var(--bg-pink);
-            background-image: 
-                radial-gradient(var(--main-pink) 1.5px, transparent 1.5px),
-                radial-gradient(var(--main-pink) 1.5px, transparent 1.5px);
-            background-size: 40px 40px;
-            background-position: 0 0, 20px 20px;
-            font-family: 'M PLUS Rounded 1c', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            color: var(--dark-pink);
-        }
-
-        /* Floating Animation */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(-1deg); }
-            50% { transform: translateY(-20px) rotate(1deg); }
-        }
-
-        .container {
-            background: var(--white);
-            backdrop-filter: blur(8px);
-            padding: 2.5rem 2rem;
-            border-radius: 40px;
-            box-shadow: 0 20px 0px var(--main-pink), 0 30px 50px rgba(251, 111, 146, 0.3);
-            border: 6px solid white;
-            text-align: center;
-            animation: float 5s ease-in-out infinite;
-            max-width: 320px;
-            position: relative;
-            z-index: 10;
-        }
-
-        .title {
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
-            letter-spacing: 2px;
-            background: linear-gradient(to bottom, var(--dark-pink), var(--accent));
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(2px 2px 0px white);
-        }
-
-        .code-snippet {
-            font-family: 'Quicksand', sans-serif;
-            background: #fffbfe;
-            padding: 20px;
-            border-radius: 25px;
-            font-size: 0.85rem;
-            color: var(--accent);
-            border: 3px dotted var(--main-pink);
-            line-height: 1.6;
-            position: relative;
-            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        /* Ribbon Decoration */
-        .container::before {
-            content: '🎀';
-            position: absolute;
-            top: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 3rem;
-            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.1));
-        }
-
-        /* Animated Background Elements */
-        .decor {
-            position: absolute;
-            user-select: none;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        @keyframes drift {
-            from { transform: translateY(110vh) rotate(0deg); opacity: 1; }
-            to { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
-        }
-
-        .heart {
-            color: var(--main-pink);
-            font-size: 1.5rem;
-            animation: drift 10s linear infinite;
-        }
-
-        .code-label {
-            display: inline-block;
-            background: var(--accent);
-            color: white;
-            padding: 2px 12px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-
-    </style>
+    <link
+        href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Quicksand:wght@600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <div class="decor heart" style="left: 10%; animation-duration: 12s;">❤</div>
@@ -127,21 +20,22 @@
 
     <div class="container">
         <div class="title">私は可愛い ✨</div>
-        
+
         <div class="code-snippet">
             <span class="code-label">hi</span><br>
-            55 <br> 
-            48 89 E5 <br> 
-            6A 69 6A 68 <br> 
-            48 C7 C0 01 00 00 00 <br> 
-            48 C7 C7 01 00 00 00 <br> 
-            48 89 E6 <br> 
-            48 C7 C2 02 00 00 00 <br> 
-            0F 05 <br> 
-            48 83 C4 08 <br> 
+            55 <br>
+            48 89 E5 <br>
+            6A 69 6A 68 <br>
+            48 C7 C0 01 00 00 00 <br>
+            48 C7 C7 01 00 00 00 <br>
+            48 89 E6 <br>
+            48 C7 C2 02 00 00 00 <br>
+            0F 05 <br>
+            48 83 C4 08 <br>
             5D C3
         </div>
     </div>
 
 </body>
+
 </html>
