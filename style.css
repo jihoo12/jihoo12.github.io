@@ -48,10 +48,6 @@ body {
     margin: 40px 20px;
 }
 
-.container:hover {
-    transform: scale(1.03);
-}
-
 /* 상단 리본 및 구분선 */
 .container::before {
     content: '🎀';
@@ -126,8 +122,10 @@ h2 {
 }
 
 .badges img:hover {
-    transform: translateY(-3px) rotate(3deg);
-    filter: brightness(1.1);
+    transform: translateY(-3px) rotate(3deg) scale(1.3);
+    filter: brightness(1.2);
+    box-shadow: 0 8px 15px var(--shadow);
+    z-index: 10;
 }
 
 /* ---------------------------------------------------------
@@ -227,24 +225,6 @@ h2 {
     100% {
         transform: translateY(-110vh) rotate(360deg);
         opacity: 0;
-    }
-}
-
-/* 반짝이 애니메이션 */
-.kira-kira {
-    display: inline-block;
-    animation: bounce 1.5s infinite;
-}
-
-@keyframes bounce {
-
-    0%,
-    100% {
-        transform: translateY(0) scale(1);
-    }
-
-    50% {
-        transform: translateY(-5px) scale(1.1);
     }
 }
 
