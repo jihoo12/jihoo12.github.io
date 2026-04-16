@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>about</title>
+    <style>
+        :root {
+            --bg-pink: #fff0f3;
+            --main-pink: #ffc2d1;
+            --dark-pink: #ff85a1;
+            --white: #ffffff;
+            --shadow: rgba(255, 133, 161, 0.2);
+        }
+
+        body {
+            background-color: var(--bg-pink);
+            background-image: radial-gradient(#ffc2d1 0.8px, transparent 0.8px);
+            background-size: 20px 20px;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .sakura-fall {
+            position: fixed;
+            top: -10%;
+            pointer-events: none;
+            z-index: 0;
+            animation: fall 8s linear infinite;
+        }
+        .code-snippet {
+            font-family: 'Quicksand', sans-serif;
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            color: var(--dark-pink);
+            border: 2px dashed var(--main-pink);
+            display: inline-block;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        私は可愛い
+    </div>
+    <div class="code-snippet">
+        55
+        <br> 
+        48 89 E5
+        <br> 
+        6A 69
+        <br>
+        6A 68
+        <br> 
+        48 C7 C0 01 00 00 00
+        <br> 
+        48 C7 C7 01 00 00 00
+        <br> 
+        48 89 E6
+        <br> 
+        48 C7 C2 02 00 00 00
+        <br> 
+        0F 05
+        <br> 
+        48 83 C4 08
+        <br> 
+        5D 
+        <br>
+        C3
+    </div>
+</body>
+</html>
