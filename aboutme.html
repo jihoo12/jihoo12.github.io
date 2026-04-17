@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=\, initial-scale=1.0">
@@ -11,6 +11,16 @@
         <div class="decor heart" style="left: 85%; animation-duration: 8s; animation-delay: 2s;">💖</div>
         <div class="decor heart" style="left: 70%; animation-duration: 15s; animation-delay: 5s;">❤</div>
         <div class="decor heart" style="left: 20%; animation-duration: 10s; animation-delay: 1s;">🌸</div>
-        
+        <div class="container">
+        <div class="title">私は 可愛い</div>
+        <div class="code-snippet">(*可愛い*)
+            let rec kawaii n = 
+                &nbsp if n = 0 then "可愛い"
+                &nbsp else "めちゃ" ^ kawaii (n-1)
+            ;;
+            print_string "私は ";;
+            print_endline (kawaii 300)
+        </div>
+        </div>
 </body>
 </html>
