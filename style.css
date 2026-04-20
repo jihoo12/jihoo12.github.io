@@ -31,6 +31,7 @@ body {
     box-shadow: 10px 10px 0px var(--main-pink); /* Hard retro shadow */
     position: relative;
     margin-bottom: 50px;
+    box-sizing: border-box;
 }
 
 /* Kawaii Washi Tape effect */
