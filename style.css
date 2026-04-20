@@ -22,6 +22,8 @@ body {
 
 /* More rounded, "puffy" container */
 .post-container {
+    display: flex;
+    flex-wrap: wrap;
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(8px);
     padding: 3.5rem 2.5rem;
@@ -34,7 +36,6 @@ body {
 
 /* Kawaii Washi Tape effect */
 .post-container::after {
-    content: '';
     position: absolute;
     top: -15px;
     right: 30px;
@@ -72,15 +73,29 @@ h2.post-title::after {
     border: 2px solid var(--bg-pink);
 }
 
-/* Links with heart hover */
-a {
-    position: relative;
+.post-container a {
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    padding: 12px 20px;
+    background-color: var(--white);
+    border: 2px solid var(--accent);
+    border-radius: 20px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.1rem;
     color: var(--dark-pink);
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 0 var(--main-pink);
 }
 
-a:hover {
-    color: #ff4d6d;
+/* 마우스 올렸을 때 효과 극대화 */
+.post-container a:hover {
+    transform: translateY(-5px) scale(1.05); /* 살짝 커지면서 위로 */
+    background-color: var(--dark-pink);
+    color: white;
+    border-color: var(--dark-pink);
+    box-shadow: 0 8px 15px var(--shadow);
 }
 
 @media (max-width: 480px) {
@@ -91,10 +106,5 @@ a:hover {
 
     h2 {
         font-size: 1.5rem;
-    }
-
-    .code-snippet {
-        font-size: 0.75rem;
-        padding: 12px 15px;
     }
 }
