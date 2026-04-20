@@ -20,6 +20,29 @@ body {
     font-family: 'Quicksand', 'M PLUS Rounded 1c', sans-serif;
 }
 
+body.dark-mode {
+    --bg-pink: #1a0f12;         /* 아주 어두운 배경 */
+    --main-pink: #4a2b33;       /* 차분한 다크 핑크 */
+    --dark-pink: #ff85a1;       /* 텍스트 가독성을 위해 밝은 핑크 유지 */
+    --accent: #7a3e4d;          /* 강조 어두운 색 */
+    --white: #2d1b20;           /* 컨테이너 배경색 */
+    --shadow: rgba(0, 0, 0, 0.4);
+    --jk-blue: #3d5a80;         /* 대비되는 어두운 블루 */
+}
+
+/* 배경 이미지 다크모드 대응 */
+body.dark-mode {
+    background-image: radial-gradient(#4a2b33 0.5px, transparent 0.5px), 
+                      radial-gradient(#4a2b33 0.5px, #1a0f12 0.5px);
+}
+
+/* 컨테이너 가독성 수정 */
+body.dark-mode .post-container {
+    background: rgba(45, 27, 32, 0.85); /* 어두운 반투명 */
+    border-color: var(--main-pink);
+    box-shadow: 10px 10px 0px var(--main-pink);
+}
+
 /* More rounded, "puffy" container */
 .post-container {
     display: flex;
@@ -109,12 +132,36 @@ h2.post-title::after {
 }
 
 @media (max-width: 480px) {
-    .container {
+    .post-container {
         padding: 3rem 1.2rem 2rem;
         width: 85%;
     }
 
     h2 {
         font-size: 1.5rem;
+    }
+}
+
+/* 시스템 설정이 다크모드일 때 자동으로 적용 */
+@media (prefers-color-scheme: dark) {
+    :root:not(.light-mode) { /* 사용자가 수동으로 라이트를 켜지 않았을 때만 적용 */
+        --bg-pink: #1a0f12;
+        --main-pink: #4a2b33;
+        --dark-pink: #ff85a1;
+        --accent: #7a3e4d;
+        --white: #2d1b20;
+        --shadow: rgba(0, 0, 0, 0.4);
+        --jk-blue: #3d5a80;
+    }
+
+    body:not(.light-mode) {
+        background-image: radial-gradient(#4a2b33 0.5px, transparent 0.5px), 
+                          radial-gradient(#4a2b33 0.5px, #1a0f12 0.5px);
+    }
+
+    body:not(.light-mode) .post-container {
+        background: rgba(45, 27, 32, 0.85);
+        border-color: var(--main-pink);
+        box-shadow: 10px 10px 0px var(--main-pink);
     }
 }
