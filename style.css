@@ -20,40 +20,6 @@ body {
     font-family: 'Quicksand', 'M PLUS Rounded 1c', sans-serif;
 }
 
-.post-container1 {
-    display: flex;
-    flex-wrap: wrap;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(8px);
-    padding: 3.5rem 2.5rem;
-    border-radius: 40px; /* Extra round */
-    border: 4px dashed var(--main-pink); /* Dashed "stitched" look */
-    box-shadow: 10px 10px 0px var(--main-pink); /* Hard retro shadow */
-    position: relative;
-    margin-bottom: 50px;
-    justify-content: center;
-}
-
-/* Kawaii Washi Tape effect */
-.post-container1::after {
-    content:"🩷";
-    position: absolute;
-    top: -15px;
-    right: 30px;
-    width: 100px;
-    height: 30px;
-    background: rgba(189, 224, 254, 0.6); /* Blue tape */
-    transform: rotate(5deg);
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-}
-
-.post-container1 img {
-    max-width: 100%;         /* 부모 컨테이너를 넘지 않게 함 */
-    height: auto;            /* 비율 유지 */
-    flex: 1 1 300px;        /* 화면 크기에 따라 유연하게 크기 조절 (최소 300px 권장) */
-    object-fit: contain;     /* 이미지 내용이 잘리지 않게 함 */
-}
-
 /* More rounded, "puffy" container */
 .post-container {
     display: flex;
@@ -112,6 +78,13 @@ body {
 h2.post-title {
     color: var(--dark-pink);
     font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+}
+
+.pink-container {
+    color: var(--dark-pink);
+    font-size: 1.5rem;
     font-weight: 900;
     letter-spacing: -1px;
 }
