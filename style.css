@@ -61,6 +61,9 @@ body.dark-mode .post-container {
 /* Kawaii Washi Tape effect */
 .post-container::after {
     content:"🩷";
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: absolute;
     top: -15px;
     right: 30px;
