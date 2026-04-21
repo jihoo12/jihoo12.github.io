@@ -21,24 +21,23 @@ body {
 }
 
 body.dark-mode {
-    --bg-pink: #1a0f12;         /* 아주 어두운 배경 */
-    --main-pink: #4a2b33;       /* 차분한 다크 핑크 */
-    --dark-pink: #ff85a1;       /* 텍스트 가독성을 위해 밝은 핑크 유지 */
-    --accent: #7a3e4d;          /* 강조 어두운 색 */
-    --white: #2d1b20;           /* 컨테이너 배경색 */
+    --bg-pink: #1a0f12;        
+    --main-pink: #4a2b33;      
+    --dark-pink: #ff85a1;      
+    --accent: #7a3e4d;         
+    --white: #2d1b20;          
     --shadow: rgba(0, 0, 0, 0.4);
-    --jk-blue: #3d5a80;         /* 대비되는 어두운 블루 */
+    --jk-blue: #3d5a80;         
 }
 
-/* 배경 이미지 다크모드 대응 */
 body.dark-mode {
     background-image: radial-gradient(#4a2b33 0.5px, transparent 0.5px), 
                       radial-gradient(#4a2b33 0.5px, #1a0f12 0.5px);
 }
 
-/* 컨테이너 가독성 수정 */
+
 body.dark-mode .post-container {
-    background: rgba(45, 27, 32, 0.85); /* 어두운 반투명 */
+    background: rgba(45, 27, 32, 0.85); 
     border-color: var(--main-pink);
     box-shadow: 10px 10px 0px var(--main-pink);
 }
@@ -88,9 +87,9 @@ body.dark-mode .post-container {
     box-shadow: 0 4px 0 var(--main-pink);
 }
 
-/* 마우스 올렸을 때 효과 극대화 */
+
 .post-container a:hover {
-    transform: translateY(-5px) scale(1.1); /* 살짝 커지면서 위로 */
+    transform: translateY(-5px) scale(1.1); 
     background-color: var(--dark-pink);
     color: white;
     border-color: var(--dark-pink);
@@ -142,9 +141,9 @@ h2.post-title::after {
     }
 }
 
-/* 시스템 설정이 다크모드일 때 자동으로 적용 */
+
 @media (prefers-color-scheme: dark) {
-    :root:not(.light-mode) { /* 사용자가 수동으로 라이트를 켜지 않았을 때만 적용 */
+    :root:not(.light-mode) { 
         --bg-pink: #1a0f12;
         --main-pink: #4a2b33;
         --dark-pink: #ff85a1;
