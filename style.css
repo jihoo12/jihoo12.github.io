@@ -6,7 +6,7 @@
     --white: #ffffff;
     --shadow: rgba(255, 133, 161, 0.2);
     --code-bg: #fffcfd;
-    --jk-blue: #bde0fe; /* Added a soft blue for contrast */
+    --j-blue: #bde0fe; /* Added a soft blue for contrast */
     --max-width: 800px;
 }
 
@@ -27,7 +27,7 @@ body.dark-mode {
     --accent: #7a3e4d;         
     --white: #2d1b20;          
     --shadow: rgba(0, 0, 0, 0.4);
-    --jk-blue: #3d5a80;         
+    --j-blue: #3d5a80;         
 }
 
 body.dark-mode {
@@ -150,7 +150,7 @@ h2.post-title::after {
         --accent: #7a3e4d;
         --white: #2d1b20;
         --shadow: rgba(0, 0, 0, 0.4);
-        --jk-blue: #3d5a80;
+        --j-blue: #3d5a80;
     }
 
     body:not(.light-mode) {
