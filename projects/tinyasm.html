@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>tinyasm</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css" />
+</head>
+<body>
+<h2 id="x86-64-jit-assembler-in-rust">x86-64 JIT Assembler in Rust</h2>
+<p>A lightweight, educational x86-64 assembler and JIT execution engine
+written in Rust. This project demonstrates how to translate
+assembly-like instructions into raw machine code (binary) and execute
+them directly in memory at runtime using mmap and mprotect.</p>
+<h2 id="key-features">Key Features</h2>
+<ul>
+<li><p>2-Pass Assembler: Supports symbol resolution for labels, allowing
+for forward and backward jumps.</p></li>
+<li><p>Instruction Encoding: Implements a custom encoder for common
+x86-64 instructions including MOV, ADD, SUB, CMP, and conditional jumps
+(JE, JNE).</p></li>
+<li><p>Complex Addressing: Supports ModR/M and SIB byte encoding for
+memory operands, including base registers, index registers, scales, and
+displacements.</p></li>
+<li><p>JIT Execution: Allocates executable memory pages using libc to
+run generated machine code as native functions.</p></li>
+<li><p>Debug Mode: Optional verbose output to visualize the assembly
+process and the resulting bytecodes.</p></li>
+</ul>
+<h2 id="project-structure">Project Structure</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>registers.rs</td>
+<td>Defines x86-64 registers and their corresponding 3-bit codes and
+REX-bit flags.</td>
+</tr>
+<tr class="even">
+<td>encoder.rs</td>
+<td>The core logic for translating Instruction enums into machine code
+bytes.</td>
+</tr>
+<tr class="odd">
+<td>assembler.rs</td>
+<td>Manages the instruction list and resolves label addresses during the
+2-pass process.</td>
+</tr>
+<tr class="even">
+<td>jit.rs</td>
+<td>Handles low-level memory management (allocation, protection, and
+execution).</td>
+</tr>
+<tr class="odd">
+<td>main.rs</td>
+<td>Entry point demonstrating a loop example (incrementing RAX to
+5).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-implementation-details">Technical Implementation
+Details</h2>
+<h3 id="the-2-pass-process">The 2-Pass Process</h3>
+<ul>
+<li><p>Pass 1 (Symbol Resolution): The assembler iterates through the
+instructions to calculate the byte offset of every label and stores them
+in a symbol table.</p></li>
+<li><p>Pass 2 (Code Generation): The assembler generates the final
+machine code, calculating relative offsets for jump instructions using
+the symbol table created in Pass 1.</p></li>
+</ul>
+<h3 id="encoding-logic">Encoding Logic</h3>
+<ul>
+<li><p>REX Prefix: Automatically added for 64-bit operations or when
+using extended registers (R8-R15).</p></li>
+<li><p>Immediate Optimization: The encoder chooses between 8-bit and
+32-bit immediate opcodes (e.g., 0x83 vs 0x81) based on the value size to
+minimize code size.</p></li>
+<li><p>Memory Addressing: Specialized handling for registers like
+RSP/R12 (requiring SIB) and RBP/R13 (requiring mandatory
+displacement).</p></li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li><p>Rust: Stable toolchain.</p></li>
+<li><p>Dependencies: libc (for memory mapping on Unix-like
+systems).</p></li>
+<li><p>OS: Primarily targeted for Linux/macOS due to mmap
+usage.</p></li>
+</ul>
+<a href="https://github.com/jihoo12/tinyasm">github</a>
+</body>
+</html>
