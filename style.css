@@ -107,6 +107,13 @@ h2.post-title {
     letter-spacing: -1px;
 }
 
+h2.pink-pink {
+    color: var(--dark-pink);
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+}
+
 .pink-container {
     color: var(--dark-pink);
     font-size: 1.5rem;
@@ -133,6 +140,42 @@ h2.post-title::after {
     border: 2px solid var(--bg-pink);
 }
 
+/* 테마 토글 버튼 스타일 */
+.theme-toggle-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 3px solid var(--main-pink);
+    cursor: pointer;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 4px 4px 0px var(--main-pink);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.theme-toggle-btn:hover {
+    transform: scale(1.1);
+}
+
+.theme-toggle-btn:active {
+    transform: translateY(2px);
+    box-shadow: 2px 2px 0px var(--main-pink);
+}
+
+/* 다크모드일 때 버튼 색상 변경 */
+body.dark-mode .theme-toggle-btn {
+    background: var(--accent);
+    border-color: var(--dark-pink);
+    box-shadow: 4px 4px 0px var(--dark-pink);
+}
+
 @media (max-width: 480px) {
     .post-container {
         padding: 3rem 1.2rem 2rem;
@@ -141,29 +184,5 @@ h2.post-title::after {
 
     h2 {
         font-size: 1.5rem;
-    }
-}
-
-
-@media (prefers-color-scheme: dark) {
-    :root:not(.light-mode) { 
-        --bg-pink: #1a0f12;
-        --main-pink: #4a2b33;
-        --dark-pink: #ff85a1;
-        --accent: #7a3e4d;
-        --white: #2d1b20;
-        --shadow: rgba(0, 0, 0, 0.4);
-        --j-blue: #3d5a80;
-    }
-
-    body:not(.light-mode) {
-        background-image: radial-gradient(#4a2b33 0.5px, transparent 0.5px), 
-                          radial-gradient(#4a2b33 0.5px, #1a0f12 0.5px);
-    }
-
-    body:not(.light-mode) .post-container {
-        background: rgba(45, 27, 32, 0.85);
-        border-color: var(--main-pink);
-        box-shadow: 10px 10px 0px var(--main-pink);
     }
 }
