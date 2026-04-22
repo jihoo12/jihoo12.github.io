@@ -128,6 +128,7 @@ h2.post-title::after {
 }
 
 .theme-toggle-btn {
+    position: absolute;
     top: 20px;
     right: 20px;
     width: 50px;
