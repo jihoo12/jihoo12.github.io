@@ -127,20 +127,6 @@ h2.post-title::after {
     margin-top: 10px;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-    width: 10px;
-}
-::-webkit-scrollbar-track {
-    background: var(--bg-pink);
-}
-::-webkit-scrollbar-thumb {
-    background: var(--main-pink);
-    border-radius: 10px;
-    border: 2px solid var(--bg-pink);
-}
-
-/* 테마 토글 버튼 스타일 */
 .theme-toggle-btn {
     position: fixed;
     top: 20px;
@@ -169,7 +155,6 @@ h2.post-title::after {
     box-shadow: 2px 2px 0px var(--main-pink);
 }
 
-/* 다크모드일 때 버튼 색상 변경 */
 body.dark-mode .theme-toggle-btn {
     background: var(--accent);
     border-color: var(--dark-pink);
