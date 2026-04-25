@@ -127,6 +127,13 @@ h2.post-title::after {
     margin-top: 10px;
 }
 
+.markdown-content {
+    color: var(--dark-pink);
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+}
+
 .theme-toggle-btn {
     position: absolute;
     top: 20px;
