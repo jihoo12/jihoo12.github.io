@@ -167,14 +167,3 @@ body.dark-mode .theme-toggle-btn {
     border-color: var(--dark-pink);
     box-shadow: 4px 4px 0px var(--dark-pink);
 }
-
-@media (max-width: 480px) {
-    .post-container {
-        padding: 3rem 1.2rem 2rem;
-        width: 85%;
-    }
-
-    h2 {
-        font-size: 1.5rem;
-    }
-}
