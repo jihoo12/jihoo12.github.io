@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,23 +11,28 @@
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* 스크롤바 방지 */
+            overflow: hidden;
+            /* 스크롤바 방지 */
             background-color: #0a0a19;
         }
+
         canvas {
             display: block;
         }
+
         .instructions {
             position: absolute;
             top: 10px;
             left: 10px;
             color: white;
             font-family: sans-serif;
-            pointer-events: none; /* 클릭 방해 금지 */
+            pointer-events: none;
+            /* 클릭 방해 금지 */
             text-shadow: 1px 1px 2px black;
         }
     </style>
 </head>
+
 <body>
 
     <div class="instructions">
@@ -40,19 +46,13 @@
 
         function setup() {
             createCanvas(windowWidth, windowHeight);
-            
-            // 1. 중앙에 매우 무거운 '태양' 생성
-            bodies.push(new Body(width / 2, height / 2, 0, 0, 1000));
-            
-            // 2. 주변에 무작위 행성들 생성
-            for (let i = 0; i < 8; i++) {
-                let x = width / 2 + random(-300, 300);
-                let y = height / 2 + random(-300, 300);
-                let vx = random(-2, 2);
-                let vy = random(-2, 2);
-                let m = random(10, 60);
-                bodies.push(new Body(x, y, vx, vy, m));
-            }
+
+            let x = width / 2 + random(-300, 300);
+            let y = height / 2 + random(-300, 300);
+            let vx = random(-2, 2);
+            let vy = random(-2, 2);
+            let m = random(10, 60);
+            bodies.push(new Body(x, y, vx, vy, m));
         }
 
         function draw() {
@@ -114,6 +114,22 @@
                 this.vel.add(this.acc);
                 this.pos.add(this.vel);
                 this.acc.set(0, 0);
+                if (this.pos.x < this.r) {
+                    this.pos.x = this.r;
+                    this.vel.x *= -0.8; // 0.8을 곱해 충돌 시 에너지를 약간 흡수 (선택 사항)
+                } else if (this.pos.x > width - this.r) {
+                    this.pos.x = width - this.r;
+                    this.vel.x *= -0.8;
+                }
+
+                // 세로 벽 (위, 아래)
+                if (this.pos.y < this.r) {
+                    this.pos.y = this.r;
+                    this.vel.y *= -0.8;
+                } else if (this.pos.y > height - this.r) {
+                    this.pos.y = height - this.r;
+                    this.vel.y *= -0.8;
+                }
             }
 
             show() {
@@ -124,4 +140,5 @@
         }
     </script>
 </body>
+
 </html>
