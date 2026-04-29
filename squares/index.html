@@ -2,25 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Efficient Bouncing Squares</title>
+    <title>High-Performance Squares</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #1a1a1a;
-        }
-        canvas {
-            display: block;
-        }
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; }
+        canvas { display: block; }
     </style>
 </head>
 <body>
-
 <canvas id="canvas"></canvas>
 
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+
+    // 설정값
+    const numSquares = 25; // 숫자를 더 늘려도 부드럽습니다.
+    const gridSize = 80;    // 격자 크기
 
     function resize() {
         canvas.width = window.innerWidth;
@@ -32,124 +29,118 @@
     class Square {
         constructor(id) {
             this.id = id;
-            this.size = Math.random() * 30 + 20;
+            this.size = Math.random() * 20 + 15;
             this.x = Math.random() * (canvas.width - this.size);
             this.y = Math.random() * (canvas.height - this.size);
-            this.dx = (Math.random() - 0.5) * 6;
-            this.dy = (Math.random() - 0.5) * 6;
+            this.dx = (Math.random() - 0.5) * 5;
+            this.dy = (Math.random() - 0.5) * 5;
             this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
-            this.mass = this.size; // 크기를 질량으로 가정
+        }
+
+        update() {
+            // 벽 충돌 (단순화 및 보정)
+            if (this.x < 0) { this.x = 0; this.dx *= -1; }
+            else if (this.x + this.size > canvas.width) { this.x = canvas.width - this.size; this.dx *= -1; }
+            
+            if (this.y < 0) { this.y = 0; this.dy *= -1; }
+            else if (this.y + this.size > canvas.height) { this.y = canvas.height - this.size; this.dy *= -1; }
+
+            this.x += this.dx;
+            this.y += this.dy;
         }
 
         draw() {
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x, this.y, this.size, this.size);
         }
-
-        update() {
-            // 벽 충돌
-            if (this.x + this.size > canvas.width || this.x < 0) {
-                this.dx *= -1;
-                this.x = this.x < 0 ? 0 : canvas.width - this.size;
-            }
-            if (this.y + this.size > canvas.height || this.y < 0) {
-                this.dy *= -1;
-                this.y = this.y < 0 ? 0 : canvas.height - this.size;
-            }
-
-            this.x += this.dx;
-            this.y += this.dy;
-            this.draw();
-        }
     }
 
-    const squares = [];
-    const numSquares = 25; // 개수가 많아질수록 효율성이 체감됩니다.
-    for (let i = 0; i < numSquares; i++) {
-        squares.push(new Square(i));
-    }
+    const squares = Array.from({ length: numSquares }, (_, i) => new Square(i));
 
-    // --- 공간 분할 (Grid System) 충돌 처리 ---
-    function resolveCollision(s1, s2) {
-        // AABB 충돌 체크 (Rect vs Rect)
-        if (s1.x < s2.x + s2.size &&
-            s1.x + s1.size > s2.x &&
-            s1.y < s2.y + s2.size &&
-            s1.y + s1.size > s2.y) {
-            
-            // 단순한 속도 교환 (탄성 충돌)
-            let tempDx = s1.dx;
-            let tempDy = s1.dy;
-            s1.dx = s2.dx;
-            s1.dy = s2.dy;
-            s2.dx = tempDx;
-            s2.dy = tempDy;
-
-            // 겹침 현상 방지 (서로 밀어내기)
-            const overlapX = (s1.size + s2.size) - Math.abs((s1.x + s1.size/2) - (s2.x + s2.size/2));
-            const overlapY = (s1.size + s2.size) - Math.abs((s1.y + s1.size/2) - (s2.y + s2.size/2));
-            
-            if (overlapX < overlapY) {
-                s1.x += s1.dx > 0 ? 1 : -1;
-                s2.x += s2.dx > 0 ? 1 : -1;
-            } else {
-                s1.y += s1.dy > 0 ? 1 : -1;
-                s2.y += s2.dy > 0 ? 1 : -1;
-            }
-        }
-    }
+    // 최적화된 그리드 시스템용 변수 (재사용)
+    let grid = new Map();
 
     function checkCollisions() {
-        const gridSize = 100; // 격자 크기
-        const grid = {};
+        grid.clear(); // 매번 객체를 생성하지 않고 Map을 비워서 재사용
 
-        // 1. 격자에 사각형 할당
-        squares.forEach(sq => {
-            const gridX = Math.floor(sq.x / gridSize);
-            const gridY = Math.floor(sq.y / gridSize);
-            const key = `${gridX},${gridY}`;
-            
-            if (!grid[key]) grid[key] = [];
-            grid[key].push(sq);
-        });
+        // 1. 격자 등록 (문자열 생성 방식을 비트 연산이나 숫자로 대체 가능하나, Map이 직관적)
+        for (let i = 0; i < numSquares; i++) {
+            const s = squares[i];
+            const gx = (s.x / gridSize) | 0; // Math.floor 대신 비트 연산으로 고속 처리
+            const gy = (s.y / gridSize) | 0;
+            const key = (gx << 16) | gy; // 정수 키 사용 (문자열 생성을 막아 GC 부하 감소)
 
-        // 2. 같은 격자 및 인접 격자만 검사
-        for (const key in grid) {
-            const [gx, gy] = key.split(',').map(Number);
-            const currentCell = grid[key];
+            if (!grid.has(key)) grid.set(key, []);
+            grid.get(key).push(s);
+        }
 
-            // 인접한 9개 칸(자기 자신 포함) 확인
+        // 2. 인접 격자 검사
+        for (const [key, cellSquares] of grid) {
+            const gx = key >> 16;
+            const gy = key & 0xFFFF;
+
+            // 주변 9칸 검사 (오른쪽과 아래쪽 방향 위주로 중복 방지 설계도 가능하지만 단순화)
             for (let x = gx - 1; x <= gx + 1; x++) {
                 for (let y = gy - 1; y <= gy + 1; y++) {
-                    const neighborKey = `${x},${y}`;
-                    const neighborCell = grid[neighborKey];
+                    const neighborKey = (x << 16) | y;
+                    const neighbors = grid.get(neighborKey);
+                    
+                    if (!neighbors) continue;
 
-                    if (!neighborCell) continue;
-
-                    currentCell.forEach(s1 => {
-                        neighborCell.forEach(s2 => {
-                            if (s1.id < s2.id) { // 중복 검사 방지
+                    for (let i = 0; i < cellSquares.length; i++) {
+                        const s1 = cellSquares[i];
+                        for (let j = 0; j < neighbors.length; j++) {
+                            const s2 = neighbors[j];
+                            
+                            if (s1.id < s2.id) {
                                 resolveCollision(s1, s2);
                             }
-                        });
-                    });
+                        }
+                    }
                 }
             }
         }
     }
 
+    function resolveCollision(s1, s2) {
+        // AABB 충돌 판정
+        if (s1.x < s2.x + s2.size && s1.x + s1.size > s2.x &&
+            s1.y < s2.y + s2.size && s1.y + s1.size > s2.y) {
+            
+            // 단순 물리 반사
+            [s1.dx, s2.dx] = [s2.dx, s1.dx];
+            [s1.dy, s2.dy] = [s2.dy, s1.dy];
+
+            // 겹침 방지 (포지션 보정)
+            const overlapX = (s1.size + s2.size) / 2 - Math.abs((s1.x + s1.size / 2) - (s2.x + s2.size / 2));
+            const overlapY = (s1.size + s2.size) / 2 - Math.abs((s1.y + s1.size / 2) - (s2.y + s2.size / 2));
+
+            if (overlapX < overlapY) {
+                const shift = s1.x < s2.x ? -1 : 1;
+                s1.x += shift; s2.x -= shift;
+            } else {
+                const shift = s1.y < s2.y ? -1 : 1;
+                s1.y += shift; s2.y -= shift;
+            }
+        }
+    }
+
     function animate() {
-        ctx.fillStyle = 'rgba(26, 26, 26, 0.3)';
+        // 잔상 효과를 주면서 배경 채우기
+        ctx.fillStyle = '#1a1a1a'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        checkCollisions(); // 효율적인 충돌 체크 호출
-        squares.forEach(sq => sq.update());
+        checkCollisions();
         
+        for (let i = 0; i < numSquares; i++) {
+            squares[i].update();
+            squares[i].draw();
+        }
+
         requestAnimationFrame(animate);
     }
 
     animate();
 </script>
-
 </body>
 </html>
