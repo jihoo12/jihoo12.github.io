@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D N-Body Simulator</title>
+    <!-- p5.js CDN 라이브러리 로드 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 스크롤바 방지 */
+            background-color: #0a0a19;
+        }
+        canvas {
+            display: block;
+        }
+        .instructions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none; /* 클릭 방해 금지 */
+            text-shadow: 1px 1px 2px black;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="instructions">
+        <h3>🌌 2d N-Body Simulator</h3>
+        <p>click for create new object</p>
+    </div>
+
+    <script>
+        let bodies = [];
+        let G = 1; // 중력 상수
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            
+            // 1. 중앙에 매우 무거운 '태양' 생성
+            bodies.push(new Body(width / 2, height / 2, 0, 0, 1000));
+            
+            // 2. 주변에 무작위 행성들 생성
+            for (let i = 0; i < 8; i++) {
+                let x = width / 2 + random(-300, 300);
+                let y = height / 2 + random(-300, 300);
+                let vx = random(-2, 2);
+                let vy = random(-2, 2);
+                let m = random(10, 60);
+                bodies.push(new Body(x, y, vx, vy, m));
+            }
+        }
+
+        function draw() {
+            background(10, 10, 25, 50); // 마지막 숫자(50)는 잔상을 남기기 위한 투명도입니다.
+
+            // 모든 천체 간의 상호작용 계산
+            for (let b1 of bodies) {
+                for (let b2 of bodies) {
+                    if (b1 !== b2) {
+                        b1.attract(b2);
+                    }
+                }
+            }
+
+            // 물리 법칙 적용 및 그리기
+            for (let b of bodies) {
+                b.update();
+                b.show();
+            }
+        }
+
+        // 마우스 클릭 시 새로운 천체 추가
+        function mousePressed() {
+            let m = random(20, 100);
+            bodies.push(new Body(mouseX, mouseY, random(-1, 1), random(-1, 1), m));
+        }
+
+        // 창 크기가 조절될 때 캔버스 크기도 맞춤
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+
+        // 천체 객체 클래스
+        class Body {
+            constructor(x, y, vx, vy, m) {
+                this.pos = createVector(x, y);
+                this.vel = createVector(vx, vy);
+                this.acc = createVector(0, 0);
+                this.mass = m;
+                this.r = sqrt(this.mass) * 2;
+                // 무작위 색상 부여
+                this.color = color(random(150, 255), random(150, 255), random(200, 255));
+            }
+
+            attract(other) {
+                let force = p5.Vector.sub(this.pos, other.pos);
+                let distanceSq = constrain(force.magSq(), 100, 10000);
+                let strength = (G * this.mass * other.mass) / distanceSq;
+                force.setMag(strength);
+                other.applyForce(force);
+            }
+
+            applyForce(force) {
+                let f = p5.Vector.div(force, this.mass);
+                this.acc.add(f);
+            }
+
+            update() {
+                this.vel.add(this.acc);
+                this.pos.add(this.vel);
+                this.acc.set(0, 0);
+            }
+
+            show() {
+                noStroke();
+                fill(this.color);
+                ellipse(this.pos.x, this.pos.y, this.r * 2);
+            }
+        }
+    </script>
+</body>
+</html>
