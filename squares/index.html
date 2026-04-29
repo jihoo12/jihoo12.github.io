@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Efficient Bouncing Squares</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Square {
+        constructor(id) {
+            this.id = id;
+            this.size = Math.random() * 30 + 20;
+            this.x = Math.random() * (canvas.width - this.size);
+            this.y = Math.random() * (canvas.height - this.size);
+            this.dx = (Math.random() - 0.5) * 6;
+            this.dy = (Math.random() - 0.5) * 6;
+            this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+            this.mass = this.size; // 크기를 질량으로 가정
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.size, this.size);
+        }
+
+        update() {
+            // 벽 충돌
+            if (this.x + this.size > canvas.width || this.x < 0) {
+                this.dx *= -1;
+                this.x = this.x < 0 ? 0 : canvas.width - this.size;
+            }
+            if (this.y + this.size > canvas.height || this.y < 0) {
+                this.dy *= -1;
+                this.y = this.y < 0 ? 0 : canvas.height - this.size;
+            }
+
+            this.x += this.dx;
+            this.y += this.dy;
+            this.draw();
+        }
+    }
+
+    const squares = [];
+    const numSquares = 25; // 개수가 많아질수록 효율성이 체감됩니다.
+    for (let i = 0; i < numSquares; i++) {
+        squares.push(new Square(i));
+    }
+
+    // --- 공간 분할 (Grid System) 충돌 처리 ---
+    function resolveCollision(s1, s2) {
+        // AABB 충돌 체크 (Rect vs Rect)
+        if (s1.x < s2.x + s2.size &&
+            s1.x + s1.size > s2.x &&
+            s1.y < s2.y + s2.size &&
+            s1.y + s1.size > s2.y) {
+            
+            // 단순한 속도 교환 (탄성 충돌)
+            let tempDx = s1.dx;
+            let tempDy = s1.dy;
+            s1.dx = s2.dx;
+            s1.dy = s2.dy;
+            s2.dx = tempDx;
+            s2.dy = tempDy;
+
+            // 겹침 현상 방지 (서로 밀어내기)
+            const overlapX = (s1.size + s2.size) - Math.abs((s1.x + s1.size/2) - (s2.x + s2.size/2));
+            const overlapY = (s1.size + s2.size) - Math.abs((s1.y + s1.size/2) - (s2.y + s2.size/2));
+            
+            if (overlapX < overlapY) {
+                s1.x += s1.dx > 0 ? 1 : -1;
+                s2.x += s2.dx > 0 ? 1 : -1;
+            } else {
+                s1.y += s1.dy > 0 ? 1 : -1;
+                s2.y += s2.dy > 0 ? 1 : -1;
+            }
+        }
+    }
+
+    function checkCollisions() {
+        const gridSize = 100; // 격자 크기
+        const grid = {};
+
+        // 1. 격자에 사각형 할당
+        squares.forEach(sq => {
+            const gridX = Math.floor(sq.x / gridSize);
+            const gridY = Math.floor(sq.y / gridSize);
+            const key = `${gridX},${gridY}`;
+            
+            if (!grid[key]) grid[key] = [];
+            grid[key].push(sq);
+        });
+
+        // 2. 같은 격자 및 인접 격자만 검사
+        for (const key in grid) {
+            const [gx, gy] = key.split(',').map(Number);
+            const currentCell = grid[key];
+
+            // 인접한 9개 칸(자기 자신 포함) 확인
+            for (let x = gx - 1; x <= gx + 1; x++) {
+                for (let y = gy - 1; y <= gy + 1; y++) {
+                    const neighborKey = `${x},${y}`;
+                    const neighborCell = grid[neighborKey];
+
+                    if (!neighborCell) continue;
+
+                    currentCell.forEach(s1 => {
+                        neighborCell.forEach(s2 => {
+                            if (s1.id < s2.id) { // 중복 검사 방지
+                                resolveCollision(s1, s2);
+                            }
+                        });
+                    });
+                }
+            }
+        }
+    }
+
+    function animate() {
+        ctx.fillStyle = 'rgba(26, 26, 26, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        checkCollisions(); // 효율적인 충돌 체크 호출
+        squares.forEach(sq => sq.update());
+        
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+
+</body>
+</html>
