@@ -1,5 +1,5 @@
 # Torus
-```Torus
+```agda
 {-# OPTIONS --cubical #-}
 module Torus where
 
