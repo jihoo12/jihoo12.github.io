@@ -110,7 +110,7 @@
             gsap.set(img, { rotation: angleDeg + 90 });
         }
 
-        gsap.set(img, { x: 0, y: 400 });
+        gsap.set(img, { x: 0, y: 200 });
 
         // 초기 위치 설정
         updateSpring();
@@ -124,7 +124,7 @@
                 // 원위치로 돌아갈 때도 각도가 실시간으로 변하도록 onUpdate에 함수 연결
                 gsap.to(this.target, {
                     x: 0,
-                    y: 400,
+                    y: 200,
                     duration: 7,
                     ease: "elastic.out(1.5, 0.2)",
                     onUpdate: updateSpring
