@@ -17,8 +17,8 @@ const repos: Repo[] = [
   { href: "https://github.com/jihoo12/rust-wgpu-2d-physics", label: "rust wgpu 2d physics" },
   { href: "https://github.com/jihoo12/SSG", label: "SSG" },
   { href: "https://github.com/jihoo12/ai-RAG", label: "ai RAG" },
-  { href: "https://github.com/jihoo12/octo", label: "octo" },
-  { href: "https://github.com/jihoo12/haskell-blockchain", label: "haskell-blockchain" },
+  { href: "https://github.com/bug-free-octo-couscous/octo", label: "octo" },
+  { href: "https://github.com/bug-free-octo-couscous/haskell-blockchain", label: "haskell-blockchain" },
 ];
 
 export default function Repo() {
