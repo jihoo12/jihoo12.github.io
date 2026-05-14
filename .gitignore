@@ -1,0 +1,23 @@
+# Logs
+my-website/logs
+my-website/*.log
+my-website/npm-debug.log*
+my-website/yarn-debug.log*
+my-website/yarn-error.log*
+my-website/pnpm-debug.log*
+my-website/lerna-debug.log*
+
+my-website/node_modules
+my-website/dist-ssr
+my-website/*.local
+
+# Editor directories and files
+my-website/.vscode/*
+my-website/!.vscode/extensions.json
+my-website/.idea
+my-website/.DS_Store
+my-website/*.suo
+my-website/*.ntvs*
+my-website/*.njsproj
+my-website/*.sln
+my-website/*.sw?
