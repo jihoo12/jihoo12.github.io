@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "./ThemeContext";
 import "./style.css";
 import Home from "./pages/Home";
 import Repo from "./pages/Repo";
@@ -8,7 +7,6 @@ import Organizations from "./pages/Organizations";
 
 export default function App() {
   return (
-    <ThemeProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -17,6 +15,5 @@ export default function App() {
           <Route path="/orgs" element={<Organizations />} />
         </Routes>
       </BrowserRouter>
-    </ThemeProvider>
   );
 }

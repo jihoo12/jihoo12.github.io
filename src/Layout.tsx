@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useTheme } from "./ThemeContext";
 
 const NAV = [
   { to: "/", label: "home" },
@@ -11,7 +10,6 @@ const NAV = [
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { dark, toggle } = useTheme();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -87,10 +85,6 @@ export default function Layout({ children }: { children: ReactNode }) {
       )}
 
       <div className="page-content">{children}</div>
-
-      <button className="theme-toggle-btn" onClick={toggle} aria-label="Toggle theme">
-        {dark ? "🌙" : "☀️"}
-      </button>
     </>
   );
 }
