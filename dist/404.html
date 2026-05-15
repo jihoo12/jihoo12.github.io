@@ -21,24 +21,39 @@
 
         body {
             background-color: var(--bg-pink);
-            /* Changed to a cuter heart pattern */
             background-image: radial-gradient(#ffc2d1 0.5px, transparent 0.5px),
                 radial-gradient(#ffc2d1 0.5px, #fff5f7 0.5px);
             background-size: 30px 30px;
             background-position: 0 0, 15px 15px;
-            font-family: 'Quicksand', 'M PLUS Rounded 1c', sans-serif;
+
+            /* --- Centering Logic --- */
+            display: flex;
+            justify-content: center;
+            /* Centers horizontally */
+            align-items: center;
+            /* Centers vertically */
+            min-height: 100vh;
+            /* Takes up full viewport height */
+            margin: 0;
+            /* Removes default browser margins */
+            font-family: sans-serif;
+            /* Optional: adds a cleaner look */
         }
 
         .container {
             max-width: 500px;
             padding: 40px;
+            text-align: center;
+            /* Centers text and inline elements like the button */
         }
 
-        /* Styling the image */
         .error-image {
+            display: block;
+            /* Allows margin auto to work */
+            margin-left: auto;
+            margin-right: auto;
             width: 100%;
             max-width: 300px;
-            /* Adjust size as needed */
             height: auto;
             margin-bottom: 20px;
         }
