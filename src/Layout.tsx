@@ -23,6 +23,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               {n.label}
             </Link>
           ))}
+          <a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">
+            github
+          </a>
         </div>
       </nav>
       <div className="page-content">{children}</div>
