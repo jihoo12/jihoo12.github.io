@@ -18,10 +18,10 @@ const learnRepos: LearnRepo[] = [
 export default function Learn() {
   return (
     <Layout>
-      <h2 className="post-title">learn</h2>
-      <div className="post-container">
+      <h1 className="page-title">learn</h1>
+      <div className="chip-grid">
         {learnRepos.map(r => (
-          <a key={r.href} href={r.href}>{r.label}</a>
+          <a key={r.href} href={r.href} className="chip">{r.label}</a>
         ))}
       </div>
     </Layout>

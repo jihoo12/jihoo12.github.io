@@ -13,10 +13,10 @@ const orgs: Org[] = [
 export default function Organizations() {
   return (
     <Layout>
-      <h2 className="post-title">my organizations</h2>
-      <div className="post-container">
-        {orgs.map(o => (
-          <a key={o.href} href={o.href}>{o.label}</a>
+      <h1 className="page-title">my Organizations</h1>
+      <div className="chip-grid">
+        {orgs.map(r => (
+          <a key={r.href} href={r.href} className="chip">{r.label}</a>
         ))}
       </div>
     </Layout>

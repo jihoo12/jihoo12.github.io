@@ -24,10 +24,12 @@ const repos: Repo[] = [
 export default function Repo() {
   return (
     <Layout>
-      <h2 className="post-title">my repository</h2>
-      <div className="post-container">
+      <h1 className="page-title">my repository</h1>
+      <p className="page-subtitle">things i've built</p>
+      <p className="section-label">projects</p>
+      <div className="chip-grid">
         {repos.map(r => (
-          <a key={r.href} href={r.href}>{r.label}</a>
+          <a key={r.href} href={r.href} className="chip">{r.label}</a>
         ))}
       </div>
     </Layout>
