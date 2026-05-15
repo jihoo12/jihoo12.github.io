@@ -1,59 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Page Not Found</title>
     <style>
-        :root {
-            --bg-pink: #fff5f7;
-            --main-pink: #ffdae3;
-            --dark-pink: #ff85a1;
-            --accent: #ffb3c1;
-            --white: #ffffff;
-            --shadow: rgba(255, 133, 161, 0.2);
-            --code-bg: #fffcfd;
-            --j-blue: #bde0fe;
-            /* Added a soft blue for contrast */
-            --max-width: 800px;
-        }
-
         body {
-            background-color: var(--bg-pink);
-            background-image: radial-gradient(#ffc2d1 0.5px, transparent 0.5px),
-                radial-gradient(#ffc2d1 0.5px, #fff5f7 0.5px);
-            background-size: 30px 30px;
-            background-position: 0 0, 15px 15px;
-
-            /* --- Centering Logic --- */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff;
+            color: #333;
             display: flex;
-            justify-content: center;
-            /* Centers horizontally */
             align-items: center;
-            /* Centers vertically */
-            min-height: 100vh;
-            /* Takes up full viewport height */
+            justify-content: center;
+            height: 100vh;
             margin: 0;
-            /* Removes default browser margins */
-            font-family: sans-serif;
-            /* Optional: adds a cleaner look */
+            text-align: center;
         }
 
         .container {
             max-width: 500px;
             padding: 40px;
-            text-align: center;
-            /* Centers text and inline elements like the button */
         }
 
+        /* Styling the image */
         .error-image {
-            display: block;
-            /* Allows margin auto to work */
-            margin-left: auto;
-            margin-right: auto;
             width: 100%;
-            max-width: 300px;
+            max-width: 300px; /* Adjust size as needed */
             height: auto;
             margin-bottom: 20px;
         }
@@ -88,19 +60,17 @@
         }
     </style>
 </head>
-
 <body>
 
     <div class="container">
         <!-- Your image is placed here -->
         <img src="404.png" alt="404 Error - Page Not Found" class="error-image">
-
+        
         <h1>Lost in Space?</h1>
         <p>We can't seem to find the page you're looking for. It might have been moved or deleted.</p>
-
+        
         <a href="https://jihoo12.github.io" class="btn">Back to Home</a>
     </div>
 
 </body>
-
 </html>
