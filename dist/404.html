@@ -7,10 +7,9 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f9f9f9;
+            background-color: #ffffff;
             color: #333;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
@@ -18,43 +17,59 @@
             text-align: center;
         }
 
+        .container {
+            max-width: 500px;
+            padding: 40px;
+        }
+
+        /* Styling the image */
+        .error-image {
+            width: 100%;
+            max-width: 300px; /* Adjust size as needed */
+            height: auto;
+            margin-bottom: 20px;
+        }
+
         h1 {
-            font-size: 8rem;
-            margin: 0;
-            color: #ff4757;
+            font-size: 2rem;
+            margin: 10px 0;
+            color: #2d3436;
         }
 
         p {
-            font-size: 1.5rem;
-            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            color: #636e72;
+            margin-bottom: 30px;
+            line-height: 1.6;
         }
 
         .btn {
             text-decoration: none;
-            background-color: #2f3542;
+            background-color: #0984e3;
             color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            transition: background-color 0.3s ease;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            transition: transform 0.2s, background-color 0.2s;
+            display: inline-block;
         }
 
         .btn:hover {
-            background-color: #57606f;
-        }
-
-        .container {
-            max-width: 600px;
-            padding: 20px;
+            background-color: #74b9ff;
+            transform: translateY(-2px);
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>404</h1>
-        <h2>Oops! Page Not Found</h2>
-        <p>The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.</p>
-        <a href="https://jihoo12.github.io" class="btn">Take Me Home</a>
+        <!-- Your image is placed here -->
+        <img src="404.png" alt="404 Error - Page Not Found" class="error-image">
+        
+        <h1>Lost in Space?</h1>
+        <p>We can't seem to find the page you're looking for. It might have been moved or deleted.</p>
+        
+        <a href="https://jihoo12.github.io" class="btn">Back to Home</a>
     </div>
 
 </body>
