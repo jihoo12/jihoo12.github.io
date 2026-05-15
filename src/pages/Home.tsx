@@ -6,9 +6,9 @@ export default function Home() {
       <h2 className="post-title">jihoo website</h2>
       <div className="post-container">
         <div className="pink-container">
-          こんにちは
+          hello
           <br />
-          これは私のウェブサイトです。
+          it is my website
         </div>
       </div>
     </Layout>
