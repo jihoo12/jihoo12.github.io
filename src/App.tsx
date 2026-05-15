@@ -6,6 +6,7 @@ import Repo from "./pages/Repo";
 import Current from "./pages/Current";
 import Learn from "./pages/Learn";
 import Organizations from "./pages/Organizations";
+import NotFound from './pages/NotFound';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/current" element={<Current />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/orgs" element={<Organizations />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
