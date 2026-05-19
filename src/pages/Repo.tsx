@@ -18,7 +18,8 @@ const repos: Repo[] = [
   { href: "https://github.com/jihoo12/SSG", label: "SSG" },
   { href: "https://github.com/jihoo12/ai-RAG", label: "ai RAG" },
   { href: "https://github.com/bug-free-octo-couscous/octo", label: "octo" },
-  { href: "https://github.com/bug-free-octo-couscous/haskell-blockchain", label: "haskell-blockchain" },
+  { href: "https://github.com/bug-free-octo-couscous/haskell-blockchain", label: "haskell blockchain" },
+  { href: "https://github.com/fantastic-doodle/vm", label: "vm"},
 ];
 
 export default function Repo() {
