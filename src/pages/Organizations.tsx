@@ -7,7 +7,6 @@ interface Org {
 
 const orgs: Org[] = [
   { href: "https://bug-free-octo-couscous.github.io/", label: "bug-free-octo-couscous" },
-  { href: "https://fantastic-doodle.github.io/", label: "fantastic-doodle" },
 ];
 
 export default function Organizations() {
