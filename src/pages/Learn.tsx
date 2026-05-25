@@ -13,6 +13,7 @@ const learnRepos: LearnRepo[] = [
   { href: "https://github.com/jihoo12/learn-agda-new", label: "learn-agda" },
   { href: "https://github.com/jihoo12/learn-category-theory", label: "learn-category-theory" },
   { href: "https://github.com/jihoo12/learn-type-theory", label: "learn-type-theory" },
+  { href: "https://github.com/jihoo12/learn-abstract-algebra", label: "learn-abstract-algebra"},
 ];
 
 export default function Learn() {
