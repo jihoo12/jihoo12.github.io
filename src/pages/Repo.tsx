@@ -20,6 +20,7 @@ const repos: Repo[] = [
   { href: "https://github.com/jihoo12/vii", label: "vii" },
   { href: "https://github.com/jihoo12/vm", label: "vm" },
   { href: "https://github.com/jihoo12/widget", label: "widget" },
+  { href: "https://github.com/jihoo12/Texboard", label: "Texboard"}
 ];
 
 export default function Repo() {
