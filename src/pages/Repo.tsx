@@ -9,6 +9,7 @@ const repos: Repo[] = [
   { href: "https://github.com/jihoo12/ai-RAG", label: "ai RAG" },
   { href: "https://github.com/jihoo12/haskell-blockchain", label: "haskell blockchain" },
   { href: "https://github.com/jihoo12/mylang", label: "mylang" },
+  { href: "https://github.com/jihoo12/nota", label: "nota"},
   { href: "https://github.com/jihoo12/oas", label: "oas" },
   { href: "https://github.com/bug-free-octo-couscous/octo", label: "octo" },
   { href: "https://github.com/jihoo12/ploty", label: "ploty" },
@@ -16,11 +17,11 @@ const repos: Repo[] = [
   { href: "https://github.com/jihoo12/ros", label: "ros" },
   { href: "https://github.com/jihoo12/rust-wgpu-2d-physics", label: "rust wgpu 2d physics" },
   { href: "https://github.com/jihoo12/SSG", label: "SSG" },
+  { href: "https://github.com/jihoo12/Texboard", label: "Texboard" },
   { href: "https://github.com/jihoo12/tinyasm", label: "tinyasm" },
   { href: "https://github.com/jihoo12/vii", label: "vii" },
   { href: "https://github.com/jihoo12/vm", label: "vm" },
   { href: "https://github.com/jihoo12/widget", label: "widget" },
-  { href: "https://github.com/jihoo12/Texboard", label: "Texboard"}
 ];
 
 export default function Repo() {
