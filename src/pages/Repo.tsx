@@ -9,7 +9,6 @@ const repos: Repo[] = [
   { href: "https://github.com/jihoo12/ai-RAG", label: "ai RAG" },
   { href: "https://github.com/jihoo12/haskell-blockchain", label: "haskell blockchain" },
   { href: "https://github.com/jihoo12/mylang", label: "mylang" },
-  { href: "https://github.com/jihoo12/nota", label: "nota"},
   { href: "https://github.com/jihoo12/oas", label: "oas" },
   { href: "https://github.com/bug-free-octo-couscous/octo", label: "octo" },
   { href: "https://github.com/jihoo12/ploty", label: "ploty" },
