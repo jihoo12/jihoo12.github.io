@@ -16,7 +16,6 @@ const repos: Repo[] = [
   { href: "https://github.com/jihoo12/ros", label: "ros" },
   { href: "https://github.com/jihoo12/rust-wgpu-2d-physics", label: "rust wgpu 2d physics" },
   { href: "https://github.com/jihoo12/SSG", label: "SSG" },
-  { href: "https://github.com/jihoo12/Texboard", label: "Texboard" },
   { href: "https://github.com/jihoo12/tinyasm", label: "tinyasm" },
   { href: "https://github.com/jihoo12/vii", label: "vii" },
   { href: "https://github.com/jihoo12/vm", label: "vm" },
