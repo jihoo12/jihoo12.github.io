@@ -36,7 +36,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm' # npm 캐시를 활성화하여 빌드 속도를 높입니다.
 
       # 2. 의존성 패키지 설치
