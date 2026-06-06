@@ -7,7 +7,7 @@ export default function Home() {
       <div className="hero-image-card">
         <img src={hitakiChitose} alt="hitaki chitose" className="hero-image" />
       </div>
-      <h2 className="post-title">Hello, I'm Jihoo</h2>
+      <h2 className="post-title">Hitaki Chitose</h2>
       <div className="post-container">
         <h3>i use nixos</h3>
         <p>I am studying Haskell, Python, Rust</p>
