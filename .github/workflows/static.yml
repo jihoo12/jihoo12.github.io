@@ -31,13 +31,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # 1. Node.js 환경 세팅 (버전은 프로젝트에 맞게 수정 가능)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # npm 캐시를 활성화하여 빌드 속도를 높입니다.
+
+      # 2. 의존성 패키지 설치
+      - name: Install dependencies
+        run: npm ci # npm install 대신 CI 환경에 최적화된 npm ci를 권장합니다.
+
+      # 3. 프로젝트 빌드
+      - name: Build project
+        run: npm run build
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
           path: './dist'
+          
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

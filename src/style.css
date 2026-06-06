@@ -1,16 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;1,700&family=DM+Sans:wght@400;500;600&display=swap');
 
-/* ── Tokens ───────────────────────────────────────── */
+/* ── Tokens (Catppuccin Frappé Theme) ──────────────── */
 :root {
-  --bg: #fff5f8;
-  --surface: rgba(255, 255, 255, 0.72);
-  --border: #ffd6e3;
-  --pink: #ff85a1;
-  --pink-deep: #a03358;
-  --pink-muted: #c896a8;
-  --text: #3d1a26;
+  --bg: #303446;           /* Base */
+  --surface: rgba(41, 44, 60, 0.75); /* Surface0 with alpha */
+  --border: #414559;        /* Surface1 */
+  --pink: #f4b8e4;          /* Pink */
+  --pink-deep: #ca9ee6;     /* Mauve (Accent for links/highlights) */
+  --pink-muted: #949cbb;    /* Overlay0 */
+  --text: #c6d0f5;          /* Text */
   --max-width: 720px;
   --nav-h: 56px;
+  --dot-color: #51576d;     /* Surface2 for background grid */
 }
 
 /* ── Base ─────────────────────────────────────────── */
@@ -19,8 +20,8 @@
 body {
   margin: 0;
   background-color: var(--bg);
-  background-image: radial-gradient(#ffd6e3 0.5px, transparent 0.5px),
-                    radial-gradient(#ffd6e3 0.5px, var(--bg) 0.5px);
+  background-image: radial-gradient(var(--dot-color) 0.5px, transparent 0.5px),
+                    radial-gradient(var(--dot-color) 0.5px, var(--bg) 0.5px);
   background-size: 28px 28px;
   background-position: 0 0, 14px 14px;
   font-family: 'DM Sans', sans-serif;
@@ -133,7 +134,7 @@ body.menu-open { overflow: hidden; }
 .drawer-overlay {
   position: fixed; inset: 0;
   z-index: 180;
-  background: rgba(61, 26, 38, 0.3);
+  background: rgba(35, 38, 52, 0.5); /* Mantle color for overlay */
   backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease;
 }
@@ -152,7 +153,7 @@ body.menu-open { overflow: hidden; }
   border-radius: 20px;
   overflow: hidden;
   border: 1px solid var(--border);
-  box-shadow: 0 8px 32px rgba(200, 60, 90, 0.10);
+  box-shadow: 0 8px 32px rgba(24, 25, 38, 0.5); /* Crust color shadow */
   margin-bottom: 28px;
   animation: fadeUp 0.4s ease both;
   background: var(--surface);
@@ -251,11 +252,10 @@ body.menu-open { overflow: hidden; }
 }
 .chip:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(200, 60, 90, 0.14);
-  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6px 18px rgba(24, 25, 38, 0.4);
+  background: #414559; /* Surface1 on hover */
   text-decoration: none;
 }
-body.dark-mode .chip:hover { background: rgba(60, 30, 40, 0.95); }
 
 /* ── Entrance animation ───────────────────────────── */
 @keyframes fadeUp {
@@ -287,8 +287,6 @@ body.dark-mode .chip:hover { background: rgba(60, 30, 40, 0.95); }
   }
 
   .chip { font-size: 12px; padding: 9px 10px; gap: 7px; }
-
-  .theme-toggle-btn { bottom: 16px; right: 16px; width: 40px; height: 40px; font-size: 16px; }
 }
 
 /* Tiny phones (≤ 380px) */
