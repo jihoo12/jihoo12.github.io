@@ -163,7 +163,6 @@ body.menu-open { overflow: hidden; }
   height: auto;
   display: block;
   object-fit: cover;
-  max-height: 420px;
 }
 
 /* ── Hero title ───────────────────────────────────── */
