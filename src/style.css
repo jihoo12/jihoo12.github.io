@@ -312,3 +312,165 @@ body.menu-open { overflow: hidden; }
   .page-content { padding: 56px 24px 96px; }
   .chip-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }
+
+/* ── Project Grid & Cards ─────────────────────────── */
+/* Append these rules to style.css                     */
+
+.project-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeUp 0.4s 0.1s ease both;
+}
+
+.project-card {
+  background: var(--surface);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: clamp(20px, 5vw, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.project-card:hover {
+  border-color: var(--pink-deep);
+  box-shadow: 0 8px 28px rgba(24, 25, 38, 0.45);
+  transform: translateY(-2px);
+}
+
+/* Header row */
+.project-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.project-card__name {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: clamp(22px, 5vw, 28px);
+  font-weight: 700;
+  color: var(--pink);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s;
+}
+.project-card__name:hover { opacity: 0.8; }
+
+.project-card__arrow {
+  font-style: normal;
+  font-size: 0.7em;
+  color: var(--pink-muted);
+  transition: transform 0.2s;
+}
+.project-card__name:hover .project-card__arrow {
+  transform: translate(2px, -2px);
+}
+
+/* Language badge */
+.project-card__lang {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lang-color, var(--pink-deep));
+  background: color-mix(in srgb, var(--lang-color, var(--pink-deep)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lang-color, var(--pink-deep)) 30%, transparent);
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Description */
+.project-card__desc {
+  margin: 0;
+  font-size: clamp(13px, 2.5vw, 14px);
+  color: var(--text);
+  line-height: 1.65;
+}
+
+/* Tag pills */
+.project-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.project-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pink-muted);
+  background: var(--border);
+  border-radius: 8px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+/* Highlights list */
+.project-card__highlights {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.project-card__highlights li {
+  font-size: clamp(12px, 2.3vw, 13px);
+  color: var(--pink-muted);
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.5;
+}
+.project-card__highlights li::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--pink);
+  font-weight: 700;
+}
+
+/* Footer buttons */
+.project-card__footer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.project-card__btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pink-deep);
+  background: var(--border);
+  border-radius: 10px;
+  padding: 7px 14px;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.15s;
+  white-space: nowrap;
+}
+.project-card__btn:hover {
+  background: #51576d;
+  transform: translateY(-1px);
+}
+.project-card__btn--secondary {
+  color: var(--pink-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+.project-card__btn--secondary:hover {
+  background: var(--border);
+  color: var(--pink-deep);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .project-card__lang { font-size: 10px; padding: 2px 8px; }
+  .project-card__footer { flex-direction: column; }
+  .project-card__btn { text-align: center; }
+}
