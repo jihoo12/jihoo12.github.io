@@ -63,7 +63,7 @@ const projects: Project[] = [
 export default function ProjectPage() {
   return (
     <Layout>
-      <h1 className="page-title">my repository</h1>
+      <h1 className="page-title">my projects</h1>
       <p className="page-subtitle">things i've built</p>
 
       <p className="section-label">projects</p>

@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 
 const NAV = [
   { to: "/", label: "home" },
-  { to: "/project", label: "project" },
+  { to: "/projects", label: "projects" },
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
