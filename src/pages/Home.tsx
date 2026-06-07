@@ -1,5 +1,5 @@
 import Layout from "../Layout";
-import hitakiChitose from "../assets/hitaki_chitose.jpg";
+import hitakiChitose from "../assets/jihoo.jpg";
 
 export default function Home() {
   return (
@@ -7,9 +7,9 @@ export default function Home() {
       <div className="hero-image-card">
         <img src={hitakiChitose} alt="hitaki chitose" className="hero-image" />
       </div>
-      <h2 className="post-title">Hitaki Chitose</h2>
+      <h2 className="post-title">Jihoo</h2>
       <div className="post-container">
-        <h3>i use nixos</h3>
+        <h3>about me</h3>
         <p>I am studying Haskell, Python, Rust</p>
       </div>
     </Layout>
