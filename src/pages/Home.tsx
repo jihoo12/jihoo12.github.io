@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <Layout>
       <div className="hero-image-card">
-        <img src={hitakiChitose} alt="hitaki chitose" className="hero-image" />
+        <img src={hitakiChitose} alt="jihoo" className="hero-image" />
       </div>
       <h2 className="post-title">Jihoo</h2>
       <div className="post-container">
