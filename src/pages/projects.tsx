@@ -38,6 +38,27 @@ const projects: Project[] = [
     docsHref: "https://wplot.github.io",
   },
   {
+    href: "https://github.com/kaguyaos/kaguyaos",
+    label: "kaguyaos",
+    lang: "Rust",
+    langColor: "#ce422b",
+    description:
+      "A custom Operating System targeting x86_64 UEFI, demonstrating key OS concepts including UEFI booting, graphical framebuffer, user-mode execution with Ring 3 isolation, system calls, and native device drivers for NVMe and xHCI (USB 3.0).",
+    tags: [
+      { label: "x86_64 UEFI" },
+      { label: "Kernel / Userspace" },
+      { label: "Device Drivers" },
+      { label: "JIT Assembler" },
+    ],
+    highlights: [
+      "UEFI booting with high-resolution graphical framebuffer",
+      "Ring 3 user mode with syscall interface (print, keyboard, shutdown)",
+      "Custom xHCI (USB 3.0) and NVMe driver implementations",
+      "TinyASM — in-shell JIT assembler for dynamic x86_64 execution",
+    ],
+    docsHref: "https://kaguyaos.github.io",
+  },
+  {
     href: "https://github.com/bug-free-octo-couscous/octo",
     label: "octo",
     lang: "Haskell",
