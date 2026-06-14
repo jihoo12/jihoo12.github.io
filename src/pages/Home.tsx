@@ -10,7 +10,7 @@ export default function Home() {
       <h2 className="post-title">Jihoo</h2>
       <div className="post-container">
         <h3>about me</h3>
-        <p>I am studying Haskell, Python, Rust</p>
+        <p>I am studying Python, Rust</p>
       </div>
     </Layout>
   );
