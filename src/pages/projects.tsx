@@ -36,28 +36,7 @@ const projects: Project[] = [
       "Axis tick labels & legend overlay via glyphon",
     ],
     docsHref: "https://wplot.github.io",
-  },
-  {
-    href: "https://github.com/bug-free-octo-couscous/octo",
-    label: "octo",
-    lang: "Haskell",
-    langColor: "#5e5086",
-    description:
-      "A minimalist type checker for a Cubical Type Theory variant written in Haskell. Features interval algebra with DNF representation, dependent types, Path types, and advanced cubical primitives.",
-    tags: [
-      { label: "Type Theory" },
-      { label: "Cubical λ-calculus" },
-      { label: "Bidirectional inference" },
-      { label: "REPL" },
-    ],
-    highlights: [
-      "Interval algebra (i0, i1, and, or, not) normalized via DNF",
-      "Dependent Π and Σ types with bidirectional checking",
-      "hcomp, transport, Glue / unglue for univalence",
-      "Modular: Parser → TypeChecker → Eval → Equality",
-    ],
-    docsHref: "https://bug-free-octo-couscous.github.io",
-  },
+  }
 ];
 
 export default function ProjectPage() {
