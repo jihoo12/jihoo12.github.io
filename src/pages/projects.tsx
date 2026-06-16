@@ -36,6 +36,27 @@ const projects: Project[] = [
       "Axis tick labels & legend overlay via glyphon",
     ],
     docsHref: "https://wplot.github.io",
+  },
+  {
+    href: "https://github.com/uwulisp/uwulisp",
+    label: "uwulisp",
+    lang: "Rust",
+    langColor: "#ce422b",
+    description:
+      "A lightweight, experimental Lisp interpreter with a cubical type theory flavor. Supports dependent function/pair types, paths, interval types, macros, and features an inline x86-64 JIT assembler.",
+    tags: [
+      { label: "Type Theory" },
+      { label: "Compilers" },
+      { label: "JIT Compilation" },
+      { label: "x86-64 Assembly" },
+    ],
+    highlights: [
+      "Bidirectional typechecker implementing Pi (Π), Sigma (Σ), and Glue type formers",
+      "Two-stage pipeline compiling surface AST to core De Bruijn indices",
+      "Inline JIT assembler (`asm`) that emits and executes native x86-64 machine code directly",
+      "Parallel environments: Global name-to-value map and a local stack-based lexical environment",
+    ],
+    docsHref: "https://uwulisp.github.io", // Points to your local documentation reference
   }
 ];
 
