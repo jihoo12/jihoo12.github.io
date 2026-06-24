@@ -38,8 +38,8 @@ const projects: Project[] = [
     docsHref: "https://wplot.github.io",
   },
   {
-    href: "https://github.com/uwulisp/uwulisp",
-    label: "uwulisp",
+    href: "https://github.com/pi-lisp/pi-lisp",
+    label: "pi-lisp",
     lang: "Rust",
     langColor: "#ce422b",
     description:
@@ -56,7 +56,7 @@ const projects: Project[] = [
       "Inline JIT assembler (`asm`) that emits and executes native x86-64 machine code directly",
       "Parallel environments: Global name-to-value map and a local stack-based lexical environment",
     ],
-    docsHref: "https://uwulisp.github.io", // Points to your local documentation reference
+    docsHref: "https://pi-lisp.github.io", // Points to your local documentation reference
   }
 ];
 
