@@ -17,27 +17,6 @@ interface Project {
 
 const projects: Project[] = [
   {
-    href: "https://github.com/wplot/wplot",
-    label: "wplot",
-    lang: "Rust",
-    langColor: "#ce422b",
-    description:
-      "A hardware-accelerated 3D data visualization engine. Renders mathematical surfaces, animated wave functions, and scatter plots with a clean builder-style API — no boilerplate required.",
-    tags: [
-      { label: "wgpu" },
-      { label: "Vulkan / Metal / DX12" },
-      { label: "GPU rendering" },
-      { label: "3D plotting" },
-    ],
-    highlights: [
-      "Static & animated surface plots from f(x,z,t) closures",
-      "Scatter plots via point-list pipeline",
-      "Orbit camera — drag, pan, scroll to zoom",
-      "Axis tick labels & legend overlay via glyphon",
-    ],
-    docsHref: "https://wplot.github.io",
-  },
-  {
     href: "https://github.com/pi-lisp/pi-lisp",
     label: "pi-lisp",
     lang: "Rust",
