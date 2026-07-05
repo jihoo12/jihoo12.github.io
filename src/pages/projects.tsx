@@ -19,7 +19,7 @@ const projects: Project[] = [
   {
     href: "https://github.com/hokkaido-lang",
     label: "hokkaido-language",
-    lang: "Rust","C++"
+    lang: {"Rust","C++"}
     langColor: "#ce422b",
     description:
       "Hokkaido is a minimal systems-programming language that compiles to native code via LLVM. Inspired by Rust, C, and modern language design.",
