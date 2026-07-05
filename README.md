@@ -1,69 +1,63 @@
-# Project Name (my-site)
+# Astro Starter Kit: Blog
 
-This project implements a frontend web application using React, TypeScript, and Vite for bundling.
-
-## Technical Specifications
-
-The application relies on the following major libraries:
-*   `react`: Version ^19.2.6
-*   `react-dom`: Version ^19.2.6
-*   `react-router-dom`: Version ^7.15.0
-
-The build process utilizes TypeScript (`typescript`) for type checking and compilation, and Vite (v8.0.12) for bundling. The configuration specifies:
-*   **Target Environment:** ES2023 / DOM standard library definitions.
-*   **Module Resolution:** `bundler` mode is configured in `tsconfig-node.json` and `tsconfig-app.json`.
-
-## Setup Instructions
-
-To run the project, clone the repository and install dependencies:
-
-```bash
-npm install
+```sh
+npm create astro@latest -- --template blog
 ```
 
-The application entry point is defined in `./index.html`, which loads `/src/main.tsx` as a module.
+> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
 
-## Commands
+Features:
 
-Use the following `npm` scripts to execute specific tasks:
+- ✅ Minimal styling (make it your own!)
+- ✅ 100/100 Lighthouse performance
+- ✅ SEO-friendly with canonical URLs and Open Graph data
+- ✅ Sitemap support
+- ✅ RSS Feed support
+- ✅ Markdown & MDX support
 
-*   **Development Server:** Runs the project using Vite for local development.
-    ```bash
-    npm run dev
-    # Executes 'vite'
-    ```
+## 🚀 Project Structure
 
-*   **Build Production Bundle:** Compiles TypeScript and then builds the production assets via Vite.
-    ```bash
-    npm run build
-    # Executes 'tsc -b && vite build'
-    ```
-    *The compiled output is written to the `./dist` directory.*
+Inside of your Astro project, you'll see the following folders and files:
 
-*   **Linting:** Runs ESLint against all files in the project directory.
-    ```bash
-    npm run lint
-    # Executes 'eslint .'
-    ```
+```text
+├── public/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   ├── content/
+│   ├── layouts/
+│   └── pages/
+├── astro.config.mjs
+├── README.md
+├── package.json
+└── tsconfig.json
+```
 
-*   **Preview:** Serves the built production assets locally for testing.
-    ```bash
-    npm run preview
-    # Executes 'vite preview'
-    ```
+Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
 
-## Deployment Workflow
+There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
 
-The repository includes a GitHub Actions workflow located at `/.github/workflows/static.yml` configured for deployment to GitHub Pages.
+The `src/content/` directory contains "collections" of related Markdown and MDX documents. Use `getCollection()` to retrieve posts from `src/content/blog/`, and type-check your frontmatter using an optional schema. See [Astro's Content Collections docs](https://docs.astro.build/en/guides/content-collections/) to learn more.
 
-### Build Process Details (GitHub Actions)
-When triggered by a push to the `main` branch or manually via `workflow_dispatch`, the following steps execute:
-1.  Checks out the repository contents (`actions/checkout@v4`).
-2.  Configures Node.js environment version 24 (`actions/setup-node@v4`).
-3.  Installs dependencies using `npm ci`.
-4.  Executes the build script via `npm run build`.
-5.  Uploads artifacts from the `./dist` directory using `actions/upload-pages-artifact@v3`.
-6.  Deploys the artifact to GitHub Pages using `actions/deploy-pages@v5`.
+Any static assets, like images, can be placed in the `public/` directory.
 
-### Custom Fallback Page
-A custom 404 error page is available at `./public/404.html`. This file contains specific CSS styling and structure for handling unrouted requests.
+## 🧞 Commands
+
+All commands are run from the root of the project, from a terminal:
+
+| Command                   | Action                                           |
+| :------------------------ | :----------------------------------------------- |
+| `npm install`             | Installs dependencies                            |
+| `npm run dev`             | Starts local dev server at `localhost:4321`      |
+| `npm run build`           | Build your production site to `./dist/`          |
+| `npm run preview`         | Preview your build locally, before deploying     |
+| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
+| `npm run astro -- --help` | Get help using the Astro CLI                     |
+
+## 👀 Want to learn more?
+
+Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+
+## Credit
+
+This theme is based off of the lovely [Bear Blog](https://github.com/HermanMartinus/bearblog/).
