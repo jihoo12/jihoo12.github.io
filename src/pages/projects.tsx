@@ -17,25 +17,19 @@ interface Project {
 
 const projects: Project[] = [
   {
-    href: "https://github.com/pi-lisp/pi-lisp",
-    label: "pi-lisp",
-    lang: "Rust",
+    href: "https://github.com/hokkaido-lang",
+    label: "hokkaido-language",
+    lang: "Rust","C++"
     langColor: "#ce422b",
     description:
-      "A lightweight, experimental Lisp interpreter with a cubical type theory flavor. Supports dependent function/pair types, paths, interval types, macros, and features an inline x86-64 JIT assembler.",
+      "Hokkaido is a minimal systems-programming language that compiles to native code via LLVM. Inspired by Rust, C, and modern language design.",
     tags: [
       { label: "Type Theory" },
       { label: "Compilers" },
-      { label: "JIT Compilation" },
-      { label: "x86-64 Assembly" },
+      { label: "zero cost abstraction" },
+      { label: "llvm" },
     ],
-    highlights: [
-      "Bidirectional typechecker implementing Pi (Π), Sigma (Σ), and Glue type formers",
-      "Two-stage pipeline compiling surface AST to core De Bruijn indices",
-      "Inline JIT assembler (`asm`) that emits and executes native x86-64 machine code directly",
-      "Parallel environments: Global name-to-value map and a local stack-based lexical environment",
-    ],
-    docsHref: "https://pi-lisp.github.io", // Points to your local documentation reference
+    docsHref: "https://hokkaido-lang.github.io", // Points to your local documentation reference
   }
 ];
 
