@@ -29,6 +29,7 @@ const projects: Project[] = [
       { label: "zero cost abstraction" },
       { label: "llvm" },
     ],
+    highlights: ["cubical type theory"];
     docsHref: "https://hokkaido-lang.github.io", // Points to your local documentation reference
   }
 ];
