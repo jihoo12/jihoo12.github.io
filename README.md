@@ -24,4 +24,4 @@ GitHub Actions builds and publishes the site to [jihoo12.github.io](https://jiho
 
 ## Image
 
-The hero artwork was supplied by the site owner and is stored as an optimized JPEG in `public/images/jihoo-hero.jpg`.
+The hero artwork was supplied by the site owner and is stored as an optimized JPEG in `public/images/jihoo-hero.svg`.
