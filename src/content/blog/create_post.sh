@@ -1,24 +1,23 @@
-read -p "포스트 제목을 입력하세요 (예: my first post): " INPUT_TITLE
-TITLE="${INPUT_TITLE:-my first post}"
+#!/usr/bin/env bash
+set -euo pipefail
 
-read -p "포스트 설명을 입력하세요: " INPUT_DESC
+read -r -p "Post title (e.g. My first post): " INPUT_TITLE
+TITLE="${INPUT_TITLE:-My first post}"
+
+read -r -p "Post description: " INPUT_DESC
 DESC="${INPUT_DESC:-$TITLE}"
 
-PUB_DATE=$(date +"%b %e %Y" | tr 'A-Z' 'a-z')
+PUB_DATE=$(date +"%Y-%m-%d")
+FILE_NAME=$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-').md
 
-FILE_NAME=$(echo "$TITLE" | tr ' ' '-' | tr 'A-Z' 'a-z').md
-
-# 5. 템플릿 내용 작성
-cat << EOF > "$FILE_NAME"
+cat > "$FILE_NAME" << EOF
 ---
 title: "$TITLE"
 description: "$DESC"
 pubDate: $PUB_DATE
 ---
 
-post content
+Write your post here.
 EOF
 
-echo "----------------------------------------"
-echo "🎉 성공적으로 포스트가 생성되었습니다: $FILE_NAME"
-echo "----------------------------------------"
+echo "Created post: $FILE_NAME"

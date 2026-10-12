@@ -1,14 +1,14 @@
 # Jihoo — Personal Website
 
-A clean, responsive personal website and journal built with Astro, published on GitHub Pages.
+A clean, responsive personal website and journal, built with Astro and published on GitHub Pages.
 
 ## Pages
 
-- **Home**: introduction, hero illustration, and journal preview.
-- **About**: a short personal introduction.
-- **Journal**: a minimal post index with a friendly empty state.
+- **Home** — welcoming introduction, original hero artwork, and journal preview.
+- **About** — a short personal introduction.
+- **Journal** — a simple post index with a friendly empty state.
 
-Previous sample and archived posts have been removed from this redesign. New Markdown posts can be added to `src/content/blog/` using the existing content collection schema.
+Previous blog posts have been removed as part of this redesign. New Markdown posts can be added under `src/content/blog/`, using the existing Astro content collection.
 
 ## Development
 
@@ -20,8 +20,8 @@ npm run build
 
 ## Deployment
 
-GitHub Actions builds and publishes the site to [jihoo12.github.io](https://jihoo12.github.io/). The canonical site URL is configured in `astro.config.mjs`.
+GitHub Actions builds and publishes the site at [jihoo12.github.io](https://jihoo12.github.io/). The canonical site URL is set in `astro.config.mjs`.
 
-## Image
+## Artwork
 
-The hero artwork was supplied by the site owner and is stored as an optimized JPEG in `public/images/jihoo-hero.svg`.
+The home and about pages use the site owner's submitted illustration, optimized as a WebP image in `public/images/jihoo-hero.webp`. The prior placeholder SVG has been removed.
