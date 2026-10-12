@@ -1,21 +1,29 @@
 ---
 import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import Footer from '../components/Footer.astro';
 ---
-
 <!doctype html>
 <html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-            <h1>Hello</h1>
-            <p>i'm jihoo</p>
-		</main>
-		<Footer />
-	</body>
+  <head><BaseHead title="Jihoo — Small notes, new beginnings" description="A little corner of the internet for things I make, learn, and love." /></head>
+  <body>
+    <Header />
+    <main>
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="eyebrow"><span class="dot"></span> HELLO, I'M JIHOO</span>
+          <h1 id="hero-title">Hey there,<br/>I'm <em>Jihoo</em><span class="period">.</span></h1>
+          <p class="lead">I build what sparks my curiosity and write down what I learn.<br/>Finding joy in the little things along the way.</p>
+          <div class="hero-actions"><a class="button primary" href="/about/">More about me <span aria-hidden="true">↗</span></a><a class="button secondary" href="/blog/">Explore the journal <span aria-hidden="true">→</span></a></div>
+          <div class="hero-footnote"><span class="little-star">✳</span> A LITTLE SPACE ON THE INTERNET</div>
+        </div>
+        <div class="hero-art"><div class="image-glow"></div><img src="/images/jihoo-hero.webp" alt="A smiling white character walking through a sunny wildflower meadow" width="1293" height="1217" fetchpriority="high" /><span class="image-tag">KEEP MOVING <span aria-hidden="true">✦</span></span></div>
+      </section>
+      <section class="intro-section" aria-labelledby="intro-title">
+        <div class="wrap intro-grid"><div><span class="eyebrow">01 / ABOUT THIS SPACE</span><h2 id="intro-title">A little curiosity<br/>goes a long way.</h2></div><div class="intro-description"><p>This is my little space to share projects, lessons from building things, and the occasional thought from everyday life.</p><p>One small step at a time, at my own pace.</p><a class="text-link" href="/about/">Get to know me <span aria-hidden="true">↗</span></a></div></div>
+      </section>
+      <section class="notes-section wrap" aria-labelledby="notes-title"><div class="section-top"><div><span class="eyebrow">02 / JOURNAL</span><h2 id="notes-title">Recent notes<span class="period">.</span></h2></div><a class="text-link" href="/blog/">View all <span aria-hidden="true">→</span></a></div><div class="empty-notes"><span class="empty-icon" aria-hidden="true">✎</span><div><h3>New stories are on their way.</h3><p>Nothing here just yet. Check back soon!</p></div><span class="empty-side">STAY TUNED ↗</span></div></section>
+    </main>
+    <Footer />
+  </body>
 </html>

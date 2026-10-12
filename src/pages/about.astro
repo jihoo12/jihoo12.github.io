@@ -1,15 +1,6 @@
 ---
-import AboutHeroImage from '../assets/jihoo.jpg';
-import Layout from '../layouts/BlogPost.astro';
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 ---
-
-<Layout
-	title="About Me"
-	description="Lorem ipsum dolor sit amet"
-	pubDate={new Date('Jul 5 2026')}
-	heroImage={AboutHeroImage}
-    >
-    hello
-    i'm jihoo
-    i'm freshman
-</Layout>
+<!doctype html><html lang="en"><head><BaseHead title="About — Jihoo" description="A little more about Jihoo." /></head><body><Header/><main class="wrap about-main"><span class="eyebrow">NICE TO MEET YOU</span><div class="about-layout"><div><h1>Hello,<br/>I'm Jihoo<span class="period">.</span></h1><p>I love learning new things and turning ideas into something real. This is where I collect lessons from coding, creative experiments, and everyday discoveries.</p><p>I believe in steady progress over perfection, and clarity over complexity.</p><a class="button primary" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">Find me on GitHub ↗</a></div><img src="/images/jihoo-hero.webp" alt="A happy white character walking through a green field of flowers" width="1293" height="1217"/></div></main><Footer/></body></html><style>.about-main{padding-top:112px;padding-bottom:140px;min-height:75vh}.about-layout{display:grid;grid-template-columns:1fr .8fr;align-items:center;gap:100px;margin-top:24px}.about-layout h1{font-size:clamp(43px,6vw,70px);line-height:1.3;letter-spacing:-3px;margin:0 0 35px}.about-layout p{font-size:16px;color:#777e71;line-height:2.15;margin:0 0 17px}.about-layout .button{margin-top:26px}.about-layout img{border-radius:16px;box-shadow:0 20px 70px #52634818}@media(max-width:760px){.about-main{padding-top:75px;padding-bottom:90px}.about-layout{grid-template-columns:1fr;gap:45px}.about-layout img{max-width:520px}}</style>
