@@ -1,1 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="18" fill="#e6efdb"/><circle cx="32" cy="32" r="22" fill="#fffef8" stroke="#344936" stroke-width="3"/><path d="M22 25v7m20-7v7" stroke="#344936" stroke-width="4" stroke-linecap="round"/><path d="M21 37q11 13 22 0" stroke="#344936" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Jihoo monogram">
+  <rect width="64" height="64" fill="#20303a"/>
+  <rect x="7" y="7" width="50" height="50" fill="none" stroke="#c7c6bb" stroke-width="1"/>
+  <text x="21" y="44" font-family="Georgia,serif" font-size="39" fill="#f6f4ed">J</text>
+  <circle cx="45" cy="44" r="3" fill="#bb8268"/>
+</svg>

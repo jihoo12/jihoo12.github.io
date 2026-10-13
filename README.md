@@ -1,16 +1,20 @@
-# Jihoo — Personal Website
+# Jihoo — An Independent Notebook
 
-A clean, responsive personal website and journal, built with Astro and published on GitHub Pages.
+An editorial, research-inspired personal website built with [Astro](https://astro.build/) and published on GitHub Pages.
 
-## Pages
+The visual direction borrows from academic journals and archival catalogues: serif typography, restrained color, fine rules, numbered sections, a decorative inquiry diagram, and a chronological notebook index. It is a personal site, **not** a claim of academic affiliation or publication.
 
-- **Home** — welcoming introduction, original hero artwork, and journal preview.
-- **About** — a short personal introduction.
-- **Journal** — a simple post index with a friendly empty state.
+## Site structure
 
-Previous blog posts have been removed as part of this redesign. New Markdown posts can be added under `src/content/blog/`, using the existing Astro content collection.
+- **Index** (`/`) — introduction, areas of interest, recent notes, and a GitHub link.
+- **Notebook** (`/blog/`) — a dated index of Markdown/MDX entries, with an intentional empty state until notes are published.
+- **Profile** (`/about/`) — author introduction, working principles, and links.
 
-## Development
+Existing entries in `src/content/blog/` continue to render through the Astro content collection and `src/layouts/BlogPost.astro`. The pre-existing personal illustration is retained on the profile page and as the social preview image.
+
+## Local development
+
+Requirements: Node.js 22.12 or later, npm.
 
 ```sh
 npm ci
@@ -18,10 +22,8 @@ npm run dev
 npm run build
 ```
 
-## Deployment
+The site uses CSS and Google Fonts without an added UI framework. The font stacks include local fallbacks. The design includes a skip link, visible keyboard focus, responsive layouts, and reduced-motion support.
 
-GitHub Actions builds and publishes the site at [jihoo12.github.io](https://jihoo12.github.io/). The canonical site URL is set in `astro.config.mjs`.
+## Publishing
 
-## Artwork
-
-The home and about pages use the site owner's submitted illustration, optimized as a WebP image in `public/images/jihoo-hero.webp`. The prior placeholder SVG has been removed.
+GitHub Actions builds and deploys the site to [jihoo12.github.io](https://jihoo12.github.io/). A pull request targeting `main` runs the `Verify website` build workflow. The canonical site URL is configured in `astro.config.mjs`.
