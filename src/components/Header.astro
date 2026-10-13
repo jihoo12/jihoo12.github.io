@@ -1,5 +1,32 @@
 ---
 const current = Astro.url.pathname;
 ---
-<header class="site-header"><div class="wrap nav-wrap"><a class="brand" href="/" aria-label="Jihoo home"><span class="brand-mark">j<span>✳</span></span> jihoo<span class="brand-dot">.</span></a><nav aria-label="Main navigation"><a class:list={{active:current==='/'}} href="/">Home</a><a class:list={{active:current.startsWith('/blog')}} href="/blog/">Journal</a><a class:list={{active:current.startsWith('/about')}} href="/about/">About</a></nav><a class="github-link" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></header>
-<style>.site-header{background:#fbfaf6;border-bottom:1px solid #eeeeea}.nav-wrap{height:86px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:9px;font-family:'DM Sans',sans-serif;font-size:23px;font-weight:700;letter-spacing:-1.2px}.brand-mark{display:inline-flex;align-items:center;justify-content:center;background:#e6efdb;color:#65845c;border-radius:50%;font-size:16px;width:30px;height:30px}.brand-mark span{font-size:8px;transform:translate(-1px,-7px)}.brand-dot{color:#deb969;margin-left:-9px}.site-header nav{display:flex;gap:42px;margin-left:38px}.site-header nav a{font-family:'DM Sans',sans-serif;color:#9a9d94;font-size:12px;font-weight:700;transition:color .2s}.site-header nav a:hover,.site-header nav a.active{color:#304d33}.github-link{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid #e2e5da;padding:11px 16px;border-radius:6px}.github-link span{margin-left:10px;color:#759273}@media(max-width:600px){.nav-wrap{height:72px}.brand{font-size:20px}.site-header nav{gap:17px;margin-left:0}.site-header nav a{font-size:11px}.github-link{display:none}}</style>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header">
+  <div class="wrap nav-wrap">
+    <a class="brand" href="/" aria-label="Jihoo — home"><span class="brand-monogram" aria-hidden="true">J.</span><span class="brand-text">Jihoo<small>INDEPENDENT NOTEBOOK</small></span></a>
+    <nav aria-label="Primary navigation">
+      <a class:list={{ active: current === '/' }} aria-current={current === '/' ? 'page' : undefined} href="/">Index</a>
+      <a class:list={{ active: current.startsWith('/blog') }} aria-current={current.startsWith('/blog') ? 'page' : undefined} href="/blog/">Notebook</a>
+      <a class:list={{ active: current.startsWith('/about') }} aria-current={current.startsWith('/about') ? 'page' : undefined} href="/about/">Profile</a>
+    </nav>
+    <a class="header-external" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+  </div>
+</header>
+<style>
+  .site-header { border-top: 4px solid var(--ink); border-bottom: 1px solid var(--rule); background: var(--paper); }
+  .nav-wrap { display: flex; min-height: 90px; justify-content: space-between; align-items: center; gap: 30px; }
+  .brand { display: flex; align-items: center; gap: 13px; flex: 0 0 auto; }
+  .brand-monogram { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--ink); font: 500 25px var(--serif); }
+  .brand-text { font: 600 22px/1 var(--serif); letter-spacing: -.02em; }
+  .brand-text small { display: block; margin-top: 7px; font: 500 8px/1.2 var(--mono); letter-spacing: .085em; color: var(--quiet); }
+  nav { display: flex; align-items: center; gap: 37px; }
+  nav a, .header-external { font: 600 12px var(--sans); color: var(--quiet); }
+  nav a { padding: 35px 0 32px; border-bottom: 2px solid transparent; }
+  nav a:hover, nav a.active, .header-external:hover { color: var(--ink); }
+  nav a.active { border-bottom-color: var(--accent); }
+  .header-external { white-space: nowrap; border-bottom: 1px solid var(--rule); padding-bottom: 7px; }
+  .header-external span { color: var(--accent); }
+  @media (max-width: 720px) { .nav-wrap { min-height: 78px; gap: 16px; } .brand-text small { display: none; } nav { gap: 18px; } nav a { padding: 29px 0 25px; } .header-external { display: none; } }
+  @media (max-width: 420px) { .brand-monogram { width: 35px; height: 35px; font-size: 21px; } .brand-text { font-size: 19px; } nav { gap: 13px; } nav a { font-size: 11px; } }
+</style>

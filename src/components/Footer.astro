@@ -1,1 +1,21 @@
-<footer class="site-footer"><div class="wrap footer-inner"><div><a class="footer-brand" href="/">jihoo<span>.</span></a><p>A little at a time, at my own pace.</p></div><div class="footer-right"><a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="/about/">About ↗</a><span>© {new Date().getFullYear()} Jihoo. Made with care.</span></div></div></footer><style>.site-footer{background:#e9eee2;padding:58px 0}.footer-inner{display:flex;justify-content:space-between;gap:32px}.footer-brand{font-family:'DM Sans',sans-serif;font-size:23px;font-weight:800}.footer-brand span{color:#deb969}.footer-inner p{font-size:12px;color:#8c9683;margin:13px 0 0}.footer-right{display:flex;align-items:start;gap:25px;flex-wrap:wrap;font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:11px;font-weight:700;color:#60745c;padding-top:9px}.footer-right span{color:#909c89;font-weight:500}@media(max-width:700px){.footer-inner{flex-direction:column}.footer-right{gap:18px}}</style>
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div class="footer-title"><a href="/" aria-label="Jihoo home">J<span>.</span></a><p>A personal archive of questions, experiments, and notes.</p></div>
+    <div class="footer-links"><span>CONTENTS</span><a href="/">Index</a><a href="/blog/">Notebook</a><a href="/about/">Profile</a></div>
+    <div class="footer-links"><span>ELSEWHERE</span><a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="/rss.xml">RSS feed ↗</a></div>
+  </div>
+  <div class="wrap footer-bottom"><span>© {new Date().getFullYear()} JIHOO</span><span>BUILT WITH ASTRO · NOTES IN PROGRESS</span></div>
+</footer>
+<style>
+  .site-footer { background: var(--paper-deep); border-top: 1px solid var(--rule); }
+  .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; padding: 67px 0 70px; }
+  .footer-title a { font: 500 49px/1 var(--serif); letter-spacing: -.08em; }
+  .footer-title a span { color: var(--accent); }
+  .footer-title p { color: var(--quiet); max-width: 260px; font: 13px/1.8 var(--sans); margin: 16px 0 0; }
+  .footer-links { display: flex; flex-direction: column; gap: 13px; align-items: start; }
+  .footer-links > span { font: 500 10px var(--mono); color: var(--accent); letter-spacing: .08em; margin-bottom: 5px; }
+  .footer-links a { font: 13px var(--sans); }
+  .footer-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .footer-bottom { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--rule); padding: 23px 0; font: 500 10px/1.5 var(--mono); letter-spacing: .05em; color: var(--quiet); }
+  @media (max-width: 640px) { .footer-grid { grid-template-columns: 1fr 1fr; gap: 35px; padding: 50px 0; } .footer-title { grid-column: 1 / -1; } .footer-bottom { flex-direction: column; gap: 7px; } }
+</style>

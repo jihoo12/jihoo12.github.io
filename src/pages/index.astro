@@ -10,111 +10,96 @@ const recentPosts = (await getCollection('blog'))
 ---
 <!doctype html>
 <html lang="en">
-  <head><BaseHead title="Jihoo — Small notes, new beginnings" description="A little corner of the internet for things I make, learn, and love." /></head>
+  <head>
+    <BaseHead title="Jihoo | An Independent Notebook" description="Jihoo's independent notebook on software, creative experiments, and the practice of learning." />
+  </head>
   <body>
     <Header />
-    <main>
+    <main id="main-content">
+      <div class="issue-strip wrap" aria-label="Site information">
+        <span>PERSONAL ARCHIVE / EST. 2026</span>
+        <span>NOTES ON IDEAS, SYSTEMS & MAKING</span>
+        <span>INDEX / 001—004</span>
+      </div>
       <section class="hero wrap" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <span class="eyebrow"><span class="dot"></span> HELLO, I'M JIHOO</span>
-          <h1 id="hero-title">Hey there,<br/>I'm <em>Jihoo</em><span class="period">.</span></h1>
-          <p class="lead">I build what sparks my curiosity and write down what I learn.<br/>Finding joy in the little things along the way.</p>
-          <div class="hero-actions"><a class="button primary" href="/about/">More about me <span aria-hidden="true">↗</span></a><a class="button secondary" href="/blog/">Explore the journal <span aria-hidden="true">→</span></a></div>
-          <div class="hero-footnote"><span class="little-star">✳</span> A LITTLE SPACE ON THE INTERNET</div>
-        </div>
-        <div class="hero-art"><div class="image-glow"></div><img src="/images/jihoo-hero.webp" alt="A smiling white character walking through a sunny wildflower meadow" width="1293" height="1217" fetchpriority="high" /><span class="image-tag">KEEP MOVING <span aria-hidden="true">✦</span></span></div>
-      </section>
-      <section class="intro-section" aria-labelledby="intro-title">
-        <div class="wrap intro-grid"><div><span class="eyebrow">01 / ABOUT THIS SPACE</span><h2 id="intro-title">A little curiosity<br/>goes a long way.</h2></div><div class="intro-description"><p>This is my little space to share projects, lessons from building things, and the occasional thought from everyday life.</p><p>One small step at a time, at my own pace.</p><a class="text-link" href="/about/">Get to know me <span aria-hidden="true">↗</span></a></div></div>
-      </section>
-      <section class="notes-section wrap" aria-labelledby="notes-title">
-        <div class="section-top">
-          <div>
-            <span class="eyebrow">02 / JOURNAL</span>
-            <h2 id="notes-title">Recent notes<span class="period">.</span></h2>
+          <span class="eyebrow">THE INDEPENDENT NOTEBOOK OF JIHOO</span>
+          <h1 id="hero-title">Questions first.<br /><i>Clarity follows.</i></h1>
+          <p class="lead">An evolving collection of ideas, technical explorations, and observations from the process of learning by making.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="/blog/">Browse the notebook <span aria-hidden="true">↗</span></a>
+            <a class="button secondary" href="/about/">About the author <span aria-hidden="true">→</span></a>
           </div>
-          <a class="text-link" href="/blog/">View all <span aria-hidden="true">→</span></a>
-        </div>
-        {recentPosts.length > 0 ? (
-          <div class="recent-posts">
-            {recentPosts.map((post) => (
-              <a class="recent-post" href={`/blog/${post.id}/`}>
-                <div class="recent-post-content">
-                  <time datetime={post.data.pubDate.toISOString()}>
-                    {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(post.data.pubDate)}
-                  </time>
-                  <h3>{post.data.title}</h3>
-                  <p>{post.data.description}</p>
-                </div>
-                <span class="recent-post-arrow" aria-hidden="true">↗</span>
-              </a>
-            ))}
+          <div class="hero-meta">
+            <strong>SUBJECTS OF INTEREST</strong>
+            <span>Software · Creative practice · Reflection</span>
           </div>
-        ) : (
-          <div class="empty-notes">
-            <span class="empty-icon" aria-hidden="true">✎</span>
-            <div>
-              <h3>New stories are on their way.</h3>
-              <p>Nothing here just yet. Check back soon!</p>
+        </div>
+        <div class="research-plate" role="img" aria-label="A decorative circular diagram illustrating the cycle of observing, questioning, and making">
+          <div class="plate-head"><span>FIG. 01 / A WORKING METHOD</span><span>JH — 001</span></div>
+          <div class="plate-art" aria-hidden="true">
+            <div class="orbit one"></div><div class="orbit two"></div><div class="orbit three"></div>
+            <span class="diagram-center">?</span>
+            <span class="diagram-annotation a">OBSERVE / 01</span>
+            <span class="diagram-annotation b">ITERATE / 03</span>
+          </div>
+          <p class="plate-caption">On curiosity as a method of inquiry</p>
+          <div class="plate-foot"><span>QUESTION → EXPERIMENT → REFLECT</span><span>PLATE I</span></div>
+        </div>
+      </section>
+      <div class="overview-band">
+        <div class="wrap overview-inner" aria-label="Notebook themes">
+          <div><strong>01</strong><span>Learn through questions</span></div>
+          <div><strong>02</strong><span>Build through experiments</span></div>
+          <div><strong>03</strong><span>Document what changes</span></div>
+        </div>
+      </div>
+      <section class="section-block wrap profile-grid" aria-labelledby="profile-title">
+        <div class="rule-heading"><span class="index">01 /</span><h2 id="profile-title">A note on<br />the author</h2></div>
+        <div class="profile-copy">
+          <p>My name is Jihoo. I like asking how things work—and finding out by building them.</p>
+          <p>This website is a record of that process: the tools I try, the ideas I develop, and the details worth remembering. It is a notebook rather than a finished statement.</p>
+          <a class="text-link" href="/about/">Read the profile <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+      <section class="themes section-block" aria-labelledby="themes-title">
+        <div class="wrap">
+          <div class="rule-heading"><span class="index">02 /</span><h2 id="themes-title">Lines of inquiry</h2></div>
+          <p class="section-intro">Three recurring subjects in an open-ended practice of learning, experimenting, and recording.</p>
+          <div class="theme-grid">
+            <article class="theme-card"><span class="theme-no">FIELD / 01</span><h3>Software & systems</h3><p>Understanding how digital tools work, and exploring clearer ways to build with them.</p></article>
+            <article class="theme-card"><span class="theme-no">FIELD / 02</span><h3>Experiments & making</h3><p>Turning small questions into prototypes, observations, and practical discoveries.</p></article>
+            <article class="theme-card"><span class="theme-no">FIELD / 03</span><h3>Notes & reflection</h3><p>Documenting lessons, revisiting assumptions, and keeping a record of what changes.</p></article>
+          </div>
+        </div>
+      </section>
+      <section class="notes-section section-block wrap" aria-labelledby="notes-title">
+        <div class="notes-heading">
+          <div class="rule-heading"><span class="index">03 /</span><h2 id="notes-title">From the notebook</h2></div>
+          <a class="text-link" href="/blog/">Complete index <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="catalogue">
+          {recentPosts.length > 0 ? recentPosts.map((post) => (
+            <a class="catalogue-row" href={'/blog/' + post.id + '/'}>
+              <time datetime={post.data.pubDate.toISOString()}>{new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(post.data.pubDate)}</time>
+              <div><h3>{post.data.title}</h3><p>{post.data.description}</p></div>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </a>
+          )) : (
+            <div class="catalogue-empty">
+              <span>ENTRY / —</span>
+              <div><h3>The index begins here.</h3><p>No notes have been published yet. Future entries will appear in this catalogue.</p></div>
             </div>
-            <span class="empty-side">STAY TUNED ↗</span>
-          </div>
-        )}
+          )}
+        </div>
+      </section>
+      <section class="contact-band" aria-labelledby="contact-title">
+        <div class="wrap contact-inner">
+          <div><span class="eyebrow">04 / CORRESPONDENCE</span><h2 id="contact-title">Good questions deserve<br /><i>good conversations.</i></h2></div>
+          <a class="button secondary" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">Connect on GitHub <span aria-hidden="true">↗</span></a>
+        </div>
       </section>
     </main>
     <Footer />
   </body>
 </html>
-<style>
-  .recent-posts {
-    border-top: 1px solid #e5e7dd;
-  }
-  .recent-post {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    padding: 27px 18px;
-    border-bottom: 1px solid #e5e7dd;
-    transition: background-color 0.2s ease;
-  }
-  .recent-post:hover {
-    background: #f3f5ed;
-  }
-  .recent-post-content {
-    min-width: 0;
-  }
-  .recent-post time {
-    display: block;
-    margin-bottom: 10px;
-    color: #84957a;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
-  }
-  .recent-post h3 {
-    margin: 0 0 8px;
-    font-size: 19px;
-    letter-spacing: -0.5px;
-    line-height: 1.4;
-  }
-  .recent-post p {
-    margin: 0;
-    color: #858b80;
-    font-size: 13px;
-    line-height: 1.7;
-  }
-  .recent-post-arrow {
-    flex: none;
-    color: #799070;
-    font-size: 23px;
-  }
-  @media (max-width: 480px) {
-    .recent-post {
-      gap: 14px;
-      padding: 24px 4px;
-    }
-    .recent-post h3 {
-      font-size: 17px;
-    }
-  }
-</style>
