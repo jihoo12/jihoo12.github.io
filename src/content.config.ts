@@ -17,4 +17,28 @@ const blog = defineCollection({
 		}),
 });
 
-export const collections = { blog };
+const projects = defineCollection({
+	// Hand-written project notes in `src/content/projects/`.
+	loader: glob({ base: './src/content/projects', pattern: '**/*.{md,mdx}' }),
+	schema: z.object({
+		title: z.string(),
+		tagline: z.string(),
+		language: z.string(),
+		status: z.enum(['active', 'experimental', 'paused']).default('active'),
+		tags: z.array(z.string()).default([]),
+		repo: z.string().url(),
+		links: z.array(z.object({ label: z.string(), href: z.string().url() })).default([]),
+		// Published package, if the project ships to a registry.
+		package: z
+			.object({
+				registry: z.enum(['npm', 'pypi']),
+				name: z.string(),
+			})
+			.optional(),
+		// Featured projects get a full card; the rest go in the smaller list.
+		featured: z.boolean().default(false),
+		order: z.number().default(100),
+	}),
+});
+
+export const collections = { blog, projects };

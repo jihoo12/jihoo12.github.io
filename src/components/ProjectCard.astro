@@ -1,0 +1,195 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { REGISTRIES } from '../consts';
+
+interface Props {
+	project: CollectionEntry<'projects'>;
+	// Show the hand-written notes and links (full page) or only the summary (homepage).
+	detailed?: boolean;
+}
+
+const { project, detailed = false } = Astro.props;
+const { title, tagline, language, tags, repo, links, package: pkg } = project.data;
+const registry = pkg && REGISTRIES[pkg.registry];
+const languageColors: Record<string, string> = {
+	Rust: '#d39a6a',
+	C: '#8a9bb0',
+	'C++': '#c27a9a',
+	JavaScript: '#e0c264',
+	TypeScript: '#6f93c4',
+	Python: '#6f9a8e',
+};
+---
+<article class:list={['project-card', { detailed }]}>
+	<div class="card-top">
+		<span class="language"><span class="lang-dot" style={`background:${languageColors[language] ?? '#a4ae98'}`}></span>{language}</span>
+		{registry && <span class="registry">{registry.label}</span>}
+	</div>
+	<h3><a href={repo} target="_blank" rel="noopener noreferrer">{title} <span aria-hidden="true">↗</span></a></h3>
+	<p class="tagline">{tagline}</p>
+	{detailed && <div class="notes"><slot /></div>}
+	{detailed && pkg && registry && (
+		<a class="install" href={registry.url(pkg.name)} target="_blank" rel="noopener noreferrer"><code>{registry.install(pkg.name)}</code><span aria-hidden="true">↗</span></a>
+	)}
+	<div class="card-bottom">
+		<ul class="tags">{tags.map((tag) => <li>{tag}</li>)}</ul>
+		{detailed && (
+			<div class="links">
+				<a href={repo} target="_blank" rel="noopener noreferrer">Source</a>
+				{links.map((link) => <a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>)}
+			</div>
+		)}
+	</div>
+</article>
+<style>
+	.project-card {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		padding: 28px;
+		background: #fff;
+		border: 1px solid #e5e7dd;
+		border-radius: 12px;
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+	.project-card:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 18px 40px #4559390f;
+	}
+	.card-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		font-family: 'DM Sans', sans-serif;
+		font-size: 11px;
+		font-weight: 700;
+		color: #84957a;
+	}
+	.language {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.lang-dot {
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+	}
+	.registry {
+		background: #f6eedb;
+		color: #a7843f;
+		padding: 4px 9px;
+		border-radius: 20px;
+		letter-spacing: 0.5px;
+	}
+	h3 {
+		margin: 0;
+		font-size: 22px;
+		letter-spacing: -0.6px;
+	}
+	/* The whole card is clickable on the summary version; detailed cards keep their own links. */
+	.project-card:not(.detailed) h3 a::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+	}
+	h3 span {
+		color: #799070;
+		font-size: 17px;
+		margin-left: 4px;
+	}
+	.tagline {
+		margin: 0;
+		color: #6f7669;
+		font-size: 14px;
+		line-height: 1.75;
+	}
+	.notes {
+		color: #858b80;
+		font-size: 13.5px;
+		line-height: 1.85;
+	}
+	.notes :global(p) {
+		margin: 0 0 10px;
+	}
+	.notes :global(ul) {
+		margin: 0;
+		padding-left: 18px;
+	}
+	.notes :global(li) {
+		margin-bottom: 3px;
+	}
+	.notes :global(code) {
+		font-size: 12px;
+		background: #f1f3e9;
+		padding: 1px 5px;
+		border-radius: 4px;
+	}
+	.install {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		background: #f1f3e9;
+		border-radius: 7px;
+		padding: 11px 14px;
+		color: #4a684b;
+		font-size: 12.5px;
+		transition: background 0.2s;
+	}
+	.install:hover {
+		background: #e6ecdb;
+	}
+	.install code {
+		overflow-wrap: anywhere;
+	}
+	.card-bottom {
+		margin-top: auto;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 12px;
+		padding-top: 6px;
+	}
+	.tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.tags li {
+		font-family: 'DM Sans', sans-serif;
+		font-size: 10.5px;
+		font-weight: 600;
+		color: #7b866c;
+		border: 1px solid #e2e7d9;
+		border-radius: 20px;
+		padding: 3px 9px;
+	}
+	.links {
+		display: flex;
+		gap: 16px;
+		font-size: 12px;
+		font-weight: 800;
+		color: #4a684b;
+	}
+	.links a {
+		border-bottom: 1px solid #b7c9ae;
+		padding-bottom: 2px;
+	}
+	.links a:hover {
+		border-color: #4a684b;
+	}
+	@media (max-width: 480px) {
+		.project-card {
+			padding: 22px 20px;
+		}
+		h3 {
+			font-size: 20px;
+		}
+	}
+</style>

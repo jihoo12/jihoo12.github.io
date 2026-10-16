@@ -1,0 +1,171 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import { getCollection, render } from 'astro:content';
+import { PROFILES } from '../consts';
+
+const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+const featured = await Promise.all(
+	projects.filter((p) => p.data.featured).map(async (project) => ({ project, Content: (await render(project)).Content })),
+);
+const experiments = projects.filter((p) => !p.data.featured);
+---
+<!doctype html>
+<html lang="en">
+	<head><BaseHead title="Projects — Jihoo" description="Languages, operating systems, compositors and small libraries I've been building." /></head>
+	<body>
+		<Header />
+		<main class="wrap projects-main">
+			<span class="eyebrow">THINGS I'M BUILDING</span>
+			<h1>Projects<span class="period">.</span></h1>
+			<p class="projects-subtitle">Languages, an operating system, a 3D desktop, and a couple of small libraries. <br />Most of them are experiments, and all of them taught me something.</p>
+			<div class="profiles">
+				<a href={PROFILES.github} target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+				<a href={PROFILES.npm} target="_blank" rel="noopener noreferrer">npm <span aria-hidden="true">↗</span></a>
+				<a href={PROFILES.pypi} target="_blank" rel="noopener noreferrer">PyPI <span aria-hidden="true">↗</span></a>
+			</div>
+
+			<section class="featured" aria-label="Featured projects">
+				{featured.map(({ project, Content }) => (
+					<ProjectCard project={project} detailed><Content /></ProjectCard>
+				))}
+			</section>
+
+			{experiments.length > 0 && (
+				<section class="experiments" aria-labelledby="experiments-title">
+					<div class="section-top">
+						<div>
+							<span class="eyebrow">ALSO TINKERING WITH</span>
+							<h2 id="experiments-title">Smaller experiments<span class="period">.</span></h2>
+						</div>
+						<a class="text-link" href={PROFILES.github} target="_blank" rel="noopener noreferrer">More on GitHub <span aria-hidden="true">↗</span></a>
+					</div>
+					<div class="experiment-list">
+						{experiments.map((project) => (
+							<a class="experiment" href={project.data.repo} target="_blank" rel="noopener noreferrer">
+								<div>
+									<span class="experiment-meta">{project.data.language} · {project.data.status}</span>
+									<h3>{project.data.title}</h3>
+									<p>{project.data.tagline}</p>
+								</div>
+								<span class="experiment-arrow" aria-hidden="true">↗</span>
+							</a>
+						))}
+					</div>
+				</section>
+			)}
+		</main>
+		<Footer />
+	</body>
+</html>
+<style>
+	.projects-main {
+		min-height: 72vh;
+		padding-top: 110px;
+		padding-bottom: 130px;
+	}
+	.projects-main h1 {
+		font-size: clamp(48px, 6vw, 70px);
+		letter-spacing: -3px;
+		line-height: 1.2;
+		margin: 25px 0 16px;
+	}
+	.projects-subtitle {
+		color: #777e71;
+		font-size: 15px;
+		line-height: 1.9;
+		margin: 0;
+	}
+	.profiles {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		margin-top: 30px;
+	}
+	.profiles a {
+		font-family: 'DM Sans', sans-serif;
+		font-size: 12px;
+		font-weight: 700;
+		border: 1px solid #e2e5da;
+		background: #fff;
+		padding: 10px 15px;
+		border-radius: 6px;
+		transition: background 0.2s;
+	}
+	.profiles a:hover {
+		background: #f3f5ec;
+	}
+	.profiles span {
+		margin-left: 8px;
+		color: #759273;
+	}
+	.featured {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 22px;
+		margin-top: 60px;
+	}
+	.experiments {
+		margin-top: 110px;
+	}
+	.experiment-list {
+		border-top: 1px solid #dfe5d8;
+	}
+	.experiment {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 20px;
+		padding: 24px 8px;
+		border-bottom: 1px solid #dfe5d8;
+		transition: background-color 0.2s ease;
+	}
+	.experiment:hover {
+		background: #f3f5ed;
+	}
+	.experiment-meta {
+		font-family: 'DM Sans', sans-serif;
+		font-size: 11px;
+		color: #84957a;
+	}
+	.experiment h3 {
+		font-size: 19px;
+		letter-spacing: -0.5px;
+		margin: 8px 0 6px;
+	}
+	.experiment p {
+		font-size: 13px;
+		color: #858b80;
+		margin: 0;
+		line-height: 1.7;
+	}
+	.experiment-arrow {
+		flex: none;
+		font-size: 22px;
+		color: #799070;
+	}
+	@media (max-width: 760px) {
+		.featured {
+			grid-template-columns: 1fr;
+		}
+		.section-top {
+			flex-direction: column;
+			align-items: start;
+			gap: 20px;
+		}
+	}
+	@media (max-width: 600px) {
+		.projects-main {
+			padding-top: 76px;
+			padding-bottom: 95px;
+		}
+		.projects-subtitle br {
+			display: none;
+		}
+		.experiments {
+			margin-top: 80px;
+		}
+	}
+</style>
