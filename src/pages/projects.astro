@@ -5,12 +5,15 @@ import Footer from '../components/Footer.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import { getCollection, render } from 'astro:content';
 import { PROFILES } from '../consts';
+import { ACTIVITY_DAYS } from '../lib/activity';
+import { featuredProjects } from '../lib/projects';
 
 const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+const picks = await featuredProjects(6);
 const featured = await Promise.all(
-	projects.filter((p) => p.data.featured).map(async (project) => ({ project, Content: (await render(project)).Content })),
+	picks.map(async (pick) => ({ ...pick, Content: pick.entry && (await render(pick.entry)).Content })),
 );
-const experiments = projects.filter((p) => !p.data.featured);
+const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id === p.id));
 ---
 <!doctype html>
 <html lang="en">
@@ -28,10 +31,15 @@ const experiments = projects.filter((p) => !p.data.featured);
 			</div>
 
 			<section class="featured" aria-label="Featured projects">
-				{featured.map(({ project, Content }) => (
-					<ProjectCard project={project} detailed><Content /></ProjectCard>
-				))}
+				{featured.map(({ data, commits, Content }) =>
+					Content ? (
+						<ProjectCard project={data} commits={commits} detailed><Content /></ProjectCard>
+					) : (
+						<ProjectCard project={data} commits={commits} detailed />
+					),
+				)}
 			</section>
+			<p class="featured-note">The busiest repos of the last {ACTIVITY_DAYS} days, refreshed daily.</p>
 
 			{experiments.length > 0 && (
 				<section class="experiments" aria-labelledby="experiments-title">
@@ -106,6 +114,12 @@ const experiments = projects.filter((p) => !p.data.featured);
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 22px;
 		margin-top: 60px;
+	}
+	.featured-note {
+		font-family: 'DM Sans', sans-serif;
+		font-size: 11px;
+		color: #9aa58e;
+		margin: 16px 0 0;
 	}
 	.experiments {
 		margin-top: 110px;

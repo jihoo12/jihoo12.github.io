@@ -1,15 +1,18 @@
 ---
-import type { CollectionEntry } from 'astro:content';
 import { REGISTRIES } from '../consts';
+import { ACTIVITY_DAYS } from '../lib/activity';
+import type { ProjectData } from '../lib/projects';
 
 interface Props {
-	project: CollectionEntry<'projects'>;
+	project: ProjectData;
+	// Commits in the activity window, shown when there were any.
+	commits?: number;
 	// Show the hand-written notes and links (full page) or only the summary (homepage).
 	detailed?: boolean;
 }
 
-const { project, detailed = false } = Astro.props;
-const { title, tagline, language, tags, repo, links, package: pkg } = project.data;
+const { project, commits = 0, detailed = false } = Astro.props;
+const { title, tagline, language, tags, repo, links, package: pkg } = project;
 const registry = pkg && REGISTRIES[pkg.registry];
 const languageColors: Record<string, string> = {
 	Rust: '#d39a6a',
@@ -23,11 +26,14 @@ const languageColors: Record<string, string> = {
 <article class:list={['project-card', { detailed }]}>
 	<div class="card-top">
 		<span class="language"><span class="lang-dot" style={`background:${languageColors[language] ?? '#a4ae98'}`}></span>{language}</span>
-		{registry && <span class="registry">{registry.label}</span>}
+		<span class="card-badges">
+			{commits > 0 && <span class="activity" title={`${commits} commits in the last ${ACTIVITY_DAYS} days`}>{commits} commits · {ACTIVITY_DAYS}d</span>}
+			{registry && <span class="registry">{registry.label}</span>}
+		</span>
 	</div>
 	<h3><a href={repo} target="_blank" rel="noopener noreferrer">{title} <span aria-hidden="true">↗</span></a></h3>
 	<p class="tagline">{tagline}</p>
-	{detailed && <div class="notes"><slot /></div>}
+	{detailed && Astro.slots.has('default') && <div class="notes"><slot /></div>}
 	{detailed && pkg && registry && (
 		<a class="install" href={registry.url(pkg.name)} target="_blank" rel="noopener noreferrer"><code>{registry.install(pkg.name)}</code><span aria-hidden="true">↗</span></a>
 	)}
@@ -75,6 +81,15 @@ const languageColors: Record<string, string> = {
 		width: 9px;
 		height: 9px;
 		border-radius: 50%;
+	}
+	.card-badges {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.activity {
+		font-weight: 600;
+		color: #9aa58e;
 	}
 	.registry {
 		background: #f6eedb;

@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '43 0 * * *' # daily, 09:43 KST, so the busiest projects stay current
   workflow_dispatch:
 
 permissions:
@@ -32,6 +34,9 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+        env:
+          # reads public commit activity for the project cards
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

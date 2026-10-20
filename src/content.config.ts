@@ -35,7 +35,8 @@ const projects = defineCollection({
 				name: z.string(),
 			})
 			.optional(),
-		// Featured projects get a full card; the rest go in the smaller list.
+		// The busiest repos of the last 30 days get the full cards (see src/lib/projects.ts);
+		// `featured` and `order` decide who fills the remaining spots.
 		featured: z.boolean().default(false),
 		order: z.number().default(100),
 	}),
