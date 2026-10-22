@@ -1,6 +1,6 @@
 ---
 title: "Shady: Rethinking the Linux Desktop"
-description: "Building an experimental Linux desktop from the compositor up: custom shells, visual themes, Lua scripting, native plugins, and windows that can live in 3D."
+description: "Rethinking the Linux desktop through Horizon’s living sky, Objects’ tactile interface, a programmable shell, and an experimental Wayland compositor."
 pubDate: 2026-10-22
 updatedDate: 2026-10-22
 ---
@@ -28,43 +28,43 @@ I like this separation because the interesting part of a desktop isn't only its 
 
 ## Horizon: a desktop that lives in the sky
 
-Horizon is Shady's default rice, and it's probably the clearest example of what I'm trying to create.
+**Horizon is the default Shady experience**, and the most ambitious attempt I've made at turning a desktop interface into a coherent world. Rather than placing an ordinary taskbar over a wallpaper, it lets the interface live *inside* a procedural sky and sea.
 
-It doesn't start with a conventional taskbar. Instead, the time appears directly in a procedural sky. Workspaces show up as lights along the horizon, with their open windows reflected in the sea. Notifications arrive as text against the sky.
+![Horizon: the clock, workspace lights, and glass control center](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/horizon/preview.jpg)
 
-The application launcher turns installed applications into stars: typing a name highlights matching stars and draws them together into a constellation. Quick Settings appears as a frosted-glass control center, with controls for the sky's hour alongside familiar desktop settings.
+The time is written across the sky, paired with a small line of text that changes with the hour. Workspaces are lights on the horizon: the current workspace shines brightly, occupied workspaces glow, and empty ones fade into the distance. Open windows are reflected in the water below. You can interact with those workspace indicators instead of hunting for a conventional switcher.
 
-It's still a desktop. I can launch applications, change workspaces, read notifications, and manage windows. I just wanted those actions to feel like they belonged to the world on screen.
+The launcher is one of my favorite details. Press **`Super+D`** and applications scatter across the sky as stars. As you type, matching applications light up and join into a constellation. Select one and launch it, without the experience breaking into an unrelated menu.
 
-The scene changes between golden hour, afterglow, blue hour, and night. Pressing **`Super+T`** moves the sky to the next hour, and the shell's palette follows it.
+A compact status line sits above the desktop. Clicking it reveals a **frosted-glass control center** turned toward the viewer in 3D. It includes familiar controls for volume, brightness, Wi-Fi, Bluetooth, screenshots, and media playback, as well as a way to choose the sky's hour. Notifications appear in the sky and remain accessible in the control center.
 
-## One compositor, four different worlds
+Horizon moves between **golden hour, afterglow, blue hour, and night**. Press **`Super+T`** to move to the next hour; the colors of the interface change along with the scene.
 
-I didn't want Shady to be locked into a single look. Its rices explore how much personality a desktop can have while sharing the same underlying system.
+What I like most is that Horizon isn't just a collection of effects. Its clock, workspace navigation, launcher, notifications, and controls are all designed around the same idea. I want using the desktop to feel like interacting with one environment.
 
-### Horizon
+You can read more in the [Horizon rice documentation](https://github.com/gloaming-dusk/shady/blob/main/rices/horizon/README.md).
 
-The default experience: a sky-based interface, horizon workspaces, a constellation launcher, and a glass control center.
+## Objects: a desktop you can almost touch
 
-### Objects
+**Objects is the other experience I want to highlight.** Where Horizon is open, atmospheric, and almost weightless, Objects is playful and tactile. It imagines desktop UI as a collection of physical-looking things arranged on a paper-sunset surface.
 
-![Objects desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/objects/preview.jpg)
+![Objects: desk clock, card-like windows, and floating dock](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/objects/preview.jpg)
 
-A playful world of ink-outlined cards, a paper-sunset backdrop, a desk clock, a dock, and a launcher that fans applications out like cards in your hand.
+The visual language is deliberately bold: **thick ink outlines, chunky cards, and hard offset shadows**. A desk clock is built from two number tiles with a date sticker. The dock floats above the background, bringing together the launcher, workspaces, window avatars, the active window's title, and system status. The focused window avatar lifts to make its state obvious.
 
-### Afterglow
+The launcher takes the metaphor further. Instead of a grid or search box, **applications fan out like a hand of cards**. Typing filters the choices, the strongest match sits in the middle, and you can move between cards with the arrow keys before launching one.
 
-![Afterglow desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/afterglow/preview.jpg)
+Other familiar desktop interactions become small physical gestures. The control center looks like a remote leaning on a table, with controls for audio, brightness, network settings, media, and screenshots. Notifications land like stickers in the top-right corner, with critical ones emphasized in tangerine. Right-clicking a window avatar opens its menu; middle-clicking closes it.
 
-An open sea at sunset, with a translucent shell that changes alongside the sky. It leans into atmosphere and time rather than the usual static wallpaper.
+I especially like how Objects proves that Shady doesn't need a futuristic 3D scene to have character. Even ordinary tasks—opening an app, changing the volume, switching workspaces—can feel distinctive when the interface follows a strong, consistent design language.
 
-### Neon Transit
+See the [Objects rice documentation](https://github.com/gloaming-dusk/shady/blob/main/rices/objects/README.md) for its controls and design.
 
-![Neon Transit desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/neon-transit/preview.jpg)
+## Other directions: Afterglow and Neon Transit
 
-A darker, futuristic environment with a violet horizon, cyan grid, and optional spatial window effects.
+Shady also includes two other rices. **Afterglow** places the desktop above a changing sunset sea, with a translucent shell that follows the sky's colors. **Neon Transit** takes a darker approach, using a violet horizon, an electric-cyan grid, and optional spatial window effects.
 
-These aren't four separate compositors. They're different answers to the same question: **what should a Linux desktop feel like?**
+They show how different the same compositor can feel, while **Horizon and Objects** are the clearest examples here of two complete interface philosophies: one built around a living landscape, the other around tangible desktop objects.
 
 ## The shell is programmable
 
@@ -129,7 +129,7 @@ nix run github:gloaming-dusk/shady
 
 That starts the default **Horizon** rice with a terminal. Press **`Super+Shift+/`** to see the available keyboard shortcuts.
 
-To switch to another rice:
+To try the tactile Objects desktop instead:
 
 ~~~sh
 SHADY_RICE=objects nix run github:gloaming-dusk/shady
