@@ -1,93 +1,151 @@
 ---
-title: "Shady: Building a 3D Wayland Compositor"
-description: "My experiment in turning ordinary Linux windows into a spatial desktop, with wlroots, OpenGL ES, physics, Lua, and a plugin system."
+title: "Shady: Rethinking the Linux Desktop"
+description: "Building an experimental Linux desktop from the compositor up: custom shells, visual themes, Lua scripting, native plugins, and windows that can live in 3D."
 pubDate: 2026-10-22
+updatedDate: 2026-10-22
 ---
 
-Most desktop environments treat windows as flat rectangles. We can move them, resize them, and arrange them in workspaces, but the underlying metaphor has barely changed in decades.
+A desktop environment is something we interact with all day, yet so much of its design is taken for granted. There's a wallpaper, a panel, a launcher, and windows that behave in more or less the same way everywhere.
 
-I wanted to explore a different question: **what if application windows were objects in a shared 3D world?**
+I started building **[Shady](https://github.com/gloaming-dusk/shady)** because I wanted to question more than just how windows are drawn. What if the compositor, the desktop shell, and the visual identity of the entire session could all be part of the experiment?
 
-That's the idea behind [Shady](https://github.com/gloaming-dusk/shady), an experimental Wayland compositor I've been building in C with wlroots and OpenGL ES 2.0. It can behave like an ordinary desktop compositor, or it can give windows depth, movement, physics, and unexpected interactions.
+Shady is my open-source Linux desktop project, built around an experimental Wayland compositor in C, a separate configurable shell, several distinct desktop themes, and a system for extending behavior through Lua and native plugins. Yes, windows can become 3D objects—but that's only one part of it.
 
-![Horizon, Shady's default desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/horizon/preview.jpg)
+![Horizon, Shady's default desktop experience](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/horizon/preview.jpg)
 
-## A desktop with depth
+## More than a window manager
 
-Shady began with the foundations of a Wayland compositor, inspired by TinyWL and built on **wlroots 0.20.2**. The traditional rendering path uses wlroots' scene graph. On top of that, I built a custom GLES2 renderer that places application surfaces into a perspective 3D scene.
+Shady is made of several pieces that work together:
 
-That second path changes what a window can be. Windows can move forward and backward in space, become cubes or folded shapes, respond to motion, and interact with other objects. There's even a first-person mode for exploring environments and picking up or throwing windows.
+- **`shady`**, the Wayland compositor, manages windows, input, workspaces, outputs, and rendering.
+- **`shady-shell`**, a separate layer-shell client, provides the interface: launchers, panels, notifications, Quick Settings, and more.
+- **Rices** pair a desktop appearance with its shell configuration and behavior.
+- **Lua configuration and scripting** let the desktop change without rebuilding everything.
+- **C plugins** add effects, window motion, representations, and new spatial interactions.
+- **NixOS integration and development tools** make the whole system easier to run, build, and test.
 
-The goal isn't to make every desktop interaction three-dimensional. It's to experiment with what becomes possible when depth is part of the window manager instead of just a visual trick.
+I like this separation because the interesting part of a desktop isn't only its renderer. It's how all these pieces fit together into an experience.
 
-## Making windows behave differently
+## Horizon: a desktop that lives in the sky
 
-Some of my favorite experiments are implemented as plugins:
+Horizon is Shady's default rice, and it's probably the clearest example of what I'm trying to create.
 
-- **Spatial Overview (`Super+O`)** arranges the workspace's windows in a 3D overview.
-- **Water Windows (`Super+W`)** adds waves, refraction, and caustic effects to window surfaces.
-- **Magnetic Windows (`Super+M`)** connects nearby windows with spring-like motion.
-- **Window Constellation (`Super+C`)** makes other windows orbit the focused one.
-- **Frozen Window (`Super+Z`)** lets frost spread across a window.
-- **Window Portal (`Super+P`)** creates a live portal to another window.
-- **Black Hole (`Super+H`)** sends windows into a black hole before bringing them back.
+It doesn't start with a conventional taskbar. Instead, the time appears directly in a procedural sky. Workspaces show up as lights along the horizon, with their open windows reflected in the sea. Notifications arrive as text against the sky.
 
-The project also explores alternate window bodies, including jelly, cubes, folded paper, and origami. Rendering, picking, and collision are designed to agree on the shape a plugin provides.
+The application launcher turns installed applications into stars: typing a name highlights matching stars and draws them together into a constellation. Quick Settings appears as a frosted-glass control center, with controls for the sky's hour alongside familiar desktop settings.
 
-These features make Shady feel more like a graphics experiment than a conventional tiling or stacking window manager, which is exactly why I find it interesting.
+It's still a desktop. I can launch applications, change workspaces, read notifications, and manage windows. I just wanted those actions to feel like they belonged to the world on screen.
 
-## The shell is part of the experiment
+The scene changes between golden hour, afterglow, blue hour, and night. Pressing **`Super+T`** moves the sky to the next hour, and the shell's palette follows it.
 
-A compositor isn't the whole desktop. Shady includes **shady-shell**, a separate layer-shell application for launchers, panels, notifications, and other interface elements.
+## One compositor, four different worlds
 
-Instead of hard-coding one visual identity, Shady provides several *rices*—combinations of a shell and a desktop aesthetic:
+I didn't want Shady to be locked into a single look. Its rices explore how much personality a desktop can have while sharing the same underlying system.
 
-- **Horizon**, the default, places a clock, workspace indicators, notifications, and a constellation-style launcher in a procedural sky. Its frosted-glass control center is positioned in 3D.
-- **Objects** uses bold, outlined cards and playful desktop objects.
-- **Afterglow** creates a sunset sky and sea, with changing hours and a translucent interface.
-- **Neon Transit** explores a darker, grid-based visual world with optional spatial effects.
+### Horizon
 
-![Neon Transit, an alternate Shady desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/neon-transit/preview.jpg)
+The default experience: a sky-based interface, horizon workspaces, a constellation launcher, and a glass control center.
 
-Horizon is especially fun to work on. Rather than placing the familiar taskbar at the edge of the screen, it lets workspaces become lights on the horizon and applications become stars in the launcher.
+### Objects
 
-## Why plugins and Lua matter
+![Objects desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/objects/preview.jpg)
 
-I don't want every new visual idea to require rewriting the compositor core. Shady has a **public C plugin API** for extending behavior, plus hot reloading and state migration for supported plugins.
+A playful world of ink-outlined cards, a paper-sunset backdrop, a desk clock, a dock, and a launcher that fans applications out like cards in your hand.
 
-The core remains responsible for things like window lifetimes, input routing, GPU resources, and validating data across plugin boundaries. Effects and simulations can live outside it.
+### Afterglow
 
-Lua 5.4 handles configuration and scripting, including the shell's interface. There is also an IPC interface and the `shadyctl` command-line tool for communicating with a running session.
+![Afterglow desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/afterglow/preview.jpg)
 
-The architectural challenge is as interesting to me as the rendering: how do you make a highly experimental compositor extensible without giving up clear ownership and predictable behavior?
+An open sea at sunset, with a translucent shell that changes alongside the sky. It leans into atmosphere and time rather than the usual static wallpaper.
 
-## Trying Shady
+### Neon Transit
 
-The easiest way to try it from an existing Wayland session is with Nix:
+![Neon Transit desktop theme](https://raw.githubusercontent.com/gloaming-dusk/shady/main/rices/neon-transit/preview.jpg)
+
+A darker, futuristic environment with a violet horizon, cyan grid, and optional spatial window effects.
+
+These aren't four separate compositors. They're different answers to the same question: **what should a Linux desktop feel like?**
+
+## The shell is programmable
+
+One design choice I care about is keeping the desktop shell separate from the compositor.
+
+`shady-shell` is a Wayland client of its own. Its interface is defined in Lua rather than being permanently built into the compositor. Rices can bring their own bars, panels, menus, launchers, notifications, and appearance.
+
+Lua 5.4 also powers Shady's configuration (`config.lua`) and runtime scripting (`init.lua`). It lets me experiment with both how the desktop looks and how it behaves.
+
+For external automation and tools, Shady exposes an IPC socket and a command-line interface called **`shadyctl`**. The shell and compositor also communicate through a dedicated Wayland protocol.
+
+This matters to me because I want new ideas to be cheap to try. Redesigning a launcher or changing a theme shouldn't require rebuilding the entire desktop architecture.
+
+## It still needs to work as a desktop
+
+Visual experiments are fun, but a compositor also has to deal with the unglamorous details of running real applications.
+
+Shady supports everyday Wayland desktop features including input methods (such as Hangul input), fractional scaling, window and workspace protocols, clipboard tooling, session locking, screencopy, and output management. Other shells and bars can also interact with it through standard protocols.
+
+There is a **2D safe mode** based on wlroots' scene graph. It skips 3D rendering, physics, and effects, giving the project a conventional compatibility baseline. Both rendering paths are demand-driven rather than redrawing an idle desktop continuously.
+
+The repository includes ASan/UBSan regression testing for the 2D and 3D paths, as well as NixOS VM tests for the session and greeter.
+
+These details aren't as screenshot-friendly as a beautiful sunset, but they are an important part of turning a graphics idea into a usable desktop system.
+
+## And yes, the windows can break the rules
+
+Shady also asks what happens when a window stops being just a flat rectangle.
+
+Built on **wlroots 0.20.2** and inspired by TinyWL, its compositor can render ordinary application surfaces in a perspective 3D world through a custom OpenGL ES 2.0 renderer.
+
+Windows can move through depth, wobble, respond to gravity, collide with environments, or be picked up and thrown in first-person mode. Plugins can give them alternative bodies such as cubes, jelly, folded paper, and origami.
+
+Other plugins explore different interactions:
+
+- **Water Windows** adds waves, refraction, and caustics.
+- **Magnetic Windows** connects nearby windows with springs.
+- **Window Constellation** makes windows orbit the focused one.
+- **Window Portal** provides a live view into another window.
+- **Frozen Window** grows frost across a window or workspace.
+- **Black Hole** sends windows into a black hole and returns them through a white hole.
+
+I don't expect every one of these ideas to become a normal desktop feature. Exploring them is part of the point.
+
+## An architecture built for experiments
+
+A recurring challenge in Shady is deciding what belongs in the core and what belongs outside it.
+
+The compositor core owns Wayland objects, input routing, window lifetimes, GPU resources, and validation. Optional behaviors can live in **native C plugins** through a public API, with supported hot reload and state migration. The rendering system consumes validated representations rather than relying on private plugin data layouts.
+
+That boundary makes it possible to develop new behaviors without endlessly expanding the compositor itself.
+
+It's also why Shady has become a project about much more than graphics: I'm learning about protocol design, memory and resource ownership, plugin interfaces, testing, UI systems, and all the compromises involved in desktop software.
+
+## Try it yourself
+
+If you already have a Wayland session and Nix installed, you can launch Shady in a nested window:
 
 ~~~sh
 nix run github:gloaming-dusk/shady
 ~~~
 
-That launches the default **Horizon** experience in a nested window with a terminal. Press **`Super+Shift+/`** to open the current shortcut guide.
+That starts the default **Horizon** rice with a terminal. Press **`Super+Shift+/`** to see the available keyboard shortcuts.
 
-To try the Objects rice instead:
+To switch to another rice:
 
 ~~~sh
 SHADY_RICE=objects nix run github:gloaming-dusk/shady
 ~~~
 
-For development, the repository includes a Nix flake, a Meson build, NixOS integration, and instructions for building without Nix. A plain **`--safe`** mode provides a conventional 2D scene-graph path.
+The repository also has a NixOS module, a Meson-based build path for other Linux distributions, and documentation for configuring and extending the desktop.
 
-Start with the [getting started guide](https://github.com/gloaming-dusk/shady/blob/main/docs/GETTING_STARTED.md) if you want to explore the controls, installation options, or configuration.
+See the [getting started guide](https://github.com/gloaming-dusk/shady/blob/main/docs/GETTING_STARTED.md) and the [architecture documentation](https://github.com/gloaming-dusk/shady/blob/main/docs/ARCHITECTURE.md) for more.
 
-## Still an experiment
+## Where Shady goes next
 
-Shady is a **research compositor**, not a polished replacement for a production desktop. Multi-output behavior, some first-person interactions, environment collision, and rendering details are still areas of active work.
+Shady is still an **experimental research compositor**, not a production-ready desktop replacement. Multiple monitors, parts of first-person interaction, environment collisions, and rendering polish remain active areas of development.
 
-That is also what makes it exciting. A Wayland compositor brings together systems programming, graphics, input, protocol handling, resource ownership, and user-interface design. It's a place where a small idea—like giving a window gravity—can turn into an interesting engineering problem.
+For me, the interesting question isn't simply whether Linux can have 3D windows. It's how much freedom there is to rethink the entire desktop—from the protocols underneath to the smallest detail in the shell.
 
-I'm building Shady because I want to see how far the desktop metaphor can be pushed.
+**Shady is where I get to explore that question, one experiment at a time.**
 
-**Explore the code:** [github.com/gloaming-dusk/shady](https://github.com/gloaming-dusk/shady)  
+**Source code:** [github.com/gloaming-dusk/shady](https://github.com/gloaming-dusk/shady)  
 **Project website:** [gloaming-dusk.github.io/shady](https://gloaming-dusk.github.io/shady/)
