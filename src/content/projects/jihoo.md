@@ -1,8 +1,8 @@
 ---
 title: jihoo
-tagline: An easy programming language with three profiles.
+tagline: A systems language as fast as C, memory-safe without lifetimes or a garbage collector.
 language: Rust
-tags: [compiler, llvm, vm]
+tags: [compiler, llvm, ownership]
 repo: https://github.com/jihoolang/jihoo
 links:
   - { label: Docs, href: 'https://jihoolang.github.io/jihoo/' }
@@ -10,8 +10,7 @@ featured: true
 order: 1
 ---
 
-One language, three ways to run it. All three share one intermediate representation, JIR.
+Every value has one owner; parameters borrow (`x: T`), borrow mutably (`inout x: T`) or take (`sink x: T`). Borrows never escape a function body, so there are no lifetime annotations, and a small borrow kernel re-checks everything the rest of the compiler decided.
 
-- **native**: no GC, compiled through LLVM and linked with libc, calls C directly
-- **hosted**: runs on a register VM with a garbage collector
-- **freestanding**: no GC, no libc, raw syscalls, tiny static binaries
+- **native**: compiled through LLVM, linked with libc, calls C directly
+- **freestanding**: no libc, raw syscalls, tiny static binaries
