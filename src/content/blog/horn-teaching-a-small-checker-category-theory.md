@@ -2,6 +2,7 @@
 title: "Teaching a 759-Line Checker Category Theory"
 description: "What broke, and what the small kernel caught, when Horn's cubical scripts grew from univalence to categories, functors and a judgmental op (op C) = C."
 pubDate: 2026-10-23T22:00:00+09:00
+heroImage: "../../assets/nixchan/nixchan-debug-success-01.png"
 ---
 
 In the [previous post](/blog/horn-a-small-checker-for-big-proofs/) I described **[Horn](https://github.com/jihoo12/Horn)**: a 759-line kernel that knows no mathematics, checking a cubical type theory that is handed to it as 403 rules of plain data. The cubical scripts on top of it could already compute through univalence. Transporting `true` along `ua not` gave `false`, and the circle's winding number came out as `2`.

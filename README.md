@@ -24,4 +24,4 @@ GitHub Actions builds and publishes the site at [jihoo12.github.io](https://jiho
 
 ## Artwork
 
-The home and about pages use the site owner's submitted illustration, optimized as a WebP image in `public/images/jihoo-hero.webp`. The prior placeholder SVG has been removed.
+Illustrations are Nixchan images from the `nixchan` collection, stored in `src/assets/nixchan/` and optimized at build time by `astro:assets`.

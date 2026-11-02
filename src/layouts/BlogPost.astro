@@ -17,13 +17,15 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
     <main class="wrap article-page">
       <a class="back-link" href="/blog/">← Back to journal</a>
       <article>
-        <header class="article-header">
-          <span class="eyebrow">JOURNAL / NOTES</span>
-          <h1>{title}</h1>
-          <p>{description}</p>
-          <div class="article-date"><FormattedDate date={pubDate} />{updatedDate && <> · Updated <FormattedDate date={updatedDate} /></>}</div>
+        <header class:list={['article-header', { 'has-art': heroImage }]}>
+          <div>
+            <span class="eyebrow">JOURNAL / NOTES</span>
+            <h1>{title}</h1>
+            <p>{description}</p>
+            <div class="article-date"><FormattedDate date={pubDate} />{updatedDate && <> · Updated <FormattedDate date={updatedDate} /></>}</div>
+          </div>
+          {heroImage && <div class="art"><div class="glow"></div><Image src={heroImage} alt="" width={480} loading="eager" /></div>}
         </header>
-        {heroImage && <Image class="article-image" src={heroImage} alt={title} width={1100} />}
         <div class="prose"><slot /></div>
       </article>
       <a class="back-link bottom" href="/blog/">← All notes</a>
@@ -32,5 +34,5 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
   </body>
 </html>
 <style>
-.article-page{max-width:830px;padding-top:85px;padding-bottom:130px}.back-link{font-size:13px;color:#66865e;font-weight:700}.back-link:hover{text-decoration:underline}.article-header{padding:60px 0 45px;border-bottom:1px solid #e1e5dc;margin-bottom:48px}.article-header h1{font-size:clamp(40px,6vw,66px);line-height:1.24;letter-spacing:-2px;margin:20px 0}.article-header p{font-size:17px;color:#777d72;line-height:1.8}.article-date{font-family:'DM Sans',sans-serif;color:#9aa193;font-size:12px;margin-top:22px}.article-image{width:100%;height:auto;border-radius:12px;margin-bottom:45px}.prose{font-size:16px;line-height:1.95;color:#49534a}.prose :global(h2){font-size:29px;margin:48px 0 16px;letter-spacing:-1px}.prose :global(h3){font-size:23px;margin:33px 0 13px}.prose :global(a){color:#466e49;text-decoration:underline}.prose :global(pre){overflow-x:auto;background:#25332a;color:#f3f7ed;padding:22px;border-radius:10px}.prose :global(code){background:#e9eee3;padding:2px 5px;border-radius:3px}.prose :global(pre code){background:none;padding:0}.prose :global(blockquote){border-left:3px solid #9bb78d;margin:25px 0;padding:2px 0 2px 20px;color:#7a8575}.prose :global(img){max-width:100%;height:auto;border-radius:9px}.prose :global(table){width:100%;display:block;overflow-x:auto}.bottom{display:inline-block;margin-top:70px}@media(max-width:600px){.article-page{padding-top:60px;padding-bottom:85px}.article-header{padding-top:40px}.article-header h1{font-size:41px}}
+.article-page{max-width:900px;padding-top:70px;padding-bottom:130px}.back-link{font-size:13px;color:var(--accent);font-weight:700}.back-link:hover{text-decoration:underline}.article-header{padding:50px 0 45px;border-bottom:1px solid var(--line);margin-bottom:48px}.article-header.has-art{display:grid;grid-template-columns:1fr 240px;gap:50px;align-items:center}.article-header h1{font-size:clamp(36px,5.2vw,58px);line-height:1.22;letter-spacing:-2px;margin:20px 0}.article-header p{font-size:17px;color:var(--muted);line-height:1.8}.article-date{font-family:'DM Sans',sans-serif;color:var(--faint);font-size:12px;margin-top:22px}.prose{font-size:16px;line-height:1.95;color:#38365a;max-width:780px}.prose :global(h2){font-size:29px;margin:48px 0 16px;letter-spacing:-1px;color:var(--ink)}.prose :global(h3){font-size:23px;margin:33px 0 13px;color:var(--ink)}.prose :global(a){color:var(--accent);text-decoration:underline;text-decoration-color:var(--sky);text-underline-offset:3px}.prose :global(pre){overflow-x:auto;background:var(--navy);color:#ecebff;padding:22px;border-radius:12px}.prose :global(code){background:var(--accent-soft);padding:2px 5px;border-radius:4px}.prose :global(pre code){background:none;padding:0}.prose :global(blockquote){border-left:3px solid var(--sky);margin:25px 0;padding:2px 0 2px 20px;color:var(--muted)}.prose :global(img){max-width:100%;height:auto;border-radius:9px}.prose :global(table){width:100%;display:block;overflow-x:auto}.bottom{display:inline-block;margin-top:70px}@media(max-width:700px){.article-header.has-art{grid-template-columns:1fr;gap:30px}.article-header .art{max-width:200px;order:-1}}@media(max-width:600px){.article-page{padding-top:50px;padding-bottom:85px}.article-header{padding-top:36px}.article-header h1{font-size:36px}}
 </style>

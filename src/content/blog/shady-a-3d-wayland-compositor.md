@@ -3,6 +3,7 @@ title: "Shady: Rethinking the Linux Desktop"
 description: "Rethinking the Linux desktop through Horizon’s living sky, Objects’ tactile interface, a programmable shell, and an experimental Wayland compositor."
 pubDate: 2026-10-22
 updatedDate: 2026-10-22
+heroImage: "../../assets/nixchan/nixchan-desktop-setup-01.png"
 ---
 
 A desktop environment is something we interact with all day, yet so much of its design is taken for granted. There's a wallpaper, a panel, a launcher, and windows that behave in more or less the same way everywhere.

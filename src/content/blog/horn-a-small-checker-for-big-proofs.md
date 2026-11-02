@@ -2,6 +2,7 @@
 title: "Horn: A Small Checker for Very Large Proofs"
 description: "How a 759-line Rust kernel with no built-in logic checks univalence, winding numbers, and a 4 GB proof compressed to 64 kB, and why the rest of the system doesn't have to be trusted."
 pubDate: 2026-10-23
+heroImage: "../../assets/nixchan/nixchan-proof-checker-01.png"
 ---
 
 When a computer tells you a theorem is true, how much of that computer do you have to believe?

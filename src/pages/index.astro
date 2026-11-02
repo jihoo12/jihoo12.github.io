@@ -5,6 +5,11 @@ import Footer from '../components/Footer.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import { getCollection } from 'astro:content';
 import { featuredProjects } from '../lib/projects';
+import { Image } from 'astro:assets';
+import heroArt from '../assets/nixchan/nixchan-build-success-03.png';
+import thinkingArt from '../assets/nixchan/nixchan-math-thinking-01.png';
+import treeArt from '../assets/nixchan/nixchan-project-tree-01.png';
+import coffeeArt from '../assets/nixchan/nixchan-night-coffee-01.png';
 
 const recentPosts = (await getCollection('blog'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
@@ -26,16 +31,19 @@ const topProjects = await featuredProjects(3);
           <div class="hero-actions"><a class="button primary" href="/about/">More about me <span aria-hidden="true">↗</span></a><a class="button secondary" href="/blog/">Explore the journal <span aria-hidden="true">→</span></a></div>
           <div class="hero-footnote"><span class="little-star">✳</span> A LITTLE SPACE ON THE INTERNET</div>
         </div>
-        <div class="hero-art"><div class="image-glow"></div><img src="/images/jihoo-hero.webp" alt="A smiling white character walking through a sunny wildflower meadow" width="1293" height="1217" fetchpriority="high" /><span class="image-tag">KEEP MOVING <span aria-hidden="true">✦</span></span></div>
+        <div class="art"><div class="glow"></div><Image src={heroArt} alt="Nixchan giving a thumbs up next to a laptop whose terminal reads nix build: Done" widths={[480, 720, 1000]} sizes="(max-width: 850px) 520px, 540px" loading="eager" fetchpriority="high" /><span class="tag">BUILD PASSED <span aria-hidden="true">✦</span></span></div>
       </section>
       <section class="intro-section" aria-labelledby="intro-title">
-        <div class="wrap intro-grid"><div><span class="eyebrow">01 / ABOUT THIS SPACE</span><h2 id="intro-title">A little curiosity<br/>goes a long way.</h2></div><div class="intro-description"><p>This is my little space to share projects, lessons from building things, and the occasional thought from everyday life.</p><p>One small step at a time, at my own pace.</p><a class="text-link" href="/about/">Get to know me <span aria-hidden="true">↗</span></a></div></div>
+        <div class="wrap intro-grid"><div class="art"><div class="glow"></div><Image src={thinkingArt} alt="Nixchan thinking in front of a chalkboard of math symbols" width={600} /></div><div class="intro-description"><span class="eyebrow">01 / ABOUT THIS SPACE</span><h2 id="intro-title">A little curiosity<br/>goes a long way.</h2><p>This is my little space to share projects, lessons from building things, and the occasional thought from everyday life.</p><p>One small step at a time, at my own pace.</p><a class="text-link" href="/about/">Get to know me <span aria-hidden="true">↗</span></a></div></div>
       </section>
       <section class="projects-section wrap" aria-labelledby="projects-title">
         <div class="section-top">
-          <div>
+          <div class="section-mascot">
+            <Image src={treeArt} alt="" width={216} height={216} />
+            <div>
             <span class="eyebrow">02 / PROJECTS</span>
             <h2 id="projects-title">Things I'm building<span class="period">.</span></h2>
+            </div>
           </div>
           <a class="text-link" href="/projects/">See all projects <span aria-hidden="true">→</span></a>
         </div>
@@ -45,9 +53,12 @@ const topProjects = await featuredProjects(3);
       </section>
       <section class="notes-section wrap" aria-labelledby="notes-title">
         <div class="section-top">
-          <div>
+          <div class="section-mascot">
+            <Image src={coffeeArt} alt="" width={216} height={216} />
+            <div>
             <span class="eyebrow">03 / JOURNAL</span>
             <h2 id="notes-title">Recent notes<span class="period">.</span></h2>
+            </div>
           </div>
           <a class="text-link" href="/blog/">View all <span aria-hidden="true">→</span></a>
         </div>
@@ -68,12 +79,10 @@ const topProjects = await featuredProjects(3);
           </div>
         ) : (
           <div class="empty-notes">
-            <span class="empty-icon" aria-hidden="true">✎</span>
             <div>
               <h3>New stories are on their way.</h3>
               <p>Nothing here just yet. Check back soon!</p>
             </div>
-            <span class="empty-side">STAY TUNED ↗</span>
           </div>
         )}
       </section>
@@ -99,7 +108,7 @@ const topProjects = await featuredProjects(3);
     }
   }
   .recent-posts {
-    border-top: 1px solid #e5e7dd;
+    border-top: 1px solid var(--line);
   }
   .recent-post {
     display: flex;
@@ -107,11 +116,11 @@ const topProjects = await featuredProjects(3);
     justify-content: space-between;
     gap: 24px;
     padding: 27px 18px;
-    border-bottom: 1px solid #e5e7dd;
+    border-bottom: 1px solid var(--line);
     transition: background-color 0.2s ease;
   }
   .recent-post:hover {
-    background: #f3f5ed;
+    background: var(--accent-soft);
   }
   .recent-post-content {
     min-width: 0;
@@ -119,7 +128,7 @@ const topProjects = await featuredProjects(3);
   .recent-post time {
     display: block;
     margin-bottom: 10px;
-    color: #84957a;
+    color: var(--accent);
     font-family: 'DM Sans', sans-serif;
     font-size: 11px;
   }
@@ -131,13 +140,13 @@ const topProjects = await featuredProjects(3);
   }
   .recent-post p {
     margin: 0;
-    color: #858b80;
+    color: var(--muted);
     font-size: 13px;
     line-height: 1.7;
   }
   .recent-post-arrow {
     flex: none;
-    color: #799070;
+    color: var(--accent);
     font-size: 23px;
   }
   @media (max-width: 480px) {

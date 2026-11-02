@@ -7,6 +7,8 @@ import { getCollection, render } from 'astro:content';
 import { PROFILES } from '../consts';
 import { ACTIVITY_DAYS } from '../lib/activity';
 import { featuredProjects } from '../lib/projects';
+import { Image } from 'astro:assets';
+import roadmapArt from '../assets/nixchan/nixchan-roadmap-01.png';
 
 const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
 const picks = await featuredProjects(6);
@@ -21,6 +23,7 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 	<body>
 		<Header />
 		<main class="wrap projects-main">
+			<div class="page-head"><div>
 			<span class="eyebrow">THINGS I'M BUILDING</span>
 			<h1>Projects<span class="period">.</span></h1>
 			<p class="projects-subtitle">Languages, an operating system, a 3D desktop, and a couple of small libraries. <br />Most of them are experiments, and all of them taught me something.</p>
@@ -29,6 +32,7 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 				<a href={PROFILES.npm} target="_blank" rel="noopener noreferrer">npm <span aria-hidden="true">↗</span></a>
 				<a href={PROFILES.pypi} target="_blank" rel="noopener noreferrer">PyPI <span aria-hidden="true">↗</span></a>
 			</div>
+			</div><div class="art"><div class="glow"></div><Image src={roadmapArt} alt="Nixchan pointing at a roadmap whiteboard" width={600} loading="eager" /></div></div>
 
 			<section class="featured" aria-label="Featured projects">
 				{featured.map(({ data, commits, Content }) =>
@@ -69,9 +73,15 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 	</body>
 </html>
 <style>
+	.page-head {
+		display: grid;
+		grid-template-columns: 1fr 300px;
+		gap: 60px;
+		align-items: center;
+	}
 	.projects-main {
 		min-height: 72vh;
-		padding-top: 110px;
+		padding-top: 80px;
 		padding-bottom: 130px;
 	}
 	.projects-main h1 {
@@ -81,7 +91,7 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 		margin: 25px 0 16px;
 	}
 	.projects-subtitle {
-		color: #777e71;
+		color: var(--muted);
 		font-size: 15px;
 		line-height: 1.9;
 		margin: 0;
@@ -96,18 +106,18 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 		font-family: 'DM Sans', sans-serif;
 		font-size: 12px;
 		font-weight: 700;
-		border: 1px solid #e2e5da;
-		background: #fff;
+		border: 1px solid var(--line);
+		background: var(--surface);
 		padding: 10px 15px;
 		border-radius: 6px;
 		transition: background 0.2s;
 	}
 	.profiles a:hover {
-		background: #f3f5ec;
+		background: var(--accent-soft);
 	}
 	.profiles span {
 		margin-left: 8px;
-		color: #759273;
+		color: var(--accent);
 	}
 	.featured {
 		display: grid;
@@ -118,14 +128,14 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 	.featured-note {
 		font-family: 'DM Sans', sans-serif;
 		font-size: 11px;
-		color: #9aa58e;
+		color: var(--faint);
 		margin: 16px 0 0;
 	}
 	.experiments {
 		margin-top: 110px;
 	}
 	.experiment-list {
-		border-top: 1px solid #dfe5d8;
+		border-top: 1px solid var(--line);
 	}
 	.experiment {
 		display: flex;
@@ -133,16 +143,16 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 		justify-content: space-between;
 		gap: 20px;
 		padding: 24px 8px;
-		border-bottom: 1px solid #dfe5d8;
+		border-bottom: 1px solid var(--line);
 		transition: background-color 0.2s ease;
 	}
 	.experiment:hover {
-		background: #f3f5ed;
+		background: var(--accent-soft);
 	}
 	.experiment-meta {
 		font-family: 'DM Sans', sans-serif;
 		font-size: 11px;
-		color: #84957a;
+		color: var(--accent);
 	}
 	.experiment h3 {
 		font-size: 19px;
@@ -151,16 +161,23 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 	}
 	.experiment p {
 		font-size: 13px;
-		color: #858b80;
+		color: var(--muted);
 		margin: 0;
 		line-height: 1.7;
 	}
 	.experiment-arrow {
 		flex: none;
 		font-size: 22px;
-		color: #799070;
+		color: var(--accent);
 	}
 	@media (max-width: 760px) {
+		.page-head {
+			grid-template-columns: 1fr;
+			gap: 36px;
+		}
+		.page-head .art {
+			max-width: 240px;
+		}
 		.featured {
 			grid-template-columns: 1fr;
 		}
@@ -172,7 +189,7 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 	}
 	@media (max-width: 600px) {
 		.projects-main {
-			padding-top: 76px;
+			padding-top: 56px;
 			padding-bottom: 95px;
 		}
 		.projects-subtitle br {

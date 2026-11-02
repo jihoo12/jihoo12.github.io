@@ -2,6 +2,7 @@
 title: "Rosemary: Understanding Machine Code from the Ground Up"
 description: "Inside my dependency-free Rust reverse-engineering tool: x86-64 decoding, typed IR, control-flow and value analysis, C/assembly generation, and self-reversal tests."
 pubDate: 2026-10-22
+heroImage: "../../assets/nixchan/nixchan-reverse-engineering-01.png"
 ---
 
 What can we learn about a program when its source code is gone?

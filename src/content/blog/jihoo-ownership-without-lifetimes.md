@@ -2,6 +2,7 @@
 title: "jihoo: Ownership Without Lifetimes"
 description: "A systems language that is memory-safe without lifetime annotations or a garbage collector, matches C on the benchmarks, and checks every borrow with a 523-line kernel that trusts nothing the rest of the compiler decided."
 pubDate: 2026-10-25
+heroImage: "../../assets/nixchan/nixchan-coding-01.png"
 ---
 
 Rust showed that a language can be memory-safe without a garbage collector. The price is lifetimes: `'a` in signatures, `'a` in structs, and error messages about borrows that outlive the thing they borrow. Most of the time that price is worth paying. But I kept wondering how much of it is essential.

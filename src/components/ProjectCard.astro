@@ -25,7 +25,7 @@ const languageColors: Record<string, string> = {
 ---
 <article class:list={['project-card', { detailed }]}>
 	<div class="card-top">
-		<span class="language"><span class="lang-dot" style={`background:${languageColors[language] ?? '#a4ae98'}`}></span>{language}</span>
+		<span class="language"><span class="lang-dot" style={`background:${languageColors[language] ?? 'var(--faint)'}`}></span>{language}</span>
 		<span class="card-badges">
 			{commits > 0 && <span class="activity" title={`${commits} commits in the last ${ACTIVITY_DAYS} days`}>{commits} commits · {ACTIVITY_DAYS}d</span>}
 			{registry && <span class="registry">{registry.label}</span>}
@@ -54,14 +54,14 @@ const languageColors: Record<string, string> = {
 		flex-direction: column;
 		gap: 14px;
 		padding: 28px;
-		background: #fff;
-		border: 1px solid #e5e7dd;
+		background: var(--surface);
+		border: 1px solid var(--line);
 		border-radius: 12px;
 		transition: transform 0.2s ease, box-shadow 0.2s ease;
 	}
 	.project-card:hover {
 		transform: translateY(-3px);
-		box-shadow: 0 18px 40px #4559390f;
+		box-shadow: 0 18px 40px rgba(39,36,79,.08);
 	}
 	.card-top {
 		display: flex;
@@ -70,7 +70,7 @@ const languageColors: Record<string, string> = {
 		font-family: 'DM Sans', sans-serif;
 		font-size: 11px;
 		font-weight: 700;
-		color: #84957a;
+		color: var(--accent);
 	}
 	.language {
 		display: inline-flex;
@@ -89,11 +89,11 @@ const languageColors: Record<string, string> = {
 	}
 	.activity {
 		font-weight: 600;
-		color: #9aa58e;
+		color: var(--faint);
 	}
 	.registry {
-		background: #f6eedb;
-		color: #a7843f;
+		background: #fdf3d6;
+		color: #9a7313;
 		padding: 4px 9px;
 		border-radius: 20px;
 		letter-spacing: 0.5px;
@@ -110,18 +110,18 @@ const languageColors: Record<string, string> = {
 		inset: 0;
 	}
 	h3 span {
-		color: #799070;
+		color: var(--accent);
 		font-size: 17px;
 		margin-left: 4px;
 	}
 	.tagline {
 		margin: 0;
-		color: #6f7669;
+		color: var(--muted);
 		font-size: 14px;
 		line-height: 1.75;
 	}
 	.notes {
-		color: #858b80;
+		color: var(--muted);
 		font-size: 13.5px;
 		line-height: 1.85;
 	}
@@ -137,7 +137,7 @@ const languageColors: Record<string, string> = {
 	}
 	.notes :global(code) {
 		font-size: 12px;
-		background: #f1f3e9;
+		background: var(--accent-soft);
 		padding: 1px 5px;
 		border-radius: 4px;
 	}
@@ -146,15 +146,15 @@ const languageColors: Record<string, string> = {
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		background: #f1f3e9;
+		background: var(--accent-soft);
 		border-radius: 7px;
 		padding: 11px 14px;
-		color: #4a684b;
+		color: var(--navy);
 		font-size: 12.5px;
 		transition: background 0.2s;
 	}
 	.install:hover {
-		background: #e6ecdb;
+		background: #d9d9f8;
 	}
 	.install code {
 		overflow-wrap: anywhere;
@@ -180,8 +180,8 @@ const languageColors: Record<string, string> = {
 		font-family: 'DM Sans', sans-serif;
 		font-size: 10.5px;
 		font-weight: 600;
-		color: #7b866c;
-		border: 1px solid #e2e7d9;
+		color: var(--accent);
+		border: 1px solid var(--line);
 		border-radius: 20px;
 		padding: 3px 9px;
 	}
@@ -190,14 +190,14 @@ const languageColors: Record<string, string> = {
 		gap: 16px;
 		font-size: 12px;
 		font-weight: 800;
-		color: #4a684b;
+		color: var(--navy);
 	}
 	.links a {
-		border-bottom: 1px solid #b7c9ae;
+		border-bottom: 1px solid var(--sky);
 		padding-bottom: 2px;
 	}
 	.links a:hover {
-		border-color: #4a684b;
+		border-color: var(--navy);
 	}
 	@media (max-width: 480px) {
 		.project-card {
