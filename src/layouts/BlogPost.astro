@@ -6,33 +6,68 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 
-type Props = CollectionEntry<'blog'>['data'];
-const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
+type Props = CollectionEntry<'blog'>['data'] & {
+  /** Language of this page. */
+  lang?: 'en' | 'ko';
+  /** URLs of this post in each available language, including this page. */
+  versions?: { en: string; ko?: string };
+  /** For a translation: the date of the English version it follows. */
+  translatedFrom?: Date;
+};
+const { title, description, pubDate, updatedDate, heroImage, lang = 'en', versions, translatedFrom } = Astro.props;
+const ko = lang === 'ko';
+const t = ko
+  ? { back: '← 저널로 돌아가기', all: '← 모든 글', updated: '수정', eyebrow: 'JOURNAL / 한국어 번역' }
+  : { back: '← Back to journal', all: '← All notes', updated: 'Updated', eyebrow: 'JOURNAL / NOTES' };
+const alternates = versions?.ko
+  ? [
+      { hreflang: 'en', href: versions.en },
+      { hreflang: 'ko', href: versions.ko },
+      { hreflang: 'x-default', href: versions.en },
+    ]
+  : [];
+const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' }).format(d);
 ---
 <!doctype html>
-<html lang="en">
-  <head><BaseHead title={`${title} — Jihoo`} description={description} /></head>
+<html lang={lang}>
+  <head><BaseHead title={`${title} — Jihoo`} description={description} locale={ko ? 'ko_KR' : 'en_US'} alternates={alternates} /></head>
   <body>
     <Header />
     <main class="wrap article-page">
-      <a class="back-link" href="/blog/">← Back to journal</a>
+      <div class="article-top">
+        <a class="back-link" href="/blog/">{t.back}</a>
+        {versions?.ko && (
+          <nav class="lang-switch" aria-label="Language">
+            <a href={versions.en} hreflang="en" lang="en" aria-current={ko ? undefined : 'page'}>English</a>
+            <a href={versions.ko} hreflang="ko" lang="ko" aria-current={ko ? 'page' : undefined}>한국어</a>
+          </nav>
+        )}
+      </div>
       <article>
         <header class:list={['article-header', { 'has-art': heroImage }]}>
           <div>
-            <span class="eyebrow">JOURNAL / NOTES</span>
+            <span class="eyebrow">{t.eyebrow}</span>
             <h1>{title}</h1>
             <p>{description}</p>
-            <div class="article-date"><FormattedDate date={pubDate} />{updatedDate && <> · Updated <FormattedDate date={updatedDate} /></>}</div>
+            <div class="article-date">
+              {ko ? fmtKo(pubDate) : <FormattedDate date={pubDate} />}
+              {updatedDate && <> · {t.updated} {ko ? fmtKo(updatedDate) : <FormattedDate date={updatedDate} />}</>}
+            </div>
           </div>
           {heroImage && <div class="art"><div class="glow"></div><Image src={heroImage} alt="" width={480} loading="eager" /></div>}
         </header>
-        <div class="prose"><slot /></div>
+        {ko && versions && translatedFrom && (
+          <p class="translation-note">
+            이 글은 <a href={versions.en} hreflang="en">영어 원문</a>({fmtKo(translatedFrom)} 버전)을 번역한 글이에요. 내용이 다르면 원문이 기준이에요.
+          </p>
+        )}
+        <div class:list={['prose', { ko }]}><slot /></div>
       </article>
-      <a class="back-link bottom" href="/blog/">← All notes</a>
+      <a class="back-link bottom" href="/blog/">{t.all}</a>
     </main>
     <Footer />
   </body>
 </html>
 <style>
-.article-page{max-width:900px;padding-top:70px;padding-bottom:130px}.back-link{font-size:13px;color:var(--accent);font-weight:700}.back-link:hover{text-decoration:underline}.article-header{padding:50px 0 45px;border-bottom:1px solid var(--line);margin-bottom:48px}.article-header.has-art{display:grid;grid-template-columns:1fr 240px;gap:50px;align-items:center}.article-header h1{font-size:clamp(36px,5.2vw,58px);line-height:1.22;letter-spacing:-2px;margin:20px 0}.article-header p{font-size:17px;color:var(--muted);line-height:1.8}.article-date{font-family:'DM Sans',sans-serif;color:var(--faint);font-size:12px;margin-top:22px}.prose{font-size:16px;line-height:1.95;color:#38365a;max-width:780px}.prose :global(h2){font-size:29px;margin:48px 0 16px;letter-spacing:-1px;color:var(--ink)}.prose :global(h3){font-size:23px;margin:33px 0 13px;color:var(--ink)}.prose :global(a){color:var(--accent);text-decoration:underline;text-decoration-color:var(--sky);text-underline-offset:3px}.prose :global(pre){overflow-x:auto;background:var(--navy);color:#ecebff;padding:22px;border-radius:12px}.prose :global(code){background:var(--accent-soft);padding:2px 5px;border-radius:4px}.prose :global(pre code){background:none;padding:0}.prose :global(blockquote){border-left:3px solid var(--sky);margin:25px 0;padding:2px 0 2px 20px;color:var(--muted)}.prose :global(img){max-width:100%;height:auto;border-radius:9px}.prose :global(table){width:100%;display:block;overflow-x:auto}.bottom{display:inline-block;margin-top:70px}@media(max-width:700px){.article-header.has-art{grid-template-columns:1fr;gap:30px}.article-header .art{max-width:200px;order:-1}}@media(max-width:600px){.article-page{padding-top:50px;padding-bottom:85px}.article-header{padding-top:36px}.article-header h1{font-size:36px}}
+.article-page{max-width:900px;padding-top:70px;padding-bottom:130px}.back-link{font-size:13px;color:var(--accent);font-weight:700}.back-link:hover{text-decoration:underline}.article-header{padding:50px 0 45px;border-bottom:1px solid var(--line);margin-bottom:48px}.article-header.has-art{display:grid;grid-template-columns:1fr 240px;gap:50px;align-items:center}.article-header h1{font-size:clamp(36px,5.2vw,58px);line-height:1.22;letter-spacing:-2px;margin:20px 0}.article-header p{font-size:17px;color:var(--muted);line-height:1.8}.article-date{font-family:'DM Sans',sans-serif;color:var(--faint);font-size:12px;margin-top:22px}.prose{font-size:16px;line-height:1.95;color:#38365a;max-width:780px}.prose :global(h2){font-size:29px;margin:48px 0 16px;letter-spacing:-1px;color:var(--ink)}.prose :global(h3){font-size:23px;margin:33px 0 13px;color:var(--ink)}.prose :global(a){color:var(--accent);text-decoration:underline;text-decoration-color:var(--sky);text-underline-offset:3px}.prose :global(pre){overflow-x:auto;background:var(--navy);color:#ecebff;padding:22px;border-radius:12px}.prose :global(code){background:var(--accent-soft);padding:2px 5px;border-radius:4px}.prose :global(pre code){background:none;padding:0}.prose :global(blockquote){border-left:3px solid var(--sky);margin:25px 0;padding:2px 0 2px 20px;color:var(--muted)}.prose :global(img){max-width:100%;height:auto;border-radius:9px}.prose :global(table){width:100%;display:block;overflow-x:auto}.bottom{display:inline-block;margin-top:70px}.article-top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.lang-switch{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}.lang-switch a{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;color:var(--muted)}.lang-switch a:hover{color:var(--accent)}.lang-switch a[aria-current=page]{background:var(--accent-soft);color:var(--accent)}.translation-note{font-size:14px;line-height:1.8;color:var(--muted);background:var(--bg-tint);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:-16px 0 40px}.translation-note a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}.article-page:lang(ko){word-break:keep-all;overflow-wrap:break-word}@media(max-width:700px){.article-header.has-art{grid-template-columns:1fr;gap:30px}.article-header .art{max-width:200px;order:-1}}@media(max-width:600px){.article-page{padding-top:50px;padding-bottom:85px}.article-header{padding-top:36px}.article-header h1{font-size:36px}}
 </style>

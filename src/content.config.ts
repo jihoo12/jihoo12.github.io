@@ -17,6 +17,21 @@ const blog = defineCollection({
 		}),
 });
 
+// Korean translations of blog posts. The file name must match the English post's id.
+const blogKo = defineCollection({
+	loader: glob({ base: './src/content/blog-ko', pattern: '**/*.{md,mdx}' }),
+	schema: ({ image }) =>
+		z.object({
+			title: z.string(),
+			description: z.string(),
+			pubDate: z.coerce.date(),
+			updatedDate: z.coerce.date().optional(),
+			// The date of the English version this translation follows.
+			translatedFrom: z.coerce.date(),
+			heroImage: z.optional(image()),
+		}),
+});
+
 const projects = defineCollection({
 	// Hand-written project notes in `src/content/projects/`.
 	loader: glob({ base: './src/content/projects', pattern: '**/*.{md,mdx}' }),
@@ -42,4 +57,4 @@ const projects = defineCollection({
 	}),
 });
 
-export const collections = { blog, projects };
+export const collections = { blog, blogKo, projects };

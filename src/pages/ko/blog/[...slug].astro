@@ -1,0 +1,27 @@
+---
+import { type CollectionEntry, getCollection, getEntry, render } from 'astro:content';
+import BlogPost from '../../../layouts/BlogPost.astro';
+
+export async function getStaticPaths() {
+	const posts = await getCollection('blogKo');
+	return posts.map((post) => ({
+		params: { slug: post.id },
+		props: post,
+	}));
+}
+type Props = CollectionEntry<'blogKo'>;
+
+const post = Astro.props;
+// Every translation must have an English original with the same id.
+const original = await getEntry('blog', post.id);
+if (!original) throw new Error(`blog-ko/${post.id} has no English original in blog/`);
+const { Content } = await render(post);
+---
+
+<BlogPost
+	{...post.data}
+	lang="ko"
+	versions={{ en: `/blog/${post.id}/`, ko: `/ko/blog/${post.id}/` }}
+>
+	<Content />
+</BlogPost>
