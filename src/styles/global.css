@@ -128,6 +128,7 @@ h1 { font-family: var(--display); font-weight: 400; }
 .section-top h2 { font-family: var(--display); font-weight: 400; font-size: clamp(32px, 4.1vw, 50px); line-height: 1.15; margin: 8px 0 0; }
 
 @media (max-width: 850px) {
+	:root { --nix-w: clamp(120px, 34vw, 150px); }
 	.wrap { width: min(100% - 42px, 620px); }
 	.section-top { flex-direction: column; align-items: start; }
 }
