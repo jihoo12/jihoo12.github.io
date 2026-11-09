@@ -2,4 +2,36 @@
 import { Image } from 'astro:assets';
 import nap from '../assets/nixchan/nixchan-penguin-nap-01.png';
 ---
-<footer class="site-footer"><div class="wrap footer-inner"><div class="footer-left"><Image class="footer-art" src={nap} alt="Nixchan napping with a penguin" width={160} height={160} /><div><a class="footer-brand" href="/">jihoo<span>.</span></a><p>A little at a time, at my own pace.</p></div></div><div class="footer-right"><a href="/projects/">Projects ↗</a><a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="/about/">About ↗</a><span>© {new Date().getFullYear()} Jihoo. Illustrations: Nixchan.</span></div></div></footer><style>.site-footer{background:var(--navy);color:#e9e8ff;padding:52px 0}.footer-inner{display:flex;justify-content:space-between;align-items:center;gap:32px}.footer-left{display:flex;align-items:center;gap:22px}.footer-art{width:80px;height:80px;border-radius:16px;object-fit:cover}.footer-brand{font-family:'DM Sans',sans-serif;font-size:23px;font-weight:800}.footer-brand span{color:var(--star)}.footer-inner p{font-size:12px;color:#a9a7d6;margin:10px 0 0}.footer-right{display:flex;align-items:center;gap:25px;flex-wrap:wrap;font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:11px;font-weight:700;color:#c9c7f5}.footer-right a:hover{color:#fff}.footer-right span{color:#8f8dc0;font-weight:500}@media(max-width:700px){.footer-inner{flex-direction:column;align-items:start}.footer-right{gap:18px}}</style>
+<footer class="site-footer">
+	<div class="wrap footer-inner">
+		<div class="footer-left">
+			<Image class="footer-art" src={nap} alt="Nixchan napping with a penguin" width={200} height={200} />
+			<p>A little at a time,<br />at my own pace<span>.</span></p>
+		</div>
+		<div class="footer-right">
+			<nav aria-label="Footer">
+				<a href="/projects/">Projects</a>
+				<a href="/blog/">Journal</a>
+				<a href="/about/">About</a>
+				<a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+			</nav>
+			<small>© {new Date().getFullYear()} Jihoo. Illustrations: Nixchan.</small>
+		</div>
+	</div>
+</footer>
+<style>
+	.site-footer { background: var(--floor); color: #eeedff; padding: 56px 0 44px; }
+	.footer-inner { display: flex; justify-content: space-between; align-items: end; gap: 32px; }
+	.footer-left { display: flex; align-items: center; gap: 24px; }
+	.footer-art { width: 100px; height: 100px; object-fit: cover; border: 5px solid #fff; border-radius: 3px; transform: rotate(-3deg); }
+	p { margin: 0; font-family: var(--display); font-size: clamp(25px, 3.4vw, 40px); line-height: 1.15; }
+	p span { color: var(--star); }
+	.footer-right { display: grid; justify-items: end; gap: 12px; }
+	nav { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 15px; font-weight: 800; }
+	nav a:hover { color: var(--star); }
+	small { color: #b3b1dc; font-size: 13px; }
+	@media (max-width: 760px) {
+		.footer-inner { flex-direction: column; align-items: start; }
+		.footer-right { justify-items: start; }
+	}
+</style>

@@ -4,8 +4,6 @@
 const SEAT = 0.75; // Where she sits, as a fraction of her height.
 const IDLE_MS = 20_000;
 const MAX_LEAN = 3.2;
-const NIGHT_FROM = 22;
-const NIGHT_UNTIL = 6;
 // While searching she keeps at it for longer before nodding off.
 const SEARCH_IDLE_MS = 60_000;
 // Where she can sit along a perch, from its left edge to its right edge.
@@ -52,6 +50,7 @@ class NixChan extends HTMLElement {
 	private timers: number[] = [];
 	private blinkTimer = 0;
 	private searchTimer = 0;
+	private travelTimer = 0;
 	private frameId = 0;
 	private resize?: ResizeObserver;
 	private seen?: IntersectionObserver;
@@ -69,7 +68,7 @@ class NixChan extends HTMLElement {
 		this.querySelectorAll<HTMLElement>('[data-body]').forEach((el) => this.bodies.set(el.dataset.body as Pose, el));
 
 		this.perches = Array.from(document.querySelectorAll<HTMLElement>(this.dataset.perch ?? ''));
-		this.current = this.perches[0] ?? null;
+		this.current = this.startPerch();
 		if (!this.current) return;
 		if (this.dataset.pose === 'search') this.along = SEARCH_SPOTS[2];
 
@@ -100,6 +99,7 @@ class NixChan extends HTMLElement {
 		this.timers.forEach(clearInterval);
 		clearTimeout(this.blinkTimer);
 		clearTimeout(this.searchTimer);
+		clearTimeout(this.travelTimer);
 		cancelAnimationFrame(this.frameId);
 		this.resize?.disconnect();
 		this.seen?.disconnect();
@@ -136,12 +136,49 @@ class NixChan extends HTMLElement {
 		canHop.addEventListener(
 			'change',
 			() => {
-				if (!canHop.matches) this.current = this.perches[0];
+				if (!canHop.matches) this.current = this.startPerch();
 				this.settle();
 			},
 			{ signal },
 		);
+		window.addEventListener('site-time', () => this.applyPose(true), { signal });
+		if (this.dataset.travel !== undefined) {
+			window.addEventListener(
+				'scroll',
+				() => {
+					clearTimeout(this.travelTimer);
+					this.travelTimer = window.setTimeout(() => this.follow(), 140);
+				},
+				{ signal, passive: true },
+			);
+		}
 		this.querySelector('[data-nix="poke"]')?.addEventListener('click', () => this.poke(), { signal });
+	}
+
+	private startPerch() {
+		return this.reachable().find((perch) => perch.dataset.nixStart !== undefined) ?? this.reachable()[0] ?? null;
+	}
+
+	// On narrow screens cards stack, so only perches with headroom above them count.
+	private reachable() {
+		if (matchMedia('(min-width: 851px)').matches) return this.perches;
+		return this.perches.filter((perch) => perch.dataset.nixPhone !== undefined);
+	}
+
+	// When her perch scrolls away, she moves to the perch nearest the middle of the screen.
+	private follow() {
+		if (this.busy || this.asleep || !this.current) return;
+		const seatY = (perch: HTMLElement) => {
+			const box = perch.getBoundingClientRect();
+			return box.top + Number(perch.dataset.nixSeat ?? 0) * box.height;
+		};
+		const headroom = this.offsetHeight * SEAT;
+		const fits = (y: number) => y > headroom * 0.6 && y < innerHeight - 40;
+		if (fits(seatY(this.current))) return;
+		const target = this.reachable()
+			.filter((perch) => fits(seatY(perch)))
+			.sort((a, b) => Math.abs(seatY(a) - innerHeight * 0.55) - Math.abs(seatY(b) - innerHeight * 0.55))[0];
+		if (target) this.hop(target);
 	}
 
 	private place(x: number, y: number) {
@@ -152,11 +189,10 @@ class NixChan extends HTMLElement {
 	private spot(card: HTMLElement) {
 		const stage = this.offsetParent!.getBoundingClientRect();
 		const box = card.getBoundingClientRect();
-		const x =
-			this.along === null
-				? box.right - stage.left - this.offsetWidth - 14
-				: box.left - stage.left + this.along * (box.width - this.offsetWidth);
-		return { x, y: box.top - stage.top - this.offsetHeight * SEAT };
+		const along = this.along ?? (card.dataset.nixAlong ? Number(card.dataset.nixAlong) : null);
+		const x = along === null ? box.right - stage.left - this.offsetWidth - 14 : box.left - stage.left + along * (box.width - this.offsetWidth);
+		const seat = box.top + Number(card.dataset.nixSeat ?? 0) * box.height;
+		return { x, y: seat - stage.top - this.offsetHeight * SEAT };
 	}
 
 	private settle() {
@@ -194,20 +230,23 @@ class NixChan extends HTMLElement {
 		if (this.still) return;
 		this.busy = true;
 		const at = (p: { x: number; y: number }) => `translate(${p.x}px, ${p.y}px)`;
-		this.animate([{ transform: at(from) }, { transform: at(to) }], { duration: 470, delay: 90, easing: 'linear', fill: 'backwards' });
+		const distance = Math.hypot(to.x - from.x, to.y - from.y);
+		const duration = Math.min(820, 470 + distance * 0.25);
+		const height = Math.min(170, 88 + distance * 0.08);
+		this.animate([{ transform: at(from) }, { transform: at(to) }], { duration, delay: 90, easing: 'linear', fill: 'backwards' });
 		this.lift.animate(
 			[
 				{ transform: 'translateY(0)', easing: 'cubic-bezier(.2, .7, .5, 1)' },
-				{ transform: 'translateY(-88px)', offset: 0.5, easing: 'cubic-bezier(.5, 0, .8, .4)' },
+				{ transform: `translateY(${-height}px)`, offset: 0.5, easing: 'cubic-bezier(.5, 0, .8, .4)' },
 				{ transform: 'translateY(0)' },
 			],
-			{ duration: 470, delay: 90 },
+			{ duration, delay: 90 },
 		);
 		this.bounce();
 		window.setTimeout(() => {
 			this.busy = false;
 			this.settle();
-		}, 660);
+		}, duration + 190);
 	}
 
 	private queueSearch() {
@@ -225,9 +264,7 @@ class NixChan extends HTMLElement {
 	private wantedPose(): Pose {
 		if (this.asleep) return 'idle';
 		if (this.dataset.pose === 'search') return 'search';
-		const forced = new URLSearchParams(location.search).get('nix-hour');
-		const hour = forced === null ? new Date().getHours() : Number(forced);
-		return hour >= NIGHT_FROM || hour < NIGHT_UNTIL ? 'coffee' : 'idle';
+		return document.documentElement.dataset.time === 'night' ? 'coffee' : 'idle';
 	}
 
 	private applyPose(animated: boolean) {
