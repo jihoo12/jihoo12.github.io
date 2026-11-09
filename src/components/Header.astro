@@ -2,6 +2,77 @@
 import { Image } from 'astro:assets';
 import face from '../assets/nixchan/nixchan-avatar.png';
 const current = Astro.url.pathname;
+const links = [
+	{ label: 'Home', href: '/', active: current === '/', drop: 26 },
+	{ label: 'Projects', href: '/projects/', active: current.startsWith('/projects'), drop: 44 },
+	{ label: 'Journal', href: '/blog/', active: current.startsWith('/blog') || current.startsWith('/ko/blog'), drop: 18 },
+	{ label: 'About', href: '/about/', active: current.startsWith('/about'), drop: 36 },
+];
 ---
-<header class="site-header"><div class="wrap nav-wrap"><a class="brand" href="/" aria-label="Jihoo home"><Image class="brand-mark" src={face} alt="" width={64} height={64} loading="eager" /> jihoo<span class="brand-dot">.</span></a><nav aria-label="Main navigation"><a class:list={{active:current==='/'}} href="/">Home</a><a class:list={{active:current.startsWith('/projects')}} href="/projects/">Projects</a><a class:list={{active:current.startsWith('/blog')}} href="/blog/">Journal</a><a class:list={{active:current.startsWith('/about')}} href="/about/">About</a></nav><a class="github-link" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></header>
-<style>.site-header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}.nav-wrap{height:80px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:10px;font-family:'DM Sans',sans-serif;font-size:23px;font-weight:700;letter-spacing:-1.2px}.brand-mark{width:34px;height:34px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--line)}.brand-dot{color:var(--star);margin-left:-9px}.site-header nav{display:flex;gap:42px;margin-left:38px}.site-header nav a{font-family:'DM Sans',sans-serif;color:var(--faint);font-size:12px;font-weight:700;transition:color .2s}.site-header nav a:hover,.site-header nav a.active{color:var(--navy)}.site-header nav a.active{box-shadow:inset 0 -2px 0 var(--sky);padding-bottom:4px}.github-link{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--surface);padding:11px 16px;border-radius:8px}.github-link span{margin-left:10px;color:var(--accent)}@media(max-width:600px){.nav-wrap{height:68px}.brand{font-size:20px}.brand-mark{width:28px;height:28px}.site-header nav{gap:14px;margin-left:0}.site-header nav a{font-size:11px}.github-link{display:none}}</style>
+<header class="signs wrap">
+	<a class="sign brand" style="--drop:30px" href="/" aria-label="Jihoo home"><Image class="brand-mark" src={face} alt="" width={64} height={64} loading="eager" /><span class="brand-word">jihoo<span class="period">.</span></span></a>
+	<nav aria-label="Main navigation">
+		{links.map((link) => (
+			<a class:list={['sign', { active: link.active }]} style={`--drop:${link.drop}px`} href={link.href} aria-current={link.active ? 'page' : undefined}>{link.label}</a>
+		))}
+	</nav>
+	<div class="right">
+		<a class="sign github" style="--drop:22px" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+		<button class="sign clock" style="--drop:40px" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
+	</div>
+</header>
+<script>
+	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
+	button?.addEventListener('click', () => {
+		const next = document.documentElement.dataset.time === 'night' ? 'day' : 'night';
+		document.documentElement.dataset.time = next;
+		try {
+			localStorage.setItem('time', next);
+		} catch {
+			// The choice just won't be remembered.
+		}
+		window.dispatchEvent(new Event('site-time'));
+	});
+</script>
+<style>
+	.signs { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; position: relative; z-index: 10; }
+	nav, .right { display: flex; align-items: flex-start; gap: 12px; }
+	.sign {
+		position: relative; display: inline-flex; align-items: center; gap: 8px;
+		margin-top: var(--drop); padding: 8px 15px; border: 0; border-radius: 9px;
+		background: var(--surface); color: var(--ink); font-family: var(--sans); font-size: 15px; font-weight: 800;
+		box-shadow: 0 4px 0 var(--edge); cursor: pointer;
+		transform-origin: 50% calc(var(--drop) * -1);
+	}
+	.sign::before, .sign::after {
+		content: ''; position: absolute; bottom: 100%; width: 2px; height: var(--drop); background: var(--string);
+	}
+	.sign::before { left: 22%; }
+	.sign::after { right: 22%; }
+	.sign:hover { animation: swing .9s ease-in-out; }
+	.sign.active { background: var(--star); color: #1c1a3e; box-shadow: 0 4px 0 #b98c22; }
+	.brand { padding: 7px 14px 7px 7px; }
+	.brand-word { font-family: var(--display); font-size: 21px; font-weight: 400; line-height: 1; }
+	.brand-mark { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+	.clock { width: 42px; height: 40px; justify-content: center; padding: 0; font-size: 20px; color: var(--accent); }
+	.moon { display: none; }
+	:global(:root[data-time='night']) .sun { display: none; }
+	:global(:root[data-time='night']) .moon { display: inline; }
+	@keyframes swing {
+		0%, 100% { transform: rotate(0); }
+		25% { transform: rotate(2.6deg); }
+		60% { transform: rotate(-1.8deg); }
+		85% { transform: rotate(.7deg); }
+	}
+	@media (max-width: 760px) {
+		.github { display: none; }
+		nav, .right { gap: 6px; }
+		.signs { gap: 6px; }
+		.sign { padding: 6px 9px; font-size: 13px; }
+		.brand { padding: 4px; }
+		.brand-word { display: none; }
+		.brand-mark { width: 30px; height: 30px; }
+		.clock { width: 34px; height: 33px; padding: 0; font-size: 17px; }
+	}
+	@media (prefers-reduced-motion: reduce) { .sign:hover { animation: none; } }
+</style>

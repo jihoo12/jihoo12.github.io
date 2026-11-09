@@ -11,11 +11,13 @@ import eyesSleepy from '../assets/nixchan/live/eyes-sleepy.webp';
 interface Props {
 	// CSS selector for the elements she can sit on. Her offset parent is the stage.
 	perch: string;
-	// "auto" follows the visitor's clock; "search" hunts along the perch with a magnifying glass.
+	// "auto" follows the site's day and night; "search" hunts along the perch with a magnifying glass.
 	pose?: 'auto' | 'search';
+	// Move to a nearby perch when the current one scrolls away.
+	travel?: boolean;
 }
 
-const { perch, pose = 'auto' } = Astro.props;
+const { perch, pose = 'auto', travel = false } = Astro.props;
 const bodies = [
 	['idle', bodyIdle.src],
 	pose === 'search' ? ['search', bodySearch.src] : ['coffee', bodyCoffee.src],
@@ -23,7 +25,7 @@ const bodies = [
 // The lens covers her other eye while searching, so only one eye blinks.
 const blink = pose === 'search' ? eyesClosedRight : eyesClosed;
 ---
-<nix-chan data-perch={perch} data-pose={pose}>
+<nix-chan data-perch={perch} data-pose={pose} data-travel={travel ? '' : undefined}>
 	<div class="nix-layer" data-nix="lift">
 		<div class="nix-layer nix-squash" data-nix="squash">
 			<div class="nix-layer nix-face" data-nix="face">
@@ -95,7 +97,7 @@ const blink = pose === 'search' ? eyesClosedRight : eyesClosed;
 		left: 67%;
 		top: 10%;
 		color: var(--sky);
-		font-family: 'DM Sans', sans-serif;
+		font-family: var(--sans);
 		font-size: 21px;
 		font-weight: 700;
 		pointer-events: none;
