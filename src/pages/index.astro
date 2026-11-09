@@ -25,8 +25,8 @@ const skyline = picks.map((pick, i) => ({ ...pick, rise: span > 0 ? Math.round((
 // Where the top of each glyph sits inside its box, as a fraction of the box height.
 const letters = [
   { char: 'j', seat: 0.185 },
-  { char: 'i', seat: 0.185 },
-  { char: 'h', seat: 0.153 },
+  { char: 'i', seat: 0.185, breakAfter: true },
+  { char: 'h', seat: 0.153, phone: true },
   { char: 'o', seat: 0.404 },
   { char: 'o', seat: 0.404, start: true },
 ];
@@ -41,8 +41,11 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
     <main>
       <section class="hero wrap" aria-label="Introduction">
         <h1 class="word" aria-label="Jihoo">
-          {letters.map(({ char, seat, start }) => (
-            <span class="letter" aria-hidden="true" data-nix-perch data-nix-along="0.5" data-nix-seat={seat} data-nix-start={start ? '' : undefined} data-nix-phone={start ? '' : undefined}>{char}</span>
+          {letters.map(({ char, seat, start, phone, breakAfter }) => (
+            <Fragment>
+              <span class="letter" aria-hidden="true" data-nix-perch data-nix-along="0.5" data-nix-seat={seat} data-nix-start={start ? '' : undefined} data-nix-phone={phone ? '' : undefined}>{char}</span>
+              {breakAfter && <span class="word-break" aria-hidden="true"></span>}
+            </Fragment>
           ))}<span class="dot" aria-hidden="true">.</span>
         </h1>
         <span class="plank hero-plank"></span>
@@ -57,7 +60,7 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
 
       <section class="space wrap" aria-labelledby="space-title">
         <div class="art"><Image src={thinkingArt} alt="Nixchan thinking in front of a chalkboard of math symbols" width={600} /></div>
-        <div>
+        <div class="space-text">
           <h2 id="space-title" class="display">A little curiosity goes a long way<span class="period">.</span></h2>
           <p>This is my little space to share projects, lessons from building things, and the occasional thought from everyday life. One small step at a time, at my own pace.</p>
           <a class="text-link" href="/about/">Get to know me <span aria-hidden="true">→</span></a>
@@ -67,17 +70,17 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
       <section class="builds wrap" aria-labelledby="projects-title">
         <div class="builds-head">
           <h2 id="projects-title" class="display">Things I'm building<span class="period">.</span></h2>
-          {span > 0 && <p>Taller means busier in the last {ACTIVITY_DAYS} days.</p>}
+          {span > 0 && <p><span class="cap-wide">Taller</span><span class="cap-narrow">Longer</span> means busier in the last {ACTIVITY_DAYS} days.</p>}
           <a class="text-link" href="/projects/">See all projects <span aria-hidden="true">→</span></a>
         </div>
         <div class="skyline">
           {skyline.map(({ data, commits, rise }, i) => (
-            <div class="stand" style={`--rise:${rise}px`} data-nix-perch data-nix-along="0.95" data-nix-phone={i === 0 ? '' : undefined}>
+            <div class="stand" style={`--rise:${rise}px;--busy:${(rise / MAX_RISE).toFixed(3)}`} data-nix-perch data-nix-along="0.95" data-nix-phone={i === skyline.length - 1 ? '' : undefined}>
               <ProjectCard project={data} commits={commits} />
             </div>
           ))}
         </div>
-        <span class="plank"></span>
+        <span class="plank builds-plank"></span>
       </section>
 
       <section class="notes wrap" aria-labelledby="notes-title">
@@ -119,6 +122,8 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
   .letter { display: block; transition: transform .18s cubic-bezier(.3, 1.6, .5, 1); }
   .letter:hover { transform: translateY(-2.5%); }
   .dot { color: var(--star); text-shadow: none; }
+  .word-break { display: none; }
+  .cap-narrow { display: none; }
   .hero-plank { position: relative; z-index: -1; margin-top: calc(var(--word) * -.057); }
   .intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 32px; margin-top: 30px; padding-left: calc(var(--word) * .36); }
   .intro p { margin: 0; max-width: 34em; font-size: clamp(18px, 2vw, 23px); font-weight: 700; line-height: 1.45; }
@@ -165,17 +170,45 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
     85% { transform: rotate(.35deg); }
   }
 
+  /* Phones get their own composition: the wordmark stacks so it can stay huge. */
   @media (max-width: 850px) {
-    .intro { flex-direction: column; gap: 20px; margin-top: calc(var(--word) * .28); padding-left: 0; }
-    .space { grid-template-columns: 1fr; }
-    .space .art { max-width: 240px; }
-    .builds-head { position: static; width: auto; }
-    .skyline { grid-template-columns: 1fr; padding-top: var(--nix-above); }
-    .stand { min-height: 0; }
-    .stand :global(.project-card) { border-radius: 16px; }
+    .hero { --word: min(43vw, 270px); padding-top: 34px; }
+    .word { flex-wrap: wrap; justify-content: flex-end; padding-inline: 0; }
+    .word-break { display: block; flex-basis: 100%; height: 0; }
+    .letter:nth-of-type(n + 4), .dot { margin-top: -.16em; }
+    .hero-plank { height: 12px; }
+    .intro { flex-direction: column; gap: 20px; margin-top: 24px; padding-left: 0; }
+    .intro p { font-size: 20px; }
+    .keys { width: 100%; }
+    .keys .button { flex: 1 1 0; justify-content: center; white-space: nowrap; padding-inline: 12px; }
+
+    .space { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px 22px; align-items: start; padding-top: 76px; }
+    .space-text { display: contents; }
+    .space h2 { grid-column: 1 / -1; grid-row: 1; }
+    .space p { grid-column: 1; grid-row: 2; margin: 0; font-size: 16.5px; }
+    .space .art { grid-column: 2; grid-row: 2 / span 2; margin-top: 8px; }
+    .space .text-link { grid-column: 1; grid-row: 3; justify-self: start; }
+
+    .builds { padding-top: 84px; }
+    .builds-head { position: static; width: auto; padding-right: calc(var(--nix-w) + 6px); }
+    .builds-head p { font-size: 15px; line-height: 1.35; }
+    .cap-wide { display: none; }
+    .cap-narrow { display: inline; }
+    .builds-plank { display: none; }
+    /* Busiest first, and longer rather than taller, so the steps survive one column. */
+    .skyline { display: flex; flex-direction: column-reverse; gap: 16px; padding-top: 12px; }
+    .stand { min-height: 0; width: calc(74% + var(--busy) * 26%); }
+    .stand:hover { transform: none; }
+    .stand :global(.project-card) { border-radius: 16px; box-shadow: 0 6px 0 var(--edge); padding: 22px; }
+    .stand :global(.project-card:hover) { box-shadow: 0 6px 0 var(--edge); }
+    .stand :global(.card-top) { padding-right: calc(var(--nix-w) * .95); }
+
+    .notes { padding-top: 76px; padding-bottom: 90px; }
     .notes-head { flex-direction: column; align-items: start; justify-content: end; padding-right: calc(var(--nix-w) + 10px); }
     .hung { grid-template-columns: 1fr; gap: 0; }
-    .notes { padding-bottom: 90px; }
+    .sheet { --drop: 26px !important; transform-origin: 50% -26px; }
+    .sheet:nth-child(odd) { margin-right: 9%; }
+    .sheet:nth-child(even) { margin-left: 9%; }
   }
   @media (prefers-reduced-motion: reduce) { .sheet:hover { animation: none; } .letter:hover, .stand:hover { transform: none; } }
 </style>

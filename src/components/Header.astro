@@ -13,7 +13,7 @@ const links = [
 	<a class="sign brand" style="--drop:30px" href="/" aria-label="Jihoo home"><Image class="brand-mark" src={face} alt="" width={64} height={64} loading="eager" /><span class="brand-word">jihoo<span class="period">.</span></span></a>
 	<nav aria-label="Main navigation">
 		{links.map((link) => (
-			<a class:list={['sign', { active: link.active }]} style={`--drop:${link.drop}px`} href={link.href} aria-current={link.active ? 'page' : undefined}>{link.label}</a>
+			<a class:list={['sign', { active: link.active, 'home-link': link.href === '/' }]} style={`--drop:${link.drop}px`} href={link.href} aria-current={link.active ? 'page' : undefined}>{link.label}</a>
 		))}
 	</nav>
 	<div class="right">
@@ -66,13 +66,14 @@ const links = [
 	}
 	@media (max-width: 760px) {
 		.github { display: none; }
-		nav, .right { gap: 6px; }
-		.signs { gap: 6px; }
-		.sign { padding: 6px 9px; font-size: 13px; }
-		.brand { padding: 4px; }
+		.home-link { display: none; }
+		nav, .right { gap: 8px; }
+		.signs { gap: 8px; }
+		.sign { padding: 8px 12px; font-size: 15px; }
+		.brand { padding: 5px; }
 		.brand-word { display: none; }
-		.brand-mark { width: 30px; height: 30px; }
-		.clock { width: 34px; height: 33px; padding: 0; font-size: 17px; }
+		.brand-mark { width: 32px; height: 32px; }
+		.clock { width: 40px; height: 38px; padding: 0; font-size: 19px; }
 	}
 	@media (prefers-reduced-motion: reduce) { .sign:hover { animation: none; } }
 </style>
