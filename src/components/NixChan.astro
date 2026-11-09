@@ -1,0 +1,112 @@
+---
+import bodyIdle from '../assets/nixchan/live/body-idle.webp';
+import bodyCoffee from '../assets/nixchan/live/body-coffee.webp';
+import bodySearch from '../assets/nixchan/live/body-search.webp';
+import legL from '../assets/nixchan/live/leg-l.webp';
+import legR from '../assets/nixchan/live/leg-r.webp';
+import eyesClosed from '../assets/nixchan/live/eyes-closed.webp';
+import eyesClosedRight from '../assets/nixchan/live/eyes-closed-right.webp';
+import eyesSleepy from '../assets/nixchan/live/eyes-sleepy.webp';
+
+interface Props {
+	// CSS selector for the elements she can sit on. Her offset parent is the stage.
+	perch: string;
+	// "auto" follows the visitor's clock; "search" hunts along the perch with a magnifying glass.
+	pose?: 'auto' | 'search';
+}
+
+const { perch, pose = 'auto' } = Astro.props;
+const bodies = [
+	['idle', bodyIdle.src],
+	pose === 'search' ? ['search', bodySearch.src] : ['coffee', bodyCoffee.src],
+];
+// The lens covers her other eye while searching, so only one eye blinks.
+const blink = pose === 'search' ? eyesClosedRight : eyesClosed;
+---
+<nix-chan data-perch={perch} data-pose={pose}>
+	<div class="nix-layer" data-nix="lift">
+		<div class="nix-layer nix-squash" data-nix="squash">
+			<div class="nix-layer nix-face" data-nix="face">
+			<div class="nix-layer nix-leg-l" data-nix="leg-l"><img src={legL.src} alt="" draggable="false" /></div>
+			<div class="nix-layer nix-leg-r" data-nix="leg-r"><img src={legR.src} alt="" draggable="false" /></div>
+			<div class="nix-layer nix-upper" data-nix="upper">
+				{bodies.map(([name, src]) => <img class="nix-swap" data-body={name} src={src} alt="" draggable="false" />)}
+				<img class="nix-swap" data-nix="eyes-closed" src={blink.src} alt="" draggable="false" />
+				<img class="nix-swap" data-nix="eyes-sleepy" src={eyesSleepy.src} alt="" draggable="false" />
+			</div>
+			<button class="nix-poke" data-nix="poke" type="button" aria-label="Pet Nixchan"></button>
+			</div>
+		</div>
+	</div>
+</nix-chan>
+
+<script>
+	import '../lib/nix-chan';
+</script>
+
+<style is:global>
+	nix-chan {
+		position: absolute;
+		left: 0;
+		top: 0;
+		z-index: 5;
+		display: block;
+		width: var(--nix-w);
+		aspect-ratio: 525 / 890;
+		pointer-events: none;
+		visibility: hidden;
+		will-change: transform;
+	}
+	nix-chan.ready { visibility: visible; }
+	nix-chan .nix-layer { position: absolute; inset: 0; }
+	nix-chan .nix-squash { transform-origin: 38% 75%; }
+	nix-chan .nix-face { transition: transform .16s; }
+	nix-chan .nix-face.flip { transform: scaleX(-1); }
+	nix-chan .nix-leg-l { transform-origin: 28.6% 71.3%; }
+	nix-chan .nix-leg-r { transform-origin: 46.7% 71.3%; }
+	nix-chan .nix-upper { transform-origin: 38.1% 74.7%; }
+	nix-chan img {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+		max-width: none;
+		user-select: none;
+	}
+	nix-chan .nix-swap { opacity: 0; }
+	nix-chan .nix-swap.on { opacity: 1; }
+	nix-chan .nix-poke {
+		position: absolute;
+		left: 8%;
+		top: 3%;
+		width: 84%;
+		height: 69%;
+		padding: 0;
+		border: 0;
+		border-radius: 42%;
+		background: none;
+		cursor: pointer;
+		pointer-events: auto;
+	}
+	nix-chan .nix-poke:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+	nix-chan .nix-fx {
+		position: absolute;
+		left: 67%;
+		top: 10%;
+		color: var(--sky);
+		font-family: 'DM Sans', sans-serif;
+		font-size: 21px;
+		font-weight: 700;
+		pointer-events: none;
+		animation: nix-rise 1.9s ease-out forwards;
+	}
+	nix-chan .nix-fx.huh { color: var(--accent); font-size: 27px; animation-duration: 1.2s; }
+	nix-chan .nix-fx.heart { color: #ef7fa4; font-size: 25px; animation-duration: 1.1s; }
+	nix-chan .nix-fx.bang { color: var(--star); font-size: 31px; animation-duration: .7s; }
+	@keyframes nix-rise {
+		0% { opacity: 0; transform: translate(0, 8px) scale(.7); }
+		18% { opacity: 1; }
+		100% { opacity: 0; transform: translate(24px, -58px) scale(1.25); }
+	}
+</style>

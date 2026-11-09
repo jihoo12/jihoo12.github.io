@@ -16,6 +16,9 @@
 	--sky: #7ea4f5;
 	--star: #f2c14e;
 	--glow: #c9c6ff;
+	--nix-w: clamp(118px, 13vw, 160px);
+	/* Headroom she needs above whatever she sits on. */
+	--nix-above: calc(var(--nix-w) * 1.272 + 14px);
 
 	font-family: 'Manrope', 'Noto Sans KR', sans-serif;
 	color: var(--ink);
