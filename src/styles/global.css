@@ -73,7 +73,20 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; background: var(--bg); line-height: 1.6; transition: background-color .5s; }
+html { transition: background-color .5s; }
+body { margin: 0; min-width: 320px; line-height: 1.6; }
+
+/* The wall itself: lit from above by day, a sky of stars by night. Both stay put while the page scrolls. */
+body::before, body::after { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; transition: opacity .5s; }
+body::before { background: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, .55), transparent 70%); }
+body::after { opacity: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='790' height='790'%3E%3Cg fill='white'%3E%3Ccircle cx='469' cy='579' r='1.4' opacity='0.90'/%3E%3Ccircle cx='526' cy='607' r='0.9' opacity='0.50'/%3E%3Ccircle cx='530' cy='493' r='0.9' opacity='0.35'/%3E%3Ccircle cx='463' cy='316' r='0.9' opacity='0.35'/%3E%3Ccircle cx='557' cy='716' r='0.7' opacity='0.90'/%3E%3Ccircle cx='469' cy='675' r='0.9' opacity='0.35'/%3E%3Ccircle cx='547' cy='70' r='0.7' opacity='0.35'/%3E%3Ccircle cx='200' cy='253' r='0.7' opacity='0.90'/%3E%3Ccircle cx='340' cy='457' r='0.9' opacity='0.50'/%3E%3Ccircle cx='661' cy='307' r='1.4' opacity='0.35'/%3E%3Ccircle cx='684' cy='93' r='1.4' opacity='0.70'/%3E%3Ccircle cx='422' cy='570' r='0.7' opacity='0.70'/%3E%3Ccircle cx='328' cy='782' r='0.9' opacity='0.70'/%3E%3Ccircle cx='36' cy='77' r='0.7' opacity='0.90'/%3E%3Ccircle cx='116' cy='303' r='1.4' opacity='0.35'/%3E%3Ccircle cx='23' cy='707' r='0.7' opacity='0.50'/%3E%3Ccircle cx='220' cy='59' r='1.4' opacity='0.90'/%3E%3Ccircle cx='731' cy='412' r='1.4' opacity='0.35'/%3E%3Ccircle cx='585' cy='650' r='0.9' opacity='0.70'/%3E%3Ccircle cx='350' cy='95' r='1.1' opacity='0.70'/%3E%3Ccircle cx='21' cy='425' r='0.7' opacity='0.50'/%3E%3Ccircle cx='258' cy='729' r='0.7' opacity='0.35'/%3E%3Ccircle cx='67' cy='482' r='1.4' opacity='0.50'/%3E%3Ccircle cx='704' cy='578' r='0.9' opacity='0.90'/%3E%3Ccircle cx='527' cy='201' r='0.9' opacity='0.90'/%3E%3Ccircle cx='665' cy='398' r='0.7' opacity='0.90'/%3E%3C/g%3E%3Cg fill='%23f2c14e'%3E%3Cpath d='M450 231Q450 237 456 237Q450 237 450 243Q450 237 444 237Q450 237 450 231Z'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 790px 790px; }
+:root[data-time='night'] body::before {
+	background:
+		radial-gradient(55% 50% at 90% -6%, rgba(143, 176, 247, .26), transparent 70%),
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='530' height='530'%3E%3Cg fill='white'%3E%3Ccircle cx='6' cy='282' r='1.1' opacity='0.35'/%3E%3Ccircle cx='221' cy='197' r='1.4' opacity='0.35'/%3E%3Ccircle cx='49' cy='155' r='0.9' opacity='0.90'/%3E%3Ccircle cx='270' cy='15' r='1.1' opacity='0.70'/%3E%3Ccircle cx='401' cy='81' r='0.7' opacity='0.35'/%3E%3Ccircle cx='219' cy='254' r='0.7' opacity='0.70'/%3E%3Ccircle cx='386' cy='470' r='0.9' opacity='0.90'/%3E%3Ccircle cx='144' cy='401' r='0.9' opacity='0.50'/%3E%3Ccircle cx='324' cy='239' r='0.9' opacity='0.50'/%3E%3Ccircle cx='168' cy='207' r='1.4' opacity='0.90'/%3E%3Ccircle cx='86' cy='437' r='0.7' opacity='0.35'/%3E%3Ccircle cx='117' cy='45' r='1.1' opacity='0.50'/%3E%3Ccircle cx='407' cy='269' r='1.4' opacity='0.90'/%3E%3Ccircle cx='306' cy='185' r='0.7' opacity='0.50'/%3E%3Ccircle cx='239' cy='496' r='0.7' opacity='0.70'/%3E%3Ccircle cx='223' cy='214' r='0.7' opacity='0.35'/%3E%3Ccircle cx='281' cy='427' r='1.4' opacity='0.50'/%3E%3Ccircle cx='67' cy='53' r='0.9' opacity='0.70'/%3E%3Ccircle cx='383' cy='140' r='0.7' opacity='0.70'/%3E%3Ccircle cx='147' cy='467' r='1.1' opacity='0.50'/%3E%3Ccircle cx='41' cy='24' r='1.4' opacity='0.70'/%3E%3Ccircle cx='325' cy='40' r='0.7' opacity='0.35'/%3E%3Ccircle cx='499' cy='74' r='1.1' opacity='0.70'/%3E%3Ccircle cx='145' cy='80' r='0.7' opacity='0.90'/%3E%3C/g%3E%3Cg fill='%23f2c14e'%3E%3C/g%3E%3C/svg%3E") 0 0 / 530px 530px;
+}
+:root[data-time='night'] body::after { opacity: 1; animation: twinkle 5s ease-in-out infinite alternate; }
+@keyframes twinkle { from { opacity: .25; } to { opacity: 1; } }
 a { color: inherit; text-decoration: none; }
 img { max-width: 100%; height: auto; }
 button, a { -webkit-tap-highlight-color: transparent; }
@@ -137,6 +150,6 @@ h1 { font-family: var(--display); font-weight: 400; }
 	.art img { border-width: 7px; }
 }
 @media (prefers-reduced-motion: reduce) {
-	html { scroll-behavior: auto; }
-	body { transition: none; }
+	html { scroll-behavior: auto; transition: none; }
+	:root[data-time='night'] body::after { animation: none; }
 }

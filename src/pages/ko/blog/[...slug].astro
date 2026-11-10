@@ -15,12 +15,13 @@ const post = Astro.props;
 // Every translation must have an English original with the same id.
 const original = await getEntry('blog', post.id);
 if (!original) throw new Error(`blog-ko/${post.id} has no English original in blog/`);
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
 ---
 
 <BlogPost
 	{...post.data}
 	lang="ko"
+	headings={headings}
 	versions={{ en: `/blog/${post.id}/`, ko: `/ko/blog/${post.id}/` }}
 >
 	<Content />

@@ -1,5 +1,6 @@
 ---
 import { Image } from 'astro:assets';
+import type { MarkdownHeading } from 'astro';
 import type { CollectionEntry } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
@@ -13,12 +14,17 @@ type Props = CollectionEntry<'blog'>['data'] & {
   versions?: { en: string; ko?: string };
   /** For a translation: the date of the English version it follows. */
   translatedFrom?: Date;
+  /** Headings of the rendered post, for the table of contents. */
+  headings?: MarkdownHeading[];
 };
-const { title, description, pubDate, updatedDate, heroImage, lang = 'en', versions, translatedFrom } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, lang = 'en', versions, translatedFrom, headings = [] } = Astro.props;
 const ko = lang === 'ko';
 const t = ko
-  ? { back: '← 저널로 돌아가기', all: '← 모든 글', updated: '수정', eyebrow: 'JOURNAL / 한국어 번역' }
-  : { back: '← Back to journal', all: '← All notes', updated: 'Updated', eyebrow: 'JOURNAL / NOTES' };
+  ? { back: '← 저널로 돌아가기', all: '← 모든 글', updated: '수정', eyebrow: 'JOURNAL / 한국어 번역', toc: '이 글의 내용' }
+  : { back: '← Back to journal', all: '← All notes', updated: 'Updated', eyebrow: 'JOURNAL / NOTES', toc: 'On this page' };
+// A contents list only earns its place on posts long enough to get lost in.
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const showToc = toc.length >= 3;
 const alternates = versions?.ko
   ? [
       { hreflang: 'en', href: versions.en },
@@ -32,6 +38,7 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
 <html lang={lang}>
   <head><BaseHead title={`${title} — Jihoo`} description={description} locale={ko ? 'ko_KR' : 'en_US'} alternates={alternates} /></head>
   <body>
+    <div class="progress" data-progress aria-hidden="true"></div>
     <Header />
     <main class="wrap article-page">
       <div class="article-top">
@@ -61,13 +68,125 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
             이 글은 <a href={versions.en} hreflang="en">영어 원문</a>({fmtKo(translatedFrom)} 버전)을 번역한 글이에요. 내용이 다르면 원문이 기준이에요.
           </p>
         )}
-        <div class:list={['prose', { ko }]}><slot /></div>
+        <div class="reading">
+          <div class:list={['prose', { ko }]} data-article><slot /></div>
+          {showToc && (
+            <aside class="toc">
+              <nav aria-label={t.toc}>
+                <span class="toc-title">{t.toc}</span>
+                <ol>
+                  {toc.map((h) => (
+                    <li class:list={{ sub: h.depth === 3 }}><a href={`#${h.slug}`} data-toc={h.slug}>{h.text}</a></li>
+                  ))}
+                </ol>
+              </nav>
+            </aside>
+          )}
+        </div>
       </article>
       <a class="back-link bottom" href="/blog/">{t.all}</a>
     </main>
     <Footer />
   </body>
 </html>
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-progress]');
+  const article = document.querySelector<HTMLElement>('[data-article]');
+  const links = new Map(Array.from(document.querySelectorAll<HTMLElement>('[data-toc]'), (a) => [a.dataset.toc!, a]));
+  const headings = article ? Array.from(article.querySelectorAll<HTMLElement>('h2[id], h3[id]')).filter((h) => links.has(h.id)) : [];
+  let queued = false;
+
+  function update() {
+    queued = false;
+    if (!article) return;
+    const box = article.getBoundingClientRect();
+    const read = Math.min(1, Math.max(0, (innerHeight * 0.5 - box.top) / box.height));
+    bar?.style.setProperty('transform', `scaleX(${read.toFixed(4)})`);
+    // The section being read is the last heading that has passed the top third of the screen.
+    let current: HTMLElement | undefined;
+    for (const h of headings) {
+      if (h.getBoundingClientRect().top > innerHeight * 0.33) break;
+      current = h;
+    }
+    links.forEach((a, id) => a.classList.toggle('here', id === current?.id));
+  }
+  function queue() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(update);
+  }
+  addEventListener('scroll', queue, { passive: true });
+  addEventListener('resize', queue);
+  update();
+</script>
 <style>
-.article-page{max-width:900px;padding-top:56px;padding-bottom:110px}.back-link{font-size:15px;color:var(--accent);font-weight:700}.back-link:hover{text-decoration:underline}.article-header{padding:34px 0 38px}.article-header.has-art{display:grid;grid-template-columns:1fr 240px;gap:50px;align-items:center}.article-header h1{font-size:clamp(36px,5.2vw,58px);line-height:1.18;margin:14px 0 18px}.article-header p{font-size:18px;color:var(--muted);line-height:1.7;margin:0}.article-date{color:var(--faint);font-size:14px;font-weight:700;margin-top:18px}.prose{font-size:17px;line-height:1.9;color:var(--prose);background:var(--surface);padding:clamp(24px,5vw,56px);border-radius:14px;box-shadow:0 6px 0 var(--edge)}.prose :global(h2){font-size:29px;margin:48px 0 16px;font-weight:900;color:var(--ink)}.prose :global(h3){font-size:23px;margin:33px 0 13px;color:var(--ink)}.prose :global(a){color:var(--accent);text-decoration:underline;text-decoration-color:var(--sky);text-underline-offset:3px}.prose :global(pre){overflow-x:auto;background:var(--code-bg);color:var(--code-ink);padding:22px;border-radius:12px}.prose :global(code){background:var(--accent-soft);padding:2px 5px;border-radius:4px}.prose :global(pre code){background:none;padding:0}.prose :global(blockquote){border-left:3px solid var(--sky);margin:25px 0;padding:2px 0 2px 20px;color:var(--muted)}.prose :global(img){max-width:100%;height:auto;border-radius:9px}.prose :global(table){width:100%;display:block;overflow-x:auto}.bottom{display:inline-block;margin-top:70px}.article-top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.lang-switch{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}.lang-switch a{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;color:var(--muted)}.lang-switch a:hover{color:var(--accent)}.lang-switch a[aria-current=page]{background:var(--accent-soft);color:var(--accent)}.translation-note{font-size:14px;line-height:1.8;color:var(--muted);background:var(--bg-tint);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:-16px 0 40px}.translation-note a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}.article-page:lang(ko){word-break:keep-all;overflow-wrap:break-word}@media(max-width:700px){.article-header.has-art{grid-template-columns:1fr;gap:30px}.article-header .art{max-width:200px;order:-1}}@media(max-width:600px){.article-page{padding-top:50px;padding-bottom:85px}.article-header{padding-top:36px}.article-header h1{font-size:34px}}
+  .progress { position: fixed; z-index: 20; inset: 0 0 auto; height: 4px; background: var(--star); transform: scaleX(0); transform-origin: 0 50%; }
+  .article-page { max-width: 900px; padding-top: 56px; padding-bottom: 110px; }
+  .article-page:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+  .article-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .back-link { font-size: 15px; color: var(--accent); font-weight: 800; }
+  .back-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .bottom { display: inline-block; margin-top: 70px; }
+  .lang-switch { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface); box-shadow: 0 3px 0 var(--edge); }
+  .lang-switch a { font-size: 13px; font-weight: 800; padding: 5px 13px; border-radius: 999px; color: var(--muted); }
+  .lang-switch a:hover { color: var(--accent); }
+  .lang-switch a[aria-current='page'] { background: var(--star); color: #1c1a3e; }
+
+  .article-header { padding: 34px 0 38px; }
+  .article-header.has-art { display: grid; grid-template-columns: 1fr 240px; gap: 50px; align-items: center; }
+  .article-header h1 { font-size: clamp(36px, 5.2vw, 58px); line-height: 1.18; margin: 14px 0 18px; text-wrap: balance; }
+  .article-header p { font-size: 19px; font-weight: 600; color: var(--muted); line-height: 1.6; margin: 0; }
+  .article-date { color: var(--faint); font-size: 14px; font-weight: 800; margin-top: 18px; }
+  .translation-note { font-size: 14px; line-height: 1.8; color: var(--muted); background: var(--bg-tint); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: -16px 0 40px; }
+  .translation-note a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+  .reading { position: relative; }
+  .prose { font-size: 17.5px; line-height: 1.8; color: var(--prose); background: var(--surface); padding: clamp(24px, 5vw, 56px); border-radius: 16px; box-shadow: 0 7px 0 var(--edge); }
+  .prose.ko { line-height: 1.9; }
+  .prose > :global(:first-child) { margin-top: 0; }
+  .prose > :global(:last-child) { margin-bottom: 0; }
+  .prose :global(h2) { font-size: 29px; line-height: 1.25; margin: 56px 0 16px; font-weight: 900; color: var(--ink); scroll-margin-top: 28px; }
+  .prose :global(h3) { font-size: 22px; line-height: 1.3; margin: 36px 0 12px; font-weight: 900; color: var(--ink); scroll-margin-top: 28px; }
+  .prose :global(a) { color: var(--accent); text-decoration: underline; text-decoration-color: var(--sky); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  .prose :global(a:hover) { text-decoration-color: var(--star); }
+  .prose :global(strong) { color: var(--ink); font-weight: 800; }
+  .prose :global(li) { margin: 4px 0; }
+  .prose :global(li::marker) { color: var(--accent); font-weight: 800; }
+  .prose :global(code) { font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace; font-size: .86em; background: var(--accent-soft); padding: 2px 6px; border-radius: 5px; }
+  /* Code blocks wear the hoodie's navy instead of the highlighter's own grey. */
+  .prose :global(pre) { overflow-x: auto; margin: 26px 0; background: var(--code-bg) !important; color: var(--code-ink); padding: 20px 22px; border-radius: 12px; font-size: 14.5px; line-height: 1.65; scrollbar-width: thin; scrollbar-color: #6d6ab8 transparent; }
+  .prose :global(pre code) { background: none; padding: 0; font-size: 1em; }
+  .prose :global(blockquote) { border-left: 4px solid var(--star); margin: 26px 0; padding: 2px 0 2px 20px; color: var(--muted); }
+  .prose :global(img) { max-width: 100%; height: auto; border-radius: 9px; }
+  .prose :global(hr) { border: 0; height: 2px; margin: 44px 0; background: var(--line); }
+  .prose :global(table) { width: 100%; display: block; overflow-x: auto; border-collapse: collapse; font-size: 15.5px; line-height: 1.5; }
+  .prose :global(th) { text-align: left; color: var(--ink); font-weight: 900; border-bottom: 2px solid var(--ink); padding: 8px 14px 8px 0; }
+  .prose :global(td) { border-bottom: 1px solid var(--line); padding: 9px 14px 9px 0; vertical-align: top; }
+
+  /* The contents hang on a string beside the page, and a bead marks where you are. */
+  .toc { display: none; position: absolute; top: 0; bottom: 0; left: calc(100% + 34px); width: 200px; }
+  .toc nav { position: sticky; top: 36px; max-height: calc(100vh - 72px); overflow-y: auto; scrollbar-width: none; padding-left: 6px; }
+  .toc-title { display: block; margin: 0 0 12px 18px; color: var(--accent); font-size: 12.5px; font-weight: 900; letter-spacing: .4px; text-transform: uppercase; }
+  .toc ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--string); }
+  .toc a { position: relative; display: block; padding: 5px 0 5px 18px; color: var(--faint); font-size: 13.5px; font-weight: 700; line-height: 1.35; transition: color .15s; }
+  .toc .sub a { padding-left: 30px; font-size: 13px; font-weight: 600; }
+  .toc a:hover { color: var(--ink); }
+  .toc a::before { content: ''; position: absolute; left: -7px; top: .62em; width: 12px; height: 12px; border-radius: 50%; background: var(--star); transform: scale(0); transition: transform .2s cubic-bezier(.3, 1.6, .5, 1); }
+  .toc a.here { color: var(--ink); }
+  .toc a.here::before { transform: scale(1); }
+  @media (min-width: 1420px) { .toc { display: block; } }
+
+  @media (max-width: 700px) {
+    .article-header.has-art { grid-template-columns: 1fr; gap: 30px; }
+    .article-header .art { max-width: 200px; order: -1; }
+  }
+  @media (max-width: 600px) {
+    .article-page { padding-top: 50px; padding-bottom: 85px; }
+    .article-header { padding-top: 36px; }
+    .article-header h1 { font-size: 34px; }
+    .article-header p { font-size: 17px; }
+    .prose { font-size: 16.5px; }
+    .prose :global(pre) { margin-inline: -8px; padding: 16px; font-size: 13.5px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .toc a::before { transition: none; } }
 </style>

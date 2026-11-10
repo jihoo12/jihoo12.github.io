@@ -143,7 +143,8 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
   .stand { transition: transform .15s; }
   .stand :global(.card-top) { justify-content: flex-start; flex-wrap: wrap; gap: 6px 14px; padding-right: calc(var(--nix-w) * .6); }
 
-  .notes { padding-top: clamp(90px, 11vw, 140px); padding-bottom: 150px; }
+  /* The heading already keeps Nixchan's headroom above the plank, so the section needs little of its own. */
+  .notes { padding-top: clamp(40px, 5vw, 70px); padding-bottom: 150px; }
   .notes-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; min-height: var(--nix-above); padding-bottom: 14px; padding-right: calc(var(--nix-w) + 50px); }
   .hung { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 20px; }
   .sheet {

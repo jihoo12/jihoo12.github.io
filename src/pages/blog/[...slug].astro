@@ -13,9 +13,9 @@ export async function getStaticPaths() {
 type Props = { post: CollectionEntry<'blog'>; hasKo: boolean };
 
 const { post, hasKo } = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
 ---
 
-<BlogPost {...post.data} versions={hasKo ? { en: `/blog/${post.id}/`, ko: `/ko/blog/${post.id}/` } : undefined}>
+<BlogPost {...post.data} headings={headings} versions={hasKo ? { en: `/blog/${post.id}/`, ko: `/ko/blog/${post.id}/` } : undefined}>
 	<Content />
 </BlogPost>

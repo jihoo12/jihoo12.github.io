@@ -35,13 +35,16 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 			</div><div class="art"><Image src={roadmapArt} alt="Nixchan pointing at a roadmap whiteboard" width={600} loading="eager" /></div></div>
 
 			<section class="featured" aria-label="Featured projects">
-				{featured.map(({ data, commits, Content }) =>
-					Content ? (
-						<ProjectCard project={data} commits={commits} detailed><Content /></ProjectCard>
-					) : (
-						<ProjectCard project={data} commits={commits} detailed />
-					),
-				)}
+				{featured.map(({ data, commits, Content }) => (
+					<div class="shelf">
+						{Content ? (
+							<ProjectCard project={data} commits={commits} detailed><Content /></ProjectCard>
+						) : (
+							<ProjectCard project={data} commits={commits} detailed />
+						)}
+						<span class="plank"></span>
+					</div>
+				))}
 			</section>
 			<p class="featured-note">The busiest repos of the last {ACTIVITY_DAYS} days, refreshed daily.</p>
 
@@ -91,8 +94,9 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 	}
 	.projects-subtitle {
 		color: var(--muted);
-		font-size: 15px;
-		line-height: 1.9;
+		font-size: 17px;
+		font-weight: 600;
+		line-height: 1.7;
 		margin: 0;
 	}
 	.profiles {
@@ -120,20 +124,41 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 	.featured {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 22px;
-		margin-top: 60px;
+		gap: 40px 26px;
+		margin-top: 70px;
+	}
+	/* Each project stands on its own shelf. */
+	.shelf {
+		display: flex;
+		flex-direction: column;
+		transition: transform 0.15s;
+	}
+	.shelf:hover {
+		transform: translateY(-4px);
+	}
+	.shelf :global(.project-card) {
+		flex: 1;
+		margin-inline: 16px;
+		border-radius: 16px 16px 0 0;
+		box-shadow: none;
+	}
+	.shelf :global(.project-card:hover) {
+		transform: none;
+		box-shadow: none;
 	}
 	.featured-note {
-				font-size: 13px;
+		font-size: 13px;
+		font-weight: 600;
 		color: var(--faint);
-		margin: 16px 0 0;
+		margin: 22px 0 0;
 	}
 	.experiments {
 		margin-top: 110px;
 	}
 	.experiment-list {
 		display: grid;
-		gap: 12px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 16px 20px;
 	}
 	.experiment {
 		display: flex;
@@ -144,10 +169,17 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 		background: var(--surface);
 		border-radius: 12px;
 		box-shadow: 0 4px 0 var(--edge);
-		transition: transform 0.15s;
+		transition: transform 0.15s, box-shadow 0.15s;
 	}
 	.experiment:hover {
 		transform: translateY(-2px);
+		box-shadow: 0 6px 0 var(--edge);
+	}
+	.experiment-arrow {
+		transition: transform 0.2s;
+	}
+	.experiment:hover .experiment-arrow {
+		transform: translate(3px, -3px);
 	}
 	.experiment-meta {
 				font-size: 13px;
@@ -179,6 +211,13 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 			max-width: 240px;
 		}
 		.featured {
+			grid-template-columns: 1fr;
+			gap: 30px;
+		}
+		.shelf :global(.project-card) {
+			margin-inline: 10px;
+		}
+		.experiment-list {
 			grid-template-columns: 1fr;
 		}
 		.section-top {
