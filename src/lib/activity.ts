@@ -1,14 +1,19 @@
 import { execFileSync } from 'node:child_process';
+import { PROJECT_OWNERS } from '../consts';
 
 // Commits in this window decide which projects get the big cards.
 export const ACTIVITY_DAYS = 30;
 
 export interface RepoActivity {
 	url: string;
+	// `owner/name`
+	fullName: string;
 	name: string;
 	description: string;
 	language: string;
 	topics: string[];
+	homepage: string;
+	stars: number;
 	commits: number;
 }
 
@@ -19,7 +24,8 @@ query($login: String!, $from: DateTime!) {
       commitContributionsByRepository(maxRepositories: 100) {
         contributions { totalCount }
         repository {
-          name url description isPrivate isFork isArchived
+          name nameWithOwner url description homepageUrl stargazerCount isPrivate isFork isArchived
+          owner { login }
           primaryLanguage { name }
           repositoryTopics(first: 4) { nodes { topic { name } } }
         }
@@ -39,15 +45,20 @@ function resolveToken(): string | undefined {
 	}
 }
 
+// GitHub data is the whole page now, so a deploy without it would publish empty project lists.
+function unavailable(reason: string, err?: unknown): RepoActivity[] {
+	if (process.env.CI) throw new Error(`[activity] ${reason}`, { cause: err });
+	console.warn(`[activity] ${reason}, projects will be empty`, err ?? '');
+	return [];
+}
+
 // The profile README and the websites get commits every day without being projects.
 const isMeta = (name: string, login: string) => name.toLowerCase() === login.toLowerCase() || name.toLowerCase().endsWith('.github.io');
 
 async function load(login: string): Promise<RepoActivity[]> {
 	const token = resolveToken();
-	if (!token) {
-		console.warn('[activity] no GitHub token, using the hand-picked project order');
-		return [];
-	}
+	if (!token) return unavailable('no GitHub token');
+	const owners = new Set(PROJECT_OWNERS.map((o) => o.toLowerCase()));
 	const from = new Date(Date.now() - ACTIVITY_DAYS * 86_400_000).toISOString();
 	try {
 		const res = await fetch('https://api.github.com/graphql', {
@@ -58,20 +69,25 @@ async function load(login: string): Promise<RepoActivity[]> {
 		const payload = await res.json();
 		if (!res.ok || payload.errors) throw new Error(JSON.stringify(payload.errors ?? payload));
 		return payload.data.user.contributionsCollection.commitContributionsByRepository
-			.filter(({ repository: r }: any) => !r.isPrivate && !r.isFork && !r.isArchived && !isMeta(r.name, login))
+			.filter(
+				({ repository: r }: any) =>
+					!r.isPrivate && !r.isFork && !r.isArchived && !isMeta(r.name, login) && owners.has(r.owner.login.toLowerCase()),
+			)
 			.map(({ repository: r, contributions }: any) => ({
 				url: r.url,
+				fullName: r.nameWithOwner,
 				name: r.name,
-				description: r.description ?? '',
+				description: (r.description ?? '').trim(),
 				language: r.primaryLanguage?.name ?? '',
 				topics: r.repositoryTopics.nodes.map((n: any) => n.topic.name),
+				homepage: r.homepageUrl ?? '',
+				stars: r.stargazerCount,
 				commits: contributions.totalCount,
 			}))
 			.filter((r: RepoActivity) => r.commits > 0)
 			.sort((a: RepoActivity, b: RepoActivity) => b.commits - a.commits);
 	} catch (err) {
-		console.warn('[activity] GitHub request failed, using the hand-picked project order:', err);
-		return [];
+		return unavailable('GitHub request failed', err);
 	}
 }
 

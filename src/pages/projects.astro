@@ -3,19 +3,19 @@ import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import ProjectCard from '../components/ProjectCard.astro';
-import { getCollection, render } from 'astro:content';
 import { PROFILES } from '../consts';
 import { ACTIVITY_DAYS } from '../lib/activity';
-import { featuredProjects } from '../lib/projects';
+import { rankedProjects } from '../lib/projects';
 import { Image } from 'astro:assets';
 import roadmapArt from '../assets/nixchan/nixchan-roadmap-01.png';
 
-const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
-const picks = await featuredProjects(6);
-const featured = await Promise.all(
-	picks.map(async (pick) => ({ ...pick, Content: pick.entry && (await render(pick.entry)).Content })),
-);
-const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id === p.id));
+// Everything here comes from GitHub at build time: the top FEATURED by commits get the big cards,
+// the next MORE_EXPERIMENTS are listed below them.
+const FEATURED = 6;
+const MORE_EXPERIMENTS = 10;
+const ranked = await rankedProjects();
+const featured = ranked.slice(0, FEATURED);
+const experiments = ranked.slice(FEATURED, FEATURED + MORE_EXPERIMENTS);
 ---
 <!doctype html>
 <html lang="en">
@@ -35,18 +35,14 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 			</div><div class="art"><Image src={roadmapArt} alt="Nixchan pointing at a roadmap whiteboard" width={600} loading="eager" /></div></div>
 
 			<section class="featured" aria-label="Featured projects">
-				{featured.map(({ data, commits, Content }) => (
+				{featured.map(({ data, commits }) => (
 					<div class="shelf">
-						{Content ? (
-							<ProjectCard project={data} commits={commits} detailed><Content /></ProjectCard>
-						) : (
-							<ProjectCard project={data} commits={commits} detailed />
-						)}
+						<ProjectCard project={data} commits={commits} detailed />
 						<span class="plank"></span>
 					</div>
 				))}
 			</section>
-			<p class="featured-note">The busiest repos of the last {ACTIVITY_DAYS} days, refreshed daily.</p>
+			<p class="featured-note">The busiest repos of the last {ACTIVITY_DAYS} days, straight from GitHub and refreshed daily.</p>
 
 			{experiments.length > 0 && (
 				<section class="experiments" aria-labelledby="experiments-title">
@@ -58,12 +54,12 @@ const experiments = projects.filter((p) => !picks.some((pick) => pick.entry?.id 
 						<a class="text-link" href={PROFILES.github} target="_blank" rel="noopener noreferrer">More on GitHub <span aria-hidden="true">↗</span></a>
 					</div>
 					<div class="experiment-list">
-						{experiments.map((project) => (
-							<a class="experiment" href={project.data.repo} target="_blank" rel="noopener noreferrer">
+						{experiments.map(({ data, commits }) => (
+							<a class="experiment" href={data.repo} target="_blank" rel="noopener noreferrer">
 								<div>
-									<span class="experiment-meta">{project.data.language} · {project.data.status}</span>
-									<h3>{project.data.title}</h3>
-									<p>{project.data.tagline}</p>
+									<span class="experiment-meta">{[data.language, `${commits} commits · ${ACTIVITY_DAYS}d`].filter(Boolean).join(' · ')}</span>
+									<h3>{data.title}</h3>
+									<p>{data.tagline}</p>
 								</div>
 								<span class="experiment-arrow" aria-hidden="true">↗</span>
 							</a>

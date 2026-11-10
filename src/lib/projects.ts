@@ -1,51 +1,54 @@
-import { getCollection, type CollectionEntry } from 'astro:content';
-import { GITHUB_USER } from '../consts';
+import { GITHUB_USER, PACKAGES } from '../consts';
 import { recentActivity, type RepoActivity } from './activity';
 
-export type ProjectData = CollectionEntry<'projects'>['data'];
+export interface ProjectData {
+	title: string;
+	// First sentence of the GitHub description, for compact cards.
+	tagline: string;
+	// The whole GitHub description, for detailed cards.
+	description: string;
+	language: string;
+	tags: string[];
+	repo: string;
+	homepage: string;
+	stars: number;
+	package?: { registry: 'npm' | 'pypi'; name: string };
+}
 
-export interface FeaturedProject {
+export interface RankedProject {
 	data: ProjectData;
-	// Hand-written notes, when the repo has a file in `src/content/projects/`.
-	entry?: CollectionEntry<'projects'>;
-	// Commits in the activity window; 0 for repos picked from the curated order.
+	// Commits in the activity window; the ranking key.
 	commits: number;
 }
 
-const repoKey = (url: string) => url.toLowerCase().replace(/(\.git)?\/?$/, '');
+function firstSentence(text: string): string {
+	const match = text.match(/^.+?[.!?](?=\s|$)/s);
+	return (match ? match[0] : text).trim();
+}
 
 function fromRepo(repo: RepoActivity): ProjectData {
-	const sentence = repo.description.split('. ')[0].replace(/\.?\s*$/, '.');
 	return {
 		title: repo.name,
-		tagline: sentence,
+		tagline: firstSentence(repo.description),
+		description: repo.description,
 		language: repo.language,
-		status: 'active',
 		tags: repo.topics.slice(0, 3),
 		repo: repo.url,
-		links: [],
-		featured: true,
-		order: 0,
+		homepage: repo.homepage,
+		stars: repo.stars,
+		package: PACKAGES[repo.fullName.toLowerCase()],
 	};
 }
 
-// The busiest repos lately, then `featured` and `order` from the notes to fill a quiet month.
-export async function featuredProjects(count: number): Promise<FeaturedProject[]> {
-	const entries = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
-	const byRepo = new Map(entries.map((entry) => [repoKey(entry.data.repo), entry]));
-	const picks: FeaturedProject[] = [];
-	const taken = new Set<string>();
+// Every public project with commits in the activity window, busiest first.
+// Repos without a GitHub description have nothing to put on a card, so they're skipped.
+export async function rankedProjects(): Promise<RankedProject[]> {
+	return (await recentActivity(GITHUB_USER))
+		.filter((repo) => repo.description)
+		.map((repo) => ({ data: fromRepo(repo), commits: repo.commits }));
+}
 
-	for (const repo of await recentActivity(GITHUB_USER)) {
-		const entry = byRepo.get(repoKey(repo.url));
-		if (!entry && !repo.description) continue; // nothing to put on the card
-		picks.push(entry ? { data: entry.data, entry, commits: repo.commits } : { data: fromRepo(repo), commits: repo.commits });
-		taken.add(repoKey(repo.url));
-	}
-	for (const entry of [...entries.filter((e) => e.data.featured), ...entries.filter((e) => !e.data.featured)]) {
-		if (taken.has(repoKey(entry.data.repo))) continue;
-		picks.push({ data: entry.data, entry, commits: 0 });
-		taken.add(repoKey(entry.data.repo));
-	}
-	return picks.slice(0, count);
+// The busiest `count` projects get the big cards.
+export async function featuredProjects(count: number): Promise<RankedProject[]> {
+	return (await rankedProjects()).slice(0, count);
 }
