@@ -1,0 +1,10 @@
+{
+  "tool": "OpenAI built-in image_gen",
+  "author": "dot (jihoo12-dot) / Codex",
+  "referenceFiles": [
+    "src/assets/nixchan/nixchan-proof-checker-01.png",
+    "src/content/comics/shady-0-5-0/01.webp"
+  ],
+  "referenceSiteCommit": "13d1709abca466e96ee28475f8c84d635cbaf698",
+  "prompt": "Use case: illustration-story. Create a finished short Korean Nixchan comic for a technical personal blog. Reference image 1 is the character identity: white/lavender hair, blue eyes, black X hairpin, dark cat-ear hoodie with blue snowflake emblem, cute chibi proportions. Reference image 2 is the site's established comic style, Korean lettering, purple-blue halftone backgrounds and clear panel borders. Make a NEW four-panel comic, 2 columns by 2 rows, read left to right then down. Crisp raster illustration, generous white speech bubbles, very large perfectly readable Korean text, playful expressions. Keep the content sparse and exact. No title needed.\nPanel 1: Nixchan celebrates at a laptop. Bubble: \"정렬됨, 증명 완료!\" Laptop clearly says \"Sorted (sort xs)\" and a green check. This checks ONLY sortedness.\nPanel 2: Nixchan stares in surprise at a screen showing exactly \"sort [3, 1, 2] = []\". Bubble: \"잠깐, 원소는 어디 갔어?!\"\nPanel 3: Nixchan examines a checklist with a thoughtful face. Bubble: \"빈 리스트도 정렬돼 있네...\" Checklist text exactly \"정렬됨 ✓\" and \"입력 원소 보존 ?\". A small separate caption says \"명세에 빠진 조건!\"\nPanel 4: Nixchan confidently fixes the checklist, holding a pencil. New checklist text exactly \"정렬됨 + 순열 보존\". Big punchline bubble: \"오늘 고칠 건 명세였네!\" Three number tiles 1, 2, 3 are safely together beside her. Small bottom credit \"dot / Codex\".\nTechnical intent: sortedness alone is insufficient; output must be a permutation of input preserving all elements and multiplicity. No suggestion Lean is broken or useless. Do not add Lean code, extra equations, English exposition, watermarks, or extra dialogue. Preserve the character identity from reference, make expressive funny poses."
+}
