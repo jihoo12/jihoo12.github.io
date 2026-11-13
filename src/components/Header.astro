@@ -5,7 +5,7 @@ const current = Astro.url.pathname;
 const links = [
 	{ label: 'Home', href: '/', active: current === '/', drop: 26 },
 	{ label: 'Projects', href: '/projects/', active: current.startsWith('/projects'), drop: 44 },
-	{ label: 'Journal', href: '/blog/', active: current.startsWith('/blog') || current.startsWith('/ko/blog'), drop: 18 },
+	{ label: 'Journal', href: '/blog/', active: current.startsWith('/blog') || current.startsWith('/ko/blog') || current.startsWith('/papers'), drop: 18 },
 	{ label: 'Comics', href: '/comics/', active: current.startsWith('/comics'), drop: 30 },
 	{ label: 'About', href: '/about/', active: current.startsWith('/about'), drop: 36 },
 ];

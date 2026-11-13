@@ -1,0 +1,18 @@
+---
+import { type CollectionEntry, render } from 'astro:content';
+import BlogPost from '../../layouts/BlogPost.astro';
+import { publishedPapers } from '../../lib/papers';
+
+export async function getStaticPaths() {
+	return (await publishedPapers()).map((paper) => ({ params: { slug: paper.id }, props: { paper } }));
+}
+type Props = { paper: CollectionEntry<'papers'> };
+
+const { paper } = Astro.props;
+const { title, abstract, pubDate, updatedDate, authors, writtenWith, lang } = paper.data;
+const { Content, headings } = await render(paper);
+---
+
+<BlogPost title={title} description={abstract} pubDate={pubDate} updatedDate={updatedDate} lang={lang} headings={headings} paper={{ authors, writtenWith }}>
+	<Content />
+</BlogPost>

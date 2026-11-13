@@ -53,4 +53,21 @@ const comics = defineCollection({
 		}),
 });
 
-export const collections = { blog, blogKo, comics };
+// Paper drafts: exploratory, paper-shaped write-ups, mostly written with an AI. Not peer reviewed.
+const papers = defineCollection({
+	loader: glob({ base: './src/content/papers', pattern: '**/[^_]*.{md,mdx}' }),
+	schema: z.object({
+		title: z.string(),
+		abstract: z.string(),
+		pubDate: z.coerce.date(),
+		updatedDate: z.coerce.date().optional(),
+		authors: z.array(z.string()).default(['Jihoo']),
+		// The AI that wrote most of it, e.g. "Claude" or "ChatGPT". Shown in the notice on top.
+		writtenWith: z.string().optional(),
+		lang: z.enum(['en', 'ko']).default('en'),
+		// Only shows up in `astro dev`.
+		draft: z.boolean().default(false),
+	}),
+});
+
+export const collections = { blog, blogKo, comics, papers };

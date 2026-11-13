@@ -16,14 +16,24 @@ type Props = CollectionEntry<'blog'>['data'] & {
   translatedFrom?: Date;
   /** Headings of the rendered post, for the table of contents. */
   headings?: MarkdownHeading[];
+  /** Set for a paper draft: `description` is then its abstract. */
+  paper?: { authors: string[]; writtenWith?: string };
 };
-const { title, description, pubDate, updatedDate, heroImage, lang = 'en', versions, translatedFrom, headings = [] } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, lang = 'en', versions, translatedFrom, headings = [], paper } = Astro.props;
 const ko = lang === 'ko';
 const t = ko
   ? { back: '← 저널로 돌아가기', all: '← 모든 글', updated: '수정', eyebrow: 'JOURNAL / 한국어 번역', toc: '이 글의 내용' }
   : { back: '← Back to journal', all: '← All notes', updated: 'Updated', eyebrow: 'JOURNAL / NOTES', toc: 'On this page' };
+if (paper) Object.assign(t, ko ? { all: '← 모든 논문 초안', eyebrow: '논문 초안' } : { all: '← All paper drafts', eyebrow: 'PAPER DRAFT' });
+// Markdown always calls the footnote list "Footnotes"; papers call them references.
+const footnoteLabel = paper ? (ko ? '참고문헌' : 'References') : ko ? '각주' : 'Footnotes';
+const toc = headings
+  .filter((h) => h.depth === 2 || h.depth === 3)
+  .map((h) => (h.slug === 'footnote-label' ? { ...h, text: footnoteLabel } : h));
+const backHref = paper ? '/blog/#papers' : '/blog/';
+const listAuthors = (names: string[]) => new Intl.ListFormat(ko ? 'ko' : 'en', { type: 'conjunction' }).format(names);
 // A contents list only earns its place on posts long enough to get lost in.
-const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
 const showToc = toc.length >= 3;
 const alternates = versions?.ko
   ? [
@@ -42,7 +52,7 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
     <Header />
     <main class="wrap article-page">
       <div class="article-top">
-        <a class="back-link" href="/blog/">{t.back}</a>
+        <a class="back-link" href={backHref}>{t.back}</a>
         {versions?.ko && (
           <nav class="lang-switch" aria-label="Language">
             <a href={versions.en} hreflang="en" lang="en" aria-current={ko ? undefined : 'page'}>English</a>
@@ -55,7 +65,7 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
           <div>
             <span class="eyebrow">{t.eyebrow}</span>
             <h1>{title}</h1>
-            <p>{description}</p>
+            {paper ? <p class="authors">{listAuthors(paper.authors)}</p> : <p>{description}</p>}
             <div class="article-date">
               {ko ? fmtKo(pubDate) : <FormattedDate date={pubDate} />}
               {updatedDate && <> · {t.updated} {ko ? fmtKo(updatedDate) : <FormattedDate date={updatedDate} />}</>}
@@ -63,13 +73,26 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
           </div>
           {heroImage && <div class="art"><Image src={heroImage} alt="" width={480} loading="eager" /></div>}
         </header>
+        {paper && (
+          <div class="paper-front">
+            <p class="paper-notice">
+              {ko
+                ? <><strong>실험적인 초안이에요.</strong> {paper.writtenWith ? `대부분 ${paper.writtenWith}가 썼고, ` : ''}동료 심사를 거치지 않았어요. 주장이나 참고문헌에 틀린 부분이 있을 수 있어요.</>
+                : <><strong>An exploratory draft.</strong> {paper.writtenWith ? `Mostly written by ${paper.writtenWith}; it` : 'It'} hasn't been peer reviewed, so claims and references may be wrong.</>}
+            </p>
+            <section class="abstract" aria-label={ko ? '초록' : 'Abstract'}>
+              <h2>{ko ? '초록' : 'Abstract'}</h2>
+              <p>{description}</p>
+            </section>
+          </div>
+        )}
         {ko && versions && translatedFrom && (
           <p class="translation-note">
             이 글은 <a href={versions.en} hreflang="en">영어 원문</a>({fmtKo(translatedFrom)} 버전)을 번역한 글이에요. 내용이 다르면 원문이 기준이에요.
           </p>
         )}
         <div class="reading">
-          <div class:list={['prose', { ko }]} data-article><slot /></div>
+          <div class:list={['prose', { ko }]} style={`--footnote-label: "${footnoteLabel}"`} data-article><slot /></div>
           {showToc && (
             <aside class="toc">
               <nav aria-label={t.toc}>
@@ -84,7 +107,7 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
           )}
         </div>
       </article>
-      <a class="back-link bottom" href="/blog/">{t.all}</a>
+      <a class="back-link bottom" href={backHref}>{t.all}</a>
     </main>
     <Footer />
   </body>
@@ -137,6 +160,13 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
   .article-header h1 { font-size: clamp(36px, 5.2vw, 58px); line-height: 1.18; margin: 14px 0 18px; text-wrap: balance; }
   .article-header p { font-size: 19px; font-weight: 600; color: var(--muted); line-height: 1.6; margin: 0; }
   .article-date { color: var(--faint); font-size: 14px; font-weight: 800; margin-top: 18px; }
+  .authors { font-size: 17px !important; color: var(--ink) !important; font-weight: 800 !important; }
+  .paper-front { display: grid; gap: 18px; margin: -10px 0 40px; }
+  .paper-notice { margin: 0; font-size: 14px; line-height: 1.7; color: var(--muted); background: color-mix(in srgb, var(--star) 22%, var(--surface)); border-left: 4px solid var(--star); border-radius: 10px; padding: 12px 16px; }
+  .paper-notice strong { color: var(--ink); }
+  .abstract { padding: 20px 24px; border: 2px dashed var(--line); border-radius: 14px; }
+  .abstract h2 { margin: 0 0 8px; color: var(--accent); font-size: 13px; font-weight: 900; letter-spacing: .4px; text-transform: uppercase; }
+  .abstract p { margin: 0; font-size: 16px; line-height: 1.75; color: var(--prose); }
   .translation-note { font-size: 14px; line-height: 1.8; color: var(--muted); background: var(--bg-tint); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: -16px 0 40px; }
   .translation-note a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 
@@ -161,6 +191,11 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
   .prose :global(hr) { border: 0; height: 2px; margin: 44px 0; background: var(--line); }
   .prose :global(table) { width: 100%; display: block; overflow-x: auto; border-collapse: collapse; font-size: 15.5px; line-height: 1.5; }
   .prose :global(th) { text-align: left; color: var(--ink); font-weight: 900; border-bottom: 2px solid var(--ink); padding: 8px 14px 8px 0; }
+  /* Markdown footnotes double as a paper's references. */
+  .prose :global(.footnotes) { margin-top: 56px; padding-top: 22px; border-top: 2px solid var(--line); font-size: 14.5px; line-height: 1.65; }
+  .prose :global(.footnotes h2) { margin: 0 0 10px; font-size: 0; }
+  .prose :global(.footnotes h2::before) { content: var(--footnote-label); font-size: 13px; color: var(--accent); letter-spacing: .4px; text-transform: uppercase; }
+  .prose :global(sup a) { text-decoration: none; font-weight: 800; }
   .prose :global(td) { border-bottom: 1px solid var(--line); padding: 9px 14px 9px 0; vertical-align: top; }
 
   /* The contents hang on a string beside the page, and a bead marks where you are. */

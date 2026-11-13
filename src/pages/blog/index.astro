@@ -4,12 +4,14 @@ import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import { getCollection } from 'astro:content';
+import { publishedPapers } from '../../lib/papers';
 import headerArt from '../../assets/nixchan/nixchan-rainy-coding-01.png';
 import fallbackArt from '../../assets/nixchan/nixchan-night-coffee-01.png';
 import emptyArt from '../../assets/nixchan/nixchan-penguin-nap-01.png';
 
 const koIds = new Set((await getCollection('blogKo')).map((p) => p.id));
 const posts = (await getCollection('blog')).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const papers = await publishedPapers();
 const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
 ---
 <!doctype html>
@@ -51,6 +53,30 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
           <p>I'm working on my first note. See you soon!</p>
           <a class="text-link" href="/">Back to home →</a>
         </div>
+      )}
+      {papers.length > 0 && (
+        <section class="papers" id="papers" aria-labelledby="papers-title">
+          <div class="papers-head">
+            <span class="eyebrow">EXPERIMENTS IN A LAB COAT</span>
+            <h2 id="papers-title">Paper drafts<span class="period">.</span></h2>
+            <p>Ideas written up the way a paper would be, mostly by an AI. They haven't been peer reviewed, so read them as sketches, not results.</p>
+          </div>
+          <ol class="sheets">
+            {papers.map((paper) => (
+              <li>
+                <a class="sheet" href={`/papers/${paper.id}/`} lang={paper.data.lang}>
+                  <span class="sheet-meta">
+                    {paper.data.draft && <span class="sheet-draft">Unpublished</span>}
+                    <time datetime={paper.data.pubDate.toISOString()}>{dateLabel.format(paper.data.pubDate)}</time>
+                    {paper.data.writtenWith && <span>· with {paper.data.writtenWith}</span>}
+                  </span>
+                  <h3>{paper.data.title}</h3>
+                  <p>{paper.data.abstract}</p>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
     </main>
     <Footer />
@@ -103,6 +129,24 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
   .journal-empty h2 { font-size: 21px; margin: 12px 0; }
   .journal-empty p { font-size: 14px; color: var(--muted); margin-bottom: 25px; }
 
+  /* Papers are typed sheets in a stack, plainer than the prints: they're drafts, not keepsakes. */
+  .papers { margin-top: 120px; scroll-margin-top: 30px; }
+  .papers-head { max-width: 640px; }
+  .papers-head h2 { font-family: var(--display); font-weight: 400; font-size: clamp(32px, 4.1vw, 46px); line-height: 1.15; margin: 8px 0 12px; }
+  .papers-head p { margin: 0; color: var(--muted); font-size: 16px; font-weight: 600; line-height: 1.7; }
+  .sheets { list-style: none; display: grid; gap: 16px; margin: 40px 0 0; padding: 0; }
+  .sheet {
+    display: block; padding: 22px 26px 22px 30px; background: var(--surface); border-radius: 4px;
+    box-shadow: 0 5px 0 var(--edge); border-left: 6px solid var(--sky);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .sheet:hover, .sheet:focus-visible { transform: translateX(6px); box-shadow: 0 5px 0 var(--edge), -6px 0 0 var(--star); }
+  .sheet:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+  .sheet-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--accent); font-size: 13px; font-weight: 800; }
+  .sheet-draft { background: var(--star); color: #1c1a3e; border-radius: 999px; padding: 1px 9px; font-weight: 900; }
+  .sheet h3 { margin: 6px 0 8px; font-size: 21px; font-weight: 900; line-height: 1.3; text-wrap: balance; }
+  .sheet p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
   @media (max-width: 980px) {
     .prints { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
@@ -127,9 +171,14 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
     .latest .print-body { padding: 0 8px; }
     .latest h2 { font-size: 26px; margin: 10px 0; }
     .latest p { font-size: 15px; -webkit-line-clamp: 3; line-clamp: 3; }
+    .papers { margin-top: 80px; }
+    .sheet { padding: 16px 16px 16px 18px; }
+    .sheet h3 { font-size: 18px; }
+    .sheet p { font-size: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .print { transition: none; }
     .print:hover, .print:focus-visible { transform: rotate(var(--tilt, 0deg)); }
+    .sheet { transition: none; }
   }
 </style>
