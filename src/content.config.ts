@@ -32,4 +32,25 @@ const blogKo = defineCollection({
 		}),
 });
 
-export const collections = { blog, blogKo };
+// Comics: one folder per episode, holding an index.md and its page images.
+// `pages` lists the images top to bottom; each is a path, or { src, alt } to describe the panel.
+const comics = defineCollection({
+	loader: glob({ base: './src/content/comics', pattern: '**/index.{md,mdx}' }),
+	schema: ({ image }) =>
+		z.object({
+			title: z.string(),
+			description: z.string(),
+			pubDate: z.coerce.date(),
+			// Defaults to the first page.
+			cover: z.optional(image()),
+			pages: z
+				.array(z.union([image(), z.object({ src: image(), alt: z.string() })]))
+				.min(1)
+				.transform((pages) => pages.map((p) => (typeof p === 'object' && 'alt' in p ? p : { src: p, alt: '' }))),
+			// Language of the title, description, note and the words in the panels.
+			lang: z.enum(['en', 'ko']).default('en'),
+			draft: z.boolean().default(false),
+		}),
+});
+
+export const collections = { blog, blogKo, comics };

@@ -6,6 +6,7 @@ const links = [
 	{ label: 'Home', href: '/', active: current === '/', drop: 26 },
 	{ label: 'Projects', href: '/projects/', active: current.startsWith('/projects'), drop: 44 },
 	{ label: 'Journal', href: '/blog/', active: current.startsWith('/blog') || current.startsWith('/ko/blog'), drop: 18 },
+	{ label: 'Comics', href: '/comics/', active: current.startsWith('/comics'), drop: 30 },
 	{ label: 'About', href: '/about/', active: current.startsWith('/about'), drop: 36 },
 ];
 ---
@@ -39,13 +40,14 @@ const links = [
 	nav, .right { display: flex; align-items: flex-start; gap: 12px; }
 	.sign {
 		position: relative; display: inline-flex; align-items: center; gap: 8px;
-		margin-top: var(--drop); padding: 8px 15px; border: 0; border-radius: 9px;
+		--hang: var(--drop);
+		margin-top: var(--hang); padding: 8px 15px; border: 0; border-radius: 9px;
 		background: var(--surface); color: var(--ink); font-family: var(--sans); font-size: 15px; font-weight: 800;
 		box-shadow: 0 4px 0 var(--edge); cursor: pointer;
-		transform-origin: 50% calc(var(--drop) * -1);
+		transform-origin: 50% calc(var(--hang) * -1);
 	}
 	.sign::before, .sign::after {
-		content: ''; position: absolute; bottom: 100%; width: 2px; height: var(--drop); background: var(--string);
+		content: ''; position: absolute; bottom: 100%; width: 2px; height: var(--hang); background: var(--string);
 	}
 	.sign::before { left: 22%; }
 	.sign::after { right: 22%; }
@@ -64,7 +66,7 @@ const links = [
 		60% { transform: rotate(-1.8deg); }
 		85% { transform: rotate(.7deg); }
 	}
-	@media (max-width: 760px) {
+	@media (max-width: 900px) {
 		.github { display: none; }
 		.home-link { display: none; }
 		nav, .right { gap: 8px; }
@@ -74,6 +76,16 @@ const links = [
 		.brand-word { display: none; }
 		.brand-mark { width: 32px; height: 32px; }
 		.clock { width: 40px; height: 38px; padding: 0; font-size: 19px; }
+	}
+	/* Too many signs for one string line on a phone: the tabs get their own row, hung from a plank. */
+	@media (max-width: 560px) {
+		.signs { flex-wrap: wrap; row-gap: 0; }
+		nav { order: 3; position: relative; flex: 0 0 100%; gap: 6px; margin-top: 18px; }
+		nav::before {
+			content: ''; position: absolute; z-index: 1; top: 0; left: -6px; right: -6px; height: 8px;
+			border-radius: 4px; background: var(--plank); box-shadow: 0 8px 14px -8px var(--shadow);
+		}
+		nav .sign { --hang: calc(var(--drop) / 2 + 8px); flex: 1 1 0; justify-content: center; min-width: 0; padding: 8px 4px; font-size: 14px; }
 	}
 	@media (prefers-reduced-motion: reduce) { .sign:hover { animation: none; } }
 </style>

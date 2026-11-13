@@ -1,0 +1,108 @@
+---
+import { Image } from 'astro:assets';
+import { type CollectionEntry, render } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { comicSlug, publishedComics } from '../../lib/comics';
+
+type Link = { href: string; title: string };
+export async function getStaticPaths() {
+	const comics = await publishedComics();
+	const link = (c?: CollectionEntry<'comics'>): Link | undefined => c && { href: `/comics/${comicSlug(c.id)}/`, title: c.data.title };
+	// The list is newest first, so the previous episode is the next one in it.
+	return comics.map((comic, i) => ({
+		params: { slug: comicSlug(comic.id) },
+		props: { comic, number: comics.length - i, prev: link(comics[i + 1]), next: link(comics[i - 1]) },
+	}));
+}
+type Props = { comic: CollectionEntry<'comics'>; number: number; prev?: Link; next?: Link };
+
+const { comic, number, prev, next } = Astro.props;
+const { title, description, pubDate, pages, lang } = comic.data;
+const { Content } = await render(comic);
+const hasNote = Boolean(comic.body?.trim());
+---
+<!doctype html>
+<html lang="en">
+  <head><BaseHead title={`${title} — Jihoo`} description={description} /></head>
+  <body>
+    <Header />
+    <main class="wrap comic-page">
+      <a class="back-link" href="/comics/">← All comics</a>
+      <header class="comic-header" lang={lang}>
+        <span class="eyebrow">COMIC #{number}</span>
+        <h1>{title}</h1>
+        <p>{description}</p>
+        <div class="comic-date"><FormattedDate date={pubDate} /></div>
+      </header>
+
+      <div class="pages" lang={lang}>
+        {pages.map((page, i) => (
+          <a class="page-link" href={page.src.src} target="_blank" rel="noopener" title="Open full size">
+          <Image
+            class="page"
+            src={page.src}
+            alt={page.alt || `Page ${i + 1} of ${pages.length}`}
+            widths={[480, 800, 1200]}
+            sizes="(max-width: 760px) 100vw, 760px"
+            loading={i < 2 ? 'eager' : 'lazy'}
+          />
+          </a>
+        ))}
+      </div>
+
+      {hasNote && <div class="note" lang={lang}><Content /></div>}
+
+      <nav class="episodes" aria-label="More comics">
+        {prev ? <a class="episode prev" href={prev.href}><span>← Previous</span>{prev.title}</a> : <span />}
+        {next ? <a class="episode next" href={next.href}><span>Next →</span>{next.title}</a> : <span />}
+      </nav>
+    </main>
+    <Footer />
+  </body>
+</html>
+<style>
+  .comic-page { max-width: 820px; padding-top: 56px; padding-bottom: 110px; }
+  .back-link { font-size: 15px; color: var(--accent); font-weight: 800; }
+  .back-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+  .comic-header { padding: 34px 0 40px; text-align: center; }
+  .comic-header h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.18; margin: 14px 0 16px; text-wrap: balance; }
+  .comic-header p { font-size: 18px; font-weight: 600; color: var(--muted); line-height: 1.6; margin: 0 auto; max-width: 600px; text-wrap: balance; }
+  .comic-date { color: var(--faint); font-size: 14px; font-weight: 800; margin-top: 16px; }
+
+  /* Pages sit on one white sheet with no gaps, so a long strip reads like scrolling a webtoon. */
+  .pages { max-width: 760px; margin-inline: auto; padding: 12px; background: #fff; border-radius: 6px; box-shadow: 0 7px 0 var(--edge); }
+  /* Each page opens at full size, for panels too dense to read at phone width. */
+  .page-link { display: block; cursor: zoom-in; }
+  .page { display: block; width: 100%; height: auto; }
+  :lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+
+  .note { max-width: 680px; margin: 44px auto 0; padding: 22px 26px; font-size: 16.5px; line-height: 1.8; color: var(--prose); background: var(--surface); border-radius: 14px; box-shadow: 0 5px 0 var(--edge); }
+  .note > :global(:first-child) { margin-top: 0; }
+  .note > :global(:last-child) { margin-bottom: 0; }
+  .note :global(a) { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+  .episodes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 760px; margin: 56px auto 0; }
+  .episode {
+    display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-radius: 12px;
+    background: var(--surface); box-shadow: 0 5px 0 var(--edge); font-weight: 800; line-height: 1.35;
+    transition: transform .1s, box-shadow .1s;
+  }
+  .episode span { color: var(--accent); font-size: 13px; font-weight: 900; }
+  .episode.next { text-align: right; }
+  .episode:hover { transform: translateY(-2px); box-shadow: 0 7px 0 var(--edge); }
+
+  @media (max-width: 600px) {
+    .comic-page { padding-top: 50px; padding-bottom: 85px; }
+    .comic-header h1 { font-size: 32px; }
+    .comic-header p { font-size: 16.5px; }
+    /* On phones the comic runs edge to edge; every pixel of panel counts. */
+    .pages { margin-inline: -16px; padding: 0; border-radius: 0; box-shadow: none; }
+    .episodes { grid-template-columns: 1fr; }
+    .episode.next { text-align: left; order: -1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .episode { transition: none; } }
+</style>
