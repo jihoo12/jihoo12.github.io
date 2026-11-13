@@ -17,7 +17,7 @@ type Props = CollectionEntry<'blog'>['data'] & {
   /** Headings of the rendered post, for the table of contents. */
   headings?: MarkdownHeading[];
   /** Set for a paper draft: `description` is then its abstract. */
-  paper?: { authors: string[]; writtenWith?: string };
+  paper?: { authors: string[]; writtenWith?: string; code?: string };
 };
 const { title, description, pubDate, updatedDate, heroImage, lang = 'en', versions, translatedFrom, headings = [], paper } = Astro.props;
 const ko = lang === 'ko';
@@ -66,6 +66,11 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
             <span class="eyebrow">{t.eyebrow}</span>
             <h1>{title}</h1>
             {paper ? <p class="authors">{listAuthors(paper.authors)}</p> : <p>{description}</p>}
+            {paper?.code && (
+              <a class="code-link" href={paper.code} target="_blank" rel="noopener noreferrer">
+                {ko ? '코드와 실험' : 'Code & experiments'} <span class="code-host">{paper.code.replace(/^https?:\/\/(www\.)?/, '')}</span> <span aria-hidden="true">↗</span>
+              </a>
+            )}
             <div class="article-date">
               {ko ? fmtKo(pubDate) : <FormattedDate date={pubDate} />}
               {updatedDate && <> · {t.updated} {ko ? fmtKo(updatedDate) : <FormattedDate date={updatedDate} />}</>}
@@ -161,6 +166,9 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
   .article-header p { font-size: 19px; font-weight: 600; color: var(--muted); line-height: 1.6; margin: 0; }
   .article-date { color: var(--faint); font-size: 14px; font-weight: 800; margin-top: 18px; }
   .authors { font-size: 17px !important; color: var(--ink) !important; font-weight: 800 !important; }
+  .code-link { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 14px; padding: 7px 14px; border-radius: 10px; background: var(--surface); box-shadow: 0 4px 0 var(--edge); font-size: 14px; font-weight: 800; transition: transform .1s, box-shadow .1s; }
+  .code-link:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--edge); }
+  .code-host { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
   .paper-front { display: grid; gap: 18px; margin: -10px 0 40px; }
   .paper-notice { margin: 0; font-size: 14px; line-height: 1.7; color: var(--muted); background: color-mix(in srgb, var(--star) 22%, var(--surface)); border-left: 4px solid var(--star); border-radius: 10px; padding: 12px 16px; }
   .paper-notice strong { color: var(--ink); }

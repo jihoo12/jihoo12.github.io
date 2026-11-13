@@ -6,6 +6,8 @@ pubDate: 2026-01-01
 authors: ["Jihoo"]
 # The AI that wrote most of it. Shown in the notice at the top of the page.
 writtenWith: "Claude"
+# Optional: where the code lives, shown as a link under the authors.
+# code: "https://github.com/you/repo"
 lang: en   # or ko
 # Remove when it's ready. Until then it only shows up in `astro dev`.
 draft: true

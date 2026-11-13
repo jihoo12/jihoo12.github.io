@@ -9,10 +9,10 @@ export async function getStaticPaths() {
 type Props = { paper: CollectionEntry<'papers'> };
 
 const { paper } = Astro.props;
-const { title, abstract, pubDate, updatedDate, authors, writtenWith, lang } = paper.data;
+const { title, abstract, pubDate, updatedDate, authors, writtenWith, code, lang } = paper.data;
 const { Content, headings } = await render(paper);
 ---
 
-<BlogPost title={title} description={abstract} pubDate={pubDate} updatedDate={updatedDate} lang={lang} headings={headings} paper={{ authors, writtenWith }}>
+<BlogPost title={title} description={abstract} pubDate={pubDate} updatedDate={updatedDate} lang={lang} headings={headings} paper={{ authors, writtenWith, code }}>
 	<Content />
 </BlogPost>

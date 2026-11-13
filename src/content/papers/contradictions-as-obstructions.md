@@ -4,6 +4,7 @@ abstract: "We store every claim in a small knowledge base as a local section of 
 pubDate: 2026-11-13
 authors: ["Jihoo"]
 writtenWith: "Claude"
+code: "https://github.com/jihoo12/know"
 lang: en
 ---
 
@@ -161,6 +162,18 @@ Held-out seeds 100–119 (P / R / F1 count random errors only; flagging a biased
 | bias + weights (true ε) | 0.88 | 0.92 | 0.90 | 0.00 | 0.996 |
 
 Two things stand out. First, **source reliability can be learned without labels** and lifts recall from 0.84 to 0.94, mostly by breaking one-against-one ties. Learned error rates come out at 0.44–0.48 for the sloppy sources (true 0.40) and 0.06–0.07 for the good ones (true 0.03). The small precision cost (0.85 to 0.81) is about the F1 gap to knowing ε exactly. Second, **a systematic bias can be absorbed rather than flagged.** Without bias variables, 93% of the biased source's claims are flagged: correctly as wrong, but their information is thrown away. With them, none are flagged, the learned offset lands within 0.1 of +1 on every held-out seed (95% on seeds 0–19), the other sources' offsets stay at zero, and the biased ages go back to being evidence. City accuracy barely moves under any method (around 0.85).
+
+## Reproducing
+
+Everything above comes from three scripts in [jihoo12/know](https://github.com/jihoo12/know), which need only NumPy and SciPy (`shell.nix` provides both):
+
+| Command | Produces | Time |
+|---|---|---|
+| `nix-shell --run 'python sheafkb.py'` | Experiments 1–3: detection tables, obstruction norms, recovered section | ~20 s |
+| `nix-shell --run 'python exp4_decoding.py'` | Decoder comparison, cut check, consensus | ~10 min (mostly the MILP) |
+| `nix-shell --run 'python exp5_sources.py'` | Source reliability and bias | 1–2 min |
+
+`python exp4_decoding.py consensus` prints only the consensus tables, in about a minute. The seeds are fixed, so the numbers should come out identical. When this draft was written, the first and third scripts and the consensus tables were rerun and matched; the MILP sweep and the cut check were not.
 
 ## Limitations
 

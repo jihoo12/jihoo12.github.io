@@ -64,6 +64,8 @@ const papers = defineCollection({
 		authors: z.array(z.string()).default(['Jihoo']),
 		// The AI that wrote most of it, e.g. "Claude" or "ChatGPT". Shown in the notice on top.
 		writtenWith: z.string().optional(),
+		// Where the code and experiments live, so readers can rerun them.
+		code: z.string().url().optional(),
 		lang: z.enum(['en', 'ko']).default('en'),
 		// Only shows up in `astro dev`.
 		draft: z.boolean().default(false),
