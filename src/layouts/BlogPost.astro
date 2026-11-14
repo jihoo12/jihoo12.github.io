@@ -30,7 +30,10 @@ const footnoteLabel = paper ? (ko ? '참고문헌' : 'References') : ko ? '각�
 const toc = headings
   .filter((h) => h.depth === 2 || h.depth === 3)
   .map((h) => (h.slug === 'footnote-label' ? { ...h, text: footnoteLabel } : h));
-const backHref = paper ? '/blog/#papers' : '/blog/';
+// Paper drafts are English only, so they always go back to the English journal.
+const backHref = paper ? '/blog/#papers' : ko ? '/ko/blog/' : '/blog/';
+// Where the header's language sign leads: the other version of this post, or else the Korean journal.
+const alternate = paper ? '/ko/blog/#papers' : ko ? versions?.en : (versions?.ko ?? '/ko/blog/');
 const listAuthors = (names: string[]) => new Intl.ListFormat(ko ? 'ko' : 'en', { type: 'conjunction' }).format(names);
 // A contents list only earns its place on posts long enough to get lost in.
 
@@ -49,7 +52,7 @@ const fmtKo = (d: Date) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long' 
   <head><BaseHead title={`${title} — Jihoo`} description={description} locale={ko ? 'ko_KR' : 'en_US'} alternates={alternates} /></head>
   <body>
     <div class="progress" data-progress aria-hidden="true"></div>
-    <Header />
+    <Header alternate={alternate} />
     <main class="wrap article-page">
       <div class="article-top">
         <a class="back-link" href={backHref}>{t.back}</a>

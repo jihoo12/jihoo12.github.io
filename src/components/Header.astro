@@ -1,25 +1,36 @@
 ---
 import { Image } from 'astro:assets';
 import face from '../assets/nixchan/nixchan-avatar.png';
-const current = Astro.url.pathname;
+import { type Lang, localize, nav, unlocalize, urlLang } from '../i18n';
+
+interface Props {
+	/** Where the language sign leads. Defaults to this page in the other language. */
+	alternate?: string;
+}
+const lang = urlLang(Astro.url);
+const other: Lang = lang === 'ko' ? 'en' : 'ko';
+const t = nav[lang];
+const current = unlocalize(Astro.url.pathname);
+const alternate = Astro.props.alternate ?? localize(current, other);
 const links = [
-	{ label: 'Home', href: '/', active: current === '/', drop: 26 },
-	{ label: 'Projects', href: '/projects/', active: current.startsWith('/projects'), drop: 44 },
-	{ label: 'Journal', href: '/blog/', active: current.startsWith('/blog') || current.startsWith('/ko/blog') || current.startsWith('/papers'), drop: 18 },
-	{ label: 'Comics', href: '/comics/', active: current.startsWith('/comics'), drop: 30 },
-	{ label: 'About', href: '/about/', active: current.startsWith('/about'), drop: 36 },
-];
+	{ label: t.home, href: '/', active: current === '/', drop: 26 },
+	{ label: t.projects, href: '/projects/', active: current.startsWith('/projects'), drop: 44 },
+	{ label: t.journal, href: '/blog/', active: current.startsWith('/blog') || current.startsWith('/papers'), drop: 18 },
+	{ label: t.comics, href: '/comics/', active: current.startsWith('/comics'), drop: 30 },
+	{ label: t.about, href: '/about/', active: current.startsWith('/about'), drop: 36 },
+].map((link) => ({ ...link, href: localize(link.href, lang) }));
 ---
 <header class="signs wrap">
-	<a class="sign brand" style="--drop:30px" href="/" aria-label="Jihoo home"><Image class="brand-mark" src={face} alt="" width={64} height={64} loading="eager" /><span class="brand-word">jihoo<span class="period">.</span></span></a>
-	<nav aria-label="Main navigation">
+	<a class="sign brand" style="--drop:30px" href={localize('/', lang)} aria-label={t.homeLabel}><Image class="brand-mark" src={face} alt="" width={64} height={64} loading="eager" /><span class="brand-word">jihoo<span class="period">.</span></span></a>
+	<nav aria-label={t.main}>
 		{links.map((link) => (
-			<a class:list={['sign', { active: link.active, 'home-link': link.href === '/' }]} style={`--drop:${link.drop}px`} href={link.href} aria-current={link.active ? 'page' : undefined}>{link.label}</a>
+			<a class:list={['sign', { active: link.active, 'home-link': link.href === localize('/', lang) }]} style={`--drop:${link.drop}px`} href={link.href} aria-current={link.active ? 'page' : undefined}>{link.label}</a>
 		))}
 	</nav>
 	<div class="right">
 		<a class="sign github" style="--drop:22px" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-		<button class="sign clock" style="--drop:40px" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
+		<a class="sign lang" style="--drop:30px" href={alternate} hreflang={other} lang={other} aria-label={t.switchLabel} data-lang={other}>{t.switchTo}</a>
+		<button class="sign clock" style="--drop:40px" type="button" data-clock aria-label={t.clock}><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
 	</div>
 </header>
 <script>
@@ -56,6 +67,7 @@ const links = [
 	.brand { padding: 7px 14px 7px 7px; }
 	.brand-word { font-family: var(--display); font-size: 21px; font-weight: 400; line-height: 1; }
 	.brand-mark { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+	.lang { height: 40px; padding: 0 13px; font-size: 14px; color: var(--accent); }
 	.clock { width: 42px; height: 40px; justify-content: center; padding: 0; font-size: 20px; color: var(--accent); }
 	.moon { display: none; }
 	:global(:root[data-time='night']) .sun { display: none; }
@@ -75,6 +87,7 @@ const links = [
 		.brand { padding: 5px; }
 		.brand-word { display: none; }
 		.brand-mark { width: 32px; height: 32px; }
+		.lang { height: 38px; padding: 0 11px; }
 		.clock { width: 40px; height: 38px; padding: 0; font-size: 19px; }
 	}
 	/* Too many signs for one string line on a phone: the tabs get their own row, hung from a plank. */

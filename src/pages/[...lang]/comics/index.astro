@@ -1,53 +1,71 @@
 ---
 import { Image } from 'astro:assets';
-import BaseHead from '../../components/BaseHead.astro';
-import Header from '../../components/Header.astro';
-import Footer from '../../components/Footer.astro';
-import { comicSlug, publishedComics } from '../../lib/comics';
-import headerArt from '../../assets/nixchan/nixchan-whiteboard-01.png';
-import emptyArt from '../../assets/nixchan/nixchan-sleepy-desk-01.png';
+import BaseHead from '../../../components/BaseHead.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import { comicSlug, publishedComics } from '../../../lib/comics';
+import headerArt from '../../../assets/nixchan/nixchan-whiteboard-01.png';
+import emptyArt from '../../../assets/nixchan/nixchan-sleepy-desk-01.png';
 
+import { dateLabel as dateFormat, langPaths, localize, ogLocale, pairAlternates, routeLang } from '../../../i18n';
+
+export const getStaticPaths = langPaths;
+const lang = routeLang(Astro.params.lang);
+const ko = lang === 'ko';
+const t = ko
+  ? {
+      title: '만화 — Jihoo', description: '코드와 호기심, 그리고 일상에 대한 짧은 만화.', eyebrow: '컷과 낙서', h1: '만화',
+      subtitle: '코드와 버그, 그리고 일상에 대한 작은 이야기를 몇 컷씩 그려요.', art: '화이트보드에 스케치하는 닉스쨩',
+      draft: '초안', pages: (n: number) => `${n}쪽`,
+      emptyArt: '책상에서 꾸벅꾸벅 조는 닉스쨩', empty: '첫 만화는 아직 그리는 중이에요.', emptySub: '곧 다시 들러 주세요!', journal: '그동안 저널 읽기 →',
+    }
+  : {
+      title: 'Comics — Jihoo', description: 'Little comics about code, curiosity, and everyday life.', eyebrow: 'PANELS & DOODLES', h1: 'Comics',
+      subtitle: 'Little stories about code, bugs, and everyday life, a few panels at a time.', art: 'Nixchan sketching on a whiteboard',
+      draft: 'Draft', pages: (n: number) => `${n} ${n === 1 ? 'page' : 'pages'}`,
+      emptyArt: 'Nixchan dozing at her desk', empty: 'The first comic is still on the drawing board.', emptySub: 'Check back soon!', journal: 'Read the journal meanwhile →',
+    };
 const comics = await publishedComics();
-const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+const dateLabel = dateFormat(lang);
 ---
 <!doctype html>
-<html lang="en">
-  <head><BaseHead title="Comics — Jihoo" description="Little comics about code, curiosity, and everyday life." /></head>
+<html lang={lang}>
+  <head><BaseHead title={t.title} description={t.description} locale={ogLocale(lang)} alternates={pairAlternates('/comics/')} /></head>
   <body>
     <Header />
     <main class="wrap comics-main">
       <div class="page-head">
         <div>
-          <span class="eyebrow">PANELS & DOODLES</span>
-          <h1>Comics<span class="period">.</span></h1>
-          <p class="comics-subtitle">Little stories about code, bugs, and everyday life, a few panels at a time.</p>
+          <span class="eyebrow">{t.eyebrow}</span>
+          <h1>{t.h1}<span class="period">.</span></h1>
+          <p class="comics-subtitle">{t.subtitle}</p>
         </div>
-        <div class="art"><Image src={headerArt} alt="Nixchan sketching on a whiteboard" width={600} loading="eager" /></div>
+        <div class="art"><Image src={headerArt} alt={t.art} width={600} loading="eager" /></div>
       </div>
       {comics.length > 0 ? (
         <div class="strips">
           {comics.map((comic, i) => (
-            <a class="strip" href={`/comics/${comicSlug(comic.id)}/`}>
+            <a class="strip" href={localize(`/comics/${comicSlug(comic.id)}/`, lang)}>
               <Image class="strip-art" src={comic.data.cover ?? comic.data.pages[0].src} alt="" width={560} height={700} fit="cover" position="top" loading={i < 3 ? 'eager' : 'lazy'} />
-              <div class="strip-body" lang={comic.data.lang}>
+              <div class="strip-body">
                 <span class="strip-meta">
-                  {comic.data.draft && <span class="strip-draft">Draft</span>}
+                  {comic.data.draft && <span class="strip-draft">{t.draft}</span>}
                   <span class="strip-no">#{comics.length - i}</span>
                   <time datetime={comic.data.pubDate.toISOString()}>{dateLabel.format(comic.data.pubDate)}</time>
-                  <span class="strip-count">· {comic.data.pages.length} {comic.data.pages.length === 1 ? 'page' : 'pages'}</span>
+                  <span class="strip-count">· {t.pages(comic.data.pages.length)}</span>
                 </span>
-                <h2>{comic.data.title}</h2>
-                <p>{comic.data.description}</p>
+                <h2 lang={comic.data.lang}>{comic.data.title}</h2>
+                <p lang={comic.data.lang}>{comic.data.description}</p>
               </div>
             </a>
           ))}
         </div>
       ) : (
         <div class="comics-empty">
-          <Image src={emptyArt} alt="Nixchan dozing at her desk" width={320} />
-          <h2>The first comic is still on the drawing board.</h2>
-          <p>Check back soon!</p>
-          <a class="text-link" href="/blog/">Read the journal meanwhile →</a>
+          <Image src={emptyArt} alt={t.emptyArt} width={320} />
+          <h2>{t.empty}</h2>
+          <p>{t.emptySub}</p>
+          <a class="text-link" href={localize('/blog/', lang)}>{t.journal}</a>
         </div>
       )}
     </main>
@@ -84,7 +102,7 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
   .strip-body { display: flex; flex-direction: column; align-items: flex-start; padding: 0 8px; }
   .strip-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--accent); font-size: 13px; font-weight: 800; }
   .strip-draft { background: var(--star); color: #1c1a3e; border-radius: 999px; padding: 1px 9px; font-weight: 900; }
-  .strip-body:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+  .comics-main:lang(ko), .strip-body :lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
   .strip h2 { margin: 6px 0 8px; font-size: 20px; font-weight: 900; line-height: 1.28; text-wrap: balance; }
   .strip p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 

@@ -1,13 +1,33 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import ProjectCard from '../components/ProjectCard.astro';
-import { PROFILES } from '../consts';
-import { ACTIVITY_DAYS } from '../lib/activity';
-import { rankedProjects } from '../lib/projects';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { PROFILES } from '../../consts';
+import { ACTIVITY_DAYS } from '../../lib/activity';
+import { rankedProjects } from '../../lib/projects';
 import { Image } from 'astro:assets';
-import roadmapArt from '../assets/nixchan/nixchan-roadmap-01.png';
+import roadmapArt from '../../assets/nixchan/nixchan-roadmap-01.png';
+import { langPaths, ogLocale, pairAlternates, routeLang } from '../../i18n';
+
+export const getStaticPaths = langPaths;
+const lang = routeLang(Astro.params.lang);
+const ko = lang === 'ko';
+const t = ko
+	? {
+			title: '프로젝트 — Jihoo', description: '제가 만들고 있는 언어, 운영체제, 컴포지터, 그리고 작은 라이브러리들.',
+			eyebrow: '만들고 있는 것들', h1: '프로젝트', art: '로드맵 화이트보드를 가리키는 닉스쨩', featured: '대표 프로젝트',
+			note: `최근 ${ACTIVITY_DAYS}일 동안 가장 바빴던 리포예요. GitHub에서 바로 가져와 매일 새로 고쳐요.`,
+			also: '이것저것 만지작거리는 중', smaller: '작은 실험들', more: 'GitHub에서 더 보기',
+			commits: (n: number) => `커밋 ${n} · ${ACTIVITY_DAYS}일`,
+		}
+	: {
+			title: 'Projects — Jihoo', description: "Languages, operating systems, compositors and small libraries I've been building.",
+			eyebrow: "THINGS I'M BUILDING", h1: 'Projects', art: 'Nixchan pointing at a roadmap whiteboard', featured: 'Featured projects',
+			note: `The busiest repos of the last ${ACTIVITY_DAYS} days, straight from GitHub and refreshed daily.`,
+			also: 'ALSO TINKERING WITH', smaller: 'Smaller experiments', more: 'More on GitHub',
+			commits: (n: number) => `${n} commits · ${ACTIVITY_DAYS}d`,
+		};
 
 // Everything here comes from GitHub at build time: the top FEATURED by commits get the big cards,
 // the next MORE_EXPERIMENTS are listed below them.
@@ -18,48 +38,50 @@ const featured = ranked.slice(0, FEATURED);
 const experiments = ranked.slice(FEATURED, FEATURED + MORE_EXPERIMENTS);
 ---
 <!doctype html>
-<html lang="en">
-	<head><BaseHead title="Projects — Jihoo" description="Languages, operating systems, compositors and small libraries I've been building." /></head>
+<html lang={lang}>
+	<head><BaseHead title={t.title} description={t.description} locale={ogLocale(lang)} alternates={pairAlternates('/projects/')} /></head>
 	<body>
 		<Header />
 		<main class="wrap projects-main">
 			<div class="page-head"><div>
-			<span class="eyebrow">THINGS I'M BUILDING</span>
-			<h1>Projects<span class="period">.</span></h1>
-			<p class="projects-subtitle">Languages, an operating system, a 3D desktop, and a couple of small libraries. <br />Most of them are experiments, and all of them taught me something.</p>
+			<span class="eyebrow">{t.eyebrow}</span>
+			<h1>{t.h1}<span class="period">.</span></h1>
+			{ko
+				? <p class="projects-subtitle">프로그래밍 언어, 운영체제, 3D 데스크톱, 그리고 작은 라이브러리 몇 개. <br />대부분은 실험이지만, 하나하나 저에게 무언가를 가르쳐 줬어요.</p>
+				: <p class="projects-subtitle">Languages, an operating system, a 3D desktop, and a couple of small libraries. <br />Most of them are experiments, and all of them taught me something.</p>}
 			<div class="profiles">
 				<a href={PROFILES.github} target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
 				<a href={PROFILES.npm} target="_blank" rel="noopener noreferrer">npm <span aria-hidden="true">↗</span></a>
 				<a href={PROFILES.pypi} target="_blank" rel="noopener noreferrer">PyPI <span aria-hidden="true">↗</span></a>
 			</div>
-			</div><div class="art"><Image src={roadmapArt} alt="Nixchan pointing at a roadmap whiteboard" width={600} loading="eager" /></div></div>
+			</div><div class="art"><Image src={roadmapArt} alt={t.art} width={600} loading="eager" /></div></div>
 
-			<section class="featured" aria-label="Featured projects">
+			<section class="featured" aria-label={t.featured}>
 				{featured.map(({ data, commits }) => (
 					<div class="shelf">
-						<ProjectCard project={data} commits={commits} detailed />
+						<ProjectCard project={data} commits={commits} detailed lang={lang} />
 						<span class="plank"></span>
 					</div>
 				))}
 			</section>
-			<p class="featured-note">The busiest repos of the last {ACTIVITY_DAYS} days, straight from GitHub and refreshed daily.</p>
+			<p class="featured-note">{t.note}</p>
 
 			{experiments.length > 0 && (
 				<section class="experiments" aria-labelledby="experiments-title">
 					<div class="section-top">
 						<div>
-							<span class="eyebrow">ALSO TINKERING WITH</span>
-							<h2 id="experiments-title">Smaller experiments<span class="period">.</span></h2>
+							<span class="eyebrow">{t.also}</span>
+							<h2 id="experiments-title">{t.smaller}<span class="period">.</span></h2>
 						</div>
-						<a class="text-link" href={PROFILES.github} target="_blank" rel="noopener noreferrer">More on GitHub <span aria-hidden="true">↗</span></a>
+						<a class="text-link" href={PROFILES.github} target="_blank" rel="noopener noreferrer">{t.more} <span aria-hidden="true">↗</span></a>
 					</div>
 					<div class="experiment-list">
 						{experiments.map(({ data, commits }) => (
 							<a class="experiment" href={data.repo} target="_blank" rel="noopener noreferrer">
 								<div>
-									<span class="experiment-meta">{[data.language, `${commits} commits · ${ACTIVITY_DAYS}d`].filter(Boolean).join(' · ')}</span>
+									<span class="experiment-meta">{[data.language, t.commits(commits)].filter(Boolean).join(' · ')}</span>
 									<h3>{data.title}</h3>
-									<p>{data.tagline}</p>
+									<p lang="en">{data.tagline}</p>
 								</div>
 								<span class="experiment-arrow" aria-hidden="true">↗</span>
 							</a>
@@ -87,6 +109,10 @@ const experiments = ranked.slice(FEATURED, FEATURED + MORE_EXPERIMENTS);
 		font-size: clamp(48px, 6vw, 70px);
 		line-height: 1.15;
 		margin: 25px 0 16px;
+	}
+	.projects-main:lang(ko) .page-head {
+		word-break: keep-all;
+		overflow-wrap: break-word;
 	}
 	.projects-subtitle {
 		color: var(--muted);

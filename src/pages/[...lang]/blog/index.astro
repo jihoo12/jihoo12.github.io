@@ -1,61 +1,90 @@
 ---
 import { Image } from 'astro:assets';
-import BaseHead from '../../components/BaseHead.astro';
-import Header from '../../components/Header.astro';
-import Footer from '../../components/Footer.astro';
+import BaseHead from '../../../components/BaseHead.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
 import { getCollection } from 'astro:content';
-import { publishedPapers } from '../../lib/papers';
-import headerArt from '../../assets/nixchan/nixchan-rainy-coding-01.png';
-import fallbackArt from '../../assets/nixchan/nixchan-night-coffee-01.png';
-import emptyArt from '../../assets/nixchan/nixchan-penguin-nap-01.png';
+import { publishedPapers } from '../../../lib/papers';
+import headerArt from '../../../assets/nixchan/nixchan-rainy-coding-01.png';
+import fallbackArt from '../../../assets/nixchan/nixchan-night-coffee-01.png';
+import emptyArt from '../../../assets/nixchan/nixchan-penguin-nap-01.png';
 
-const koIds = new Set((await getCollection('blogKo')).map((p) => p.id));
-const posts = (await getCollection('blog')).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+import { dateLabel as dateFormat, langPaths, localize, ogLocale, pairAlternates, routeLang } from '../../../i18n';
+
+export const getStaticPaths = langPaths;
+const lang = routeLang(Astro.params.lang);
+const ko = lang === 'ko';
+const t = ko
+  ? {
+      title: '저널 — Jihoo', description: '코드와 호기심, 그리고 일상에 대한 기록.', eyebrow: '생각과 기록', h1: '저널',
+      subtitle: '생각하고, 발견하고, 배워 가는 것들을 적어 둬요.', art: '비 오는 밤 창가에서 코딩하는 닉스쨩',
+      latest: '최신', read: '글 읽기', english: '영어', englishTitle: '아직 한국어 번역이 없어서 영어 원문으로 연결돼요',
+      emptyArt: '펭귄과 함께 낮잠 자는 닉스쨩', empty: '아직 조용하네요.', emptySub: '첫 글을 쓰는 중이에요. 곧 만나요!', home: '홈으로 돌아가기 →',
+    }
+  : {
+      title: 'Journal — Jihoo', description: 'Notes on code, curiosity, and everyday life.', eyebrow: 'THOUGHTS & NOTES', h1: 'The journal',
+      subtitle: "Thoughts, discoveries, and the things I'm learning along the way.", art: 'Nixchan coding by a rainy window at night',
+      latest: 'Latest', read: 'Read the note', english: '', englishTitle: '',
+      emptyArt: 'Nixchan napping with a penguin', empty: "It's a little quiet here.", emptySub: "I'm working on my first note. See you soon!", home: 'Back to home →',
+    };
+
+const translations = new Map((await getCollection('blogKo')).map((p) => [p.id, p]));
+// The Korean journal lists every post: the translation when there is one, the English original otherwise.
+const posts = (await getCollection('blog'))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .map((post) => {
+    const translation = translations.get(post.id);
+    if (ko && translation) return { id: post.id, data: translation.data, href: `/ko/blog/${post.id}/`, lang: 'ko', hasKo: true };
+    return { id: post.id, data: post.data, href: `/blog/${post.id}/`, lang: 'en', hasKo: Boolean(translation) };
+  });
+// Paper drafts are English only, on both versions of the journal.
 const papers = await publishedPapers();
-const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+const dateLabel = dateFormat(lang);
+const paperDate = dateFormat('en');
 ---
 <!doctype html>
-<html lang="en">
-  <head><BaseHead title="Journal — Jihoo" description="Notes on code, curiosity, and everyday life." /></head>
+<html lang={lang}>
+  <head><BaseHead title={t.title} description={t.description} locale={ogLocale(lang)} alternates={pairAlternates('/blog/')} /></head>
   <body>
     <Header />
     <main class="wrap journal-main">
       <div class="page-head">
         <div>
-          <span class="eyebrow">THOUGHTS & NOTES</span>
-          <h1>The journal<span class="period">.</span></h1>
-          <p class="journal-subtitle">Thoughts, discoveries, and the things I'm learning along the way.</p>
+          <span class="eyebrow">{t.eyebrow}</span>
+          <h1>{t.h1}<span class="period">.</span></h1>
+          <p class="journal-subtitle">{t.subtitle}</p>
         </div>
-        <div class="art"><Image src={headerArt} alt="Nixchan coding by a rainy window at night" width={600} loading="eager" /></div>
+        <div class="art"><Image src={headerArt} alt={t.art} width={600} loading="eager" /></div>
       </div>
       {posts.length > 0 ? (
         <div class="prints">
           {posts.map((post, i) => (
-            <a class:list={['print', { latest: i === 0 }]} href={`/blog/${post.id}/`}>
+            <a class:list={['print', { latest: i === 0 }]} href={post.href}>
               <Image class="print-art" src={post.data.heroImage ?? fallbackArt} alt="" width={i === 0 ? 720 : 480} height={i === 0 ? 720 : 480} loading={i < 3 ? 'eager' : 'lazy'} />
               <div class="print-body">
                 <span class="print-meta">
-                  {i === 0 && <span class="print-new">Latest</span>}
+                  {i === 0 && <span class="print-new">{t.latest}</span>}
                   <time datetime={post.data.pubDate.toISOString()}>{dateLabel.format(post.data.pubDate)}</time>
-                  {koIds.has(post.id) && <span class="print-lang" lang="ko" title="한국어 번역이 있어요">한국어</span>}
+                  {!ko && post.hasKo && <span class="print-lang" lang="ko" title="한국어 번역이 있어요">한국어</span>}
+                  {ko && post.lang === 'en' && <span class="print-lang" title={t.englishTitle}>{t.english}</span>}
                 </span>
-                <h2>{post.data.title}</h2>
-                <p>{post.data.description}</p>
-                {i === 0 && <span class="text-link">Read the note <span aria-hidden="true">→</span></span>}
+                <h2 lang={post.lang}>{post.data.title}</h2>
+                <p lang={post.lang}>{post.data.description}</p>
+                {i === 0 && <span class="text-link">{t.read} <span aria-hidden="true">→</span></span>}
               </div>
             </a>
           ))}
         </div>
       ) : (
         <div class="journal-empty">
-          <Image src={emptyArt} alt="Nixchan napping with a penguin" width={320} />
-          <h2>It's a little quiet here.</h2>
-          <p>I'm working on my first note. See you soon!</p>
-          <a class="text-link" href="/">Back to home →</a>
+          <Image src={emptyArt} alt={t.emptyArt} width={320} />
+          <h2>{t.empty}</h2>
+          <p>{t.emptySub}</p>
+          <a class="text-link" href={localize('/', lang)}>{t.home}</a>
         </div>
       )}
       {papers.length > 0 && (
-        <section class="papers" id="papers" aria-labelledby="papers-title">
+        <section class="papers" id="papers" aria-labelledby="papers-title" lang="en">
           <div class="papers-head">
             <span class="eyebrow">EXPERIMENTS IN A LAB COAT</span>
             <h2 id="papers-title">Paper drafts<span class="period">.</span></h2>
@@ -67,7 +96,7 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
                 <a class="sheet" href={`/papers/${paper.id}/`} lang={paper.data.lang}>
                   <span class="sheet-meta">
                     {paper.data.draft && <span class="sheet-draft">Unpublished</span>}
-                    <time datetime={paper.data.pubDate.toISOString()}>{dateLabel.format(paper.data.pubDate)}</time>
+                    <time datetime={paper.data.pubDate.toISOString()}>{paperDate.format(paper.data.pubDate)}</time>
                     {paper.data.writtenWith && <span>· with {paper.data.writtenWith}</span>}
                   </span>
                   <h3>{paper.data.title}</h3>
@@ -108,6 +137,7 @@ const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
   .print:nth-child(even)::before { left: 32%; transform: rotate(2.5deg); }
   .print:hover, .print:focus-visible { transform: rotate(0) translateY(-6px); box-shadow: 0 28px 36px -16px var(--shadow); }
   .print-art { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 2px; }
+  .journal-main:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
   .print-body { display: flex; flex-direction: column; align-items: flex-start; padding: 0 8px; }
   .print-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--accent); font-size: 13px; font-weight: 800; }
   .print-lang { font-size: 11px; background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; }

@@ -1,22 +1,27 @@
 ---
 import { Image } from 'astro:assets';
 import nap from '../assets/nixchan/nixchan-penguin-nap-01.png';
+import { localize, nav, urlLang } from '../i18n';
+
+const lang = urlLang(Astro.url);
+const t = nav[lang];
+const ko = lang === 'ko';
 ---
 <footer class="site-footer">
 	<div class="wrap footer-inner">
 		<div class="footer-left">
-			<Image class="footer-art" src={nap} alt="Nixchan napping with a penguin" width={200} height={200} />
-			<p>A little at a time,<br />at my own pace<span>.</span></p>
+			<Image class="footer-art" src={nap} alt={ko ? '펭귄과 함께 낮잠 자는 닉스쨩' : 'Nixchan napping with a penguin'} width={200} height={200} />
+			{ko ? <p>조금씩,<br />나만의 속도로<span>.</span></p> : <p>A little at a time,<br />at my own pace<span>.</span></p>}
 		</div>
 		<div class="footer-right">
-			<nav aria-label="Footer">
-				<a href="/projects/">Projects</a>
-				<a href="/blog/">Journal</a>
-				<a href="/comics/">Comics</a>
-				<a href="/about/">About</a>
+			<nav aria-label={ko ? '바닥글' : 'Footer'}>
+				<a href={localize('/projects/', lang)}>{t.projects}</a>
+				<a href={localize('/blog/', lang)}>{t.journal}</a>
+				<a href={localize('/comics/', lang)}>{t.comics}</a>
+				<a href={localize('/about/', lang)}>{t.about}</a>
 				<a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 			</nav>
-			<small>© {new Date().getFullYear()} Jihoo. Illustrations: Nixchan.</small>
+			<small>© {new Date().getFullYear()} Jihoo. {ko ? '그림: 닉스쨩.' : 'Illustrations: Nixchan.'}</small>
 		</div>
 	</div>
 </footer>

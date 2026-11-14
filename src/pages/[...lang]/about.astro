@@ -1,0 +1,13 @@
+---
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import hugArt from '../../assets/nixchan/nixchan-penguin-hug-01.png';
+import { langPaths, ogLocale, pairAlternates, routeLang } from '../../i18n';
+
+export const getStaticPaths = langPaths;
+const lang = routeLang(Astro.params.lang);
+const ko = lang === 'ko';
+---
+<!doctype html><html lang={lang}><head><BaseHead title={ko ? '소개 — Jihoo' : 'About — Jihoo'} description={ko ? 'Jihoo에 대해 조금 더.' : 'A little more about Jihoo.'} locale={ogLocale(lang)} alternates={pairAlternates('/about/')} /></head><body><Header/><main class="wrap about-main"><span class="eyebrow">{ko ? '반가워요' : 'NICE TO MEET YOU'}</span><div class="about-layout"><div>{ko ? <><h1>안녕하세요,<br/>Jihoo예요<span class="period">.</span></h1><p>새로운 걸 배우고, 떠오른 생각을 실제로 만들어 보는 걸 좋아해요. 여기는 코딩하면서, 이것저것 실험하면서, 그리고 하루하루 지내면서 알게 된 것들을 모아 두는 곳이에요.</p><p>완벽함보다는 꾸준한 걸음을, 복잡함보다는 명료함을 믿어요.</p></> : <><h1>Hello,<br/>I'm Jihoo<span class="period">.</span></h1><p>I love learning new things and turning ideas into something real. This is where I collect lessons from coding, creative experiments, and everyday discoveries.</p><p>I believe in steady progress over perfection, and clarity over complexity.</p></>}<a class="button primary" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">{ko ? 'GitHub에서 만나요 ↗' : 'Find me on GitHub ↗'}</a></div><div class="art"><Image src={hugArt} alt={ko ? '펭귄을 꼭 껴안고 웃는 닉스쨩' : 'Nixchan happily hugging a penguin'} width={600} loading="eager" /><span class="tag">{ko ? '안녕' : 'HI THERE'} <span aria-hidden="true">♡</span></span></div></div></main><Footer/></body></html><style>.about-main{padding-top:100px;padding-bottom:140px;min-height:75vh}.about-layout{display:grid;grid-template-columns:1fr .8fr;align-items:center;gap:100px;margin-top:24px}.about-main:lang(ko){word-break:keep-all;overflow-wrap:break-word}.about-layout h1{font-size:clamp(43px,6vw,70px);line-height:1.15;margin:0 0 30px}.about-layout p{font-size:16px;color:var(--muted);line-height:1.9;margin:0 0 17px}.about-layout .button{margin-top:26px}@media(max-width:760px){.about-main{padding-top:70px;padding-bottom:90px}.about-layout{grid-template-columns:1fr;gap:45px}.about-layout .art{max-width:420px}}</style>

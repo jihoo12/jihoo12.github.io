@@ -2,6 +2,7 @@
 import { REGISTRIES } from '../consts';
 import { ACTIVITY_DAYS } from '../lib/activity';
 import type { ProjectData } from '../lib/projects';
+import type { Lang } from '../i18n';
 
 interface Props {
 	project: ProjectData;
@@ -9,11 +10,17 @@ interface Props {
 	commits?: number;
 	// Show the full GitHub description and links (projects page) or only the first sentence (homepage).
 	detailed?: boolean;
+	// Language of the page. GitHub descriptions stay as written.
+	lang?: Lang;
 }
 
-const { project, commits = 0, detailed = false } = Astro.props;
+const { project, commits = 0, detailed = false, lang = 'en' } = Astro.props;
 const { title, tagline, description, language, tags, repo, homepage, stars, package: pkg } = project;
 const registry = pkg && REGISTRIES[pkg.registry];
+const ko = lang === 'ko';
+const t = ko
+	? { stars: `GitHub 별 ${stars}개`, recent: `최근 ${ACTIVITY_DAYS}일 동안 커밋 ${commits}개`, activity: `커밋 ${commits} · ${ACTIVITY_DAYS}일`, source: '소스', website: '웹사이트' }
+	: { stars: `${stars} stars on GitHub`, recent: `${commits} commits in the last ${ACTIVITY_DAYS} days`, activity: `${commits} commits · ${ACTIVITY_DAYS}d`, source: 'Source', website: 'Website' };
 const languageColors: Record<string, string> = {
 	Rust: '#d39a6a',
 	C: '#8a9bb0',
@@ -27,13 +34,13 @@ const languageColors: Record<string, string> = {
 	<div class="card-top">
 		<span class="language"><span class="lang-dot" style={`background:${languageColors[language] ?? 'var(--faint)'}`}></span>{language}</span>
 		<span class="card-badges">
-			{detailed && stars > 0 && <span class="activity" title={`${stars} stars on GitHub`}>★ {stars}</span>}
-			{commits > 0 && <span class="activity" title={`${commits} commits in the last ${ACTIVITY_DAYS} days`}>{commits} commits · {ACTIVITY_DAYS}d</span>}
+			{detailed && stars > 0 && <span class="activity" title={t.stars}>★ {stars}</span>}
+			{commits > 0 && <span class="activity" title={t.recent}>{t.activity}</span>}
 			{registry && <span class="registry">{registry.label}</span>}
 		</span>
 	</div>
 	<h3><a href={repo} target="_blank" rel="noopener noreferrer">{title} <span aria-hidden="true">↗</span></a></h3>
-	<p class="tagline">{detailed ? description : tagline}</p>
+	<p class="tagline" lang="en">{detailed ? description : tagline}</p>
 	{detailed && pkg && registry && (
 		<a class="install" href={registry.url(pkg.name)} target="_blank" rel="noopener noreferrer"><code>{registry.install(pkg.name)}</code><span aria-hidden="true">↗</span></a>
 	)}
@@ -41,8 +48,8 @@ const languageColors: Record<string, string> = {
 		<ul class="tags">{tags.map((tag) => <li>{tag}</li>)}</ul>
 		{detailed && (
 			<div class="links">
-				<a href={repo} target="_blank" rel="noopener noreferrer">Source</a>
-				{homepage && <a href={homepage} target="_blank" rel="noopener noreferrer">Website</a>}
+				<a href={repo} target="_blank" rel="noopener noreferrer">{t.source}</a>
+				{homepage && <a href={homepage} target="_blank" rel="noopener noreferrer">{t.website}</a>}
 			</div>
 		)}
 	</div>

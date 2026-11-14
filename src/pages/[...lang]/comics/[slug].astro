@@ -1,50 +1,62 @@
 ---
 import { Image } from 'astro:assets';
 import { type CollectionEntry, render } from 'astro:content';
-import BaseHead from '../../components/BaseHead.astro';
-import Header from '../../components/Header.astro';
-import Footer from '../../components/Footer.astro';
-import FormattedDate from '../../components/FormattedDate.astro';
-import { comicSlug, publishedComics } from '../../lib/comics';
+import BaseHead from '../../../components/BaseHead.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import FormattedDate from '../../../components/FormattedDate.astro';
+import { comicSlug, publishedComics } from '../../../lib/comics';
+import { langPaths, localize, ogLocale, pairAlternates, routeLang } from '../../../i18n';
 
-type Link = { href: string; title: string };
+type Link = { href: string; title: string; lang: string };
 export async function getStaticPaths() {
 	const comics = await publishedComics();
-	const link = (c?: CollectionEntry<'comics'>): Link | undefined => c && { href: `/comics/${comicSlug(c.id)}/`, title: c.data.title };
-	// The list is newest first, so the previous episode is the next one in it.
-	return comics.map((comic, i) => ({
-		params: { slug: comicSlug(comic.id) },
-		props: { comic, number: comics.length - i, prev: link(comics[i + 1]), next: link(comics[i - 1]) },
-	}));
+	return langPaths().flatMap(({ params }) => {
+		const ui = routeLang(params.lang);
+		const link = (c?: CollectionEntry<'comics'>): Link | undefined =>
+			c && { href: localize(`/comics/${comicSlug(c.id)}/`, ui), title: c.data.title, lang: c.data.lang };
+		// The list is newest first, so the previous episode is the next one in it.
+		return comics.map((comic, i) => ({
+			params: { ...params, slug: comicSlug(comic.id) },
+			props: { comic, number: comics.length - i, prev: link(comics[i + 1]), next: link(comics[i - 1]) },
+		}));
+	});
 }
 type Props = { comic: CollectionEntry<'comics'>; number: number; prev?: Link; next?: Link };
 
 const { comic, number, prev, next } = Astro.props;
+// `ui` is the language of the page around the comic; `lang` is the comic's own.
+const ui = routeLang(Astro.params.lang);
+const ko = ui === 'ko';
 const { title, description, pubDate, pages, lang } = comic.data;
+const path = `/comics/${comicSlug(comic.id)}/`;
+const t = ko
+	? { all: '← 모든 만화', eyebrow: `만화 #${number}`, full: '원본 크기로 보기', page: (i: number) => `${pages.length}쪽 중 ${i}쪽`, more: '다른 만화', prev: '← 이전 화', next: '다음 화 →' }
+	: { all: '← All comics', eyebrow: `COMIC #${number}`, full: 'Open full size', page: (i: number) => `Page ${i} of ${pages.length}`, more: 'More comics', prev: '← Previous', next: 'Next →' };
 const { Content } = await render(comic);
 const hasNote = Boolean(comic.body?.trim());
 ---
 <!doctype html>
-<html lang="en">
-  <head><BaseHead title={`${title} — Jihoo`} description={description} /></head>
+<html lang={ui}>
+  <head><BaseHead title={`${title} — Jihoo`} description={description} locale={ogLocale(ui)} alternates={pairAlternates(path)} /></head>
   <body>
     <Header />
     <main class="wrap comic-page">
-      <a class="back-link" href="/comics/">← All comics</a>
-      <header class="comic-header" lang={lang}>
-        <span class="eyebrow">COMIC #{number}</span>
-        <h1>{title}</h1>
-        <p>{description}</p>
-        <div class="comic-date"><FormattedDate date={pubDate} /></div>
+      <a class="back-link" href={localize('/comics/', ui)}>{t.all}</a>
+      <header class="comic-header">
+        <span class="eyebrow">{t.eyebrow}</span>
+        <h1 lang={lang}>{title}</h1>
+        <p lang={lang}>{description}</p>
+        <div class="comic-date"><FormattedDate date={pubDate} lang={ui} /></div>
       </header>
 
       <div class="pages" lang={lang}>
         {pages.map((page, i) => (
-          <a class="page-link" href={page.src.src} target="_blank" rel="noopener" title="Open full size">
+          <a class="page-link" href={page.src.src} target="_blank" rel="noopener" title={t.full}>
           <Image
             class="page"
             src={page.src}
-            alt={page.alt || `Page ${i + 1} of ${pages.length}`}
+            alt={page.alt || t.page(i + 1)}
             widths={[480, 800, 1200]}
             sizes="(max-width: 760px) 100vw, 760px"
             loading={i < 2 ? 'eager' : 'lazy'}
@@ -55,9 +67,9 @@ const hasNote = Boolean(comic.body?.trim());
 
       {hasNote && <div class="note" lang={lang}><Content /></div>}
 
-      <nav class="episodes" aria-label="More comics">
-        {prev ? <a class="episode prev" href={prev.href}><span>← Previous</span>{prev.title}</a> : <span />}
-        {next ? <a class="episode next" href={next.href}><span>Next →</span>{next.title}</a> : <span />}
+      <nav class="episodes" aria-label={t.more}>
+        {prev ? <a class="episode prev" href={prev.href}><span>{t.prev}</span><b lang={prev.lang}>{prev.title}</b></a> : <span />}
+        {next ? <a class="episode next" href={next.href}><span>{t.next}</span><b lang={next.lang}>{next.title}</b></a> : <span />}
       </nav>
     </main>
     <Footer />
@@ -91,6 +103,7 @@ const hasNote = Boolean(comic.body?.trim());
     background: var(--surface); box-shadow: 0 5px 0 var(--edge); font-weight: 800; line-height: 1.35;
     transition: transform .1s, box-shadow .1s;
   }
+  .episode b { font-weight: inherit; }
   .episode span { color: var(--accent); font-size: 13px; font-weight: 900; }
   .episode.next { text-align: right; }
   .episode:hover { transform: translateY(-2px); box-shadow: 0 7px 0 var(--edge); }
