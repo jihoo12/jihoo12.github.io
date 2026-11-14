@@ -76,4 +76,3 @@ If you build from source, the bootstrap seed intentionally remains **0.5.0**. Th
 
 Start with the sized-list example, then try carrying a runtime length from a loop into a buffer read. That connection—between a fact you have established and an operation that can use it—is the part of this release I am most excited to share.
 
-*Written with Codex, using the published release and its tagged documentation.*
