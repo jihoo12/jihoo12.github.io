@@ -2,7 +2,7 @@
 // Everything still either stands on a plank or hangs from a string, like the 2D site.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { buildNixFigure } from './nix-figure';
+import { buildNixFigure, type NixClip } from './nix-figure';
 
 interface SceneData {
 	projects: { title: string; tagline: string; language: string; commits: number; href: string }[];
@@ -731,6 +731,20 @@ export async function start() {
 		let nextBlink = 2;
 		let hop = 0;
 		const squashSpring = new Spring(160, 10);
+		// Clicking the 3D figure has her show off one move after another, then sit back down.
+		const tricks = [
+			{ clip: 'Wave', time: 3.2 },
+			{ clip: 'Hop', time: 0 },
+			{ clip: 'Walk', time: 3 },
+			{ clip: 'Run', time: 2.4 },
+		] as const;
+		let nextTrick = 0;
+		let trick: (typeof tricks)[number] | null = null;
+		let trickLeft = 0;
+		// Which way she turns to walk or run: towards the middle of the view, where there is room.
+		let trickSide = 1;
+		// While she walks or runs side-on she keeps her eyes on the way ahead.
+		const zero = new THREE.Vector2();
 
 		return {
 			root,
@@ -748,13 +762,26 @@ export async function start() {
 				jumpTime = reduceMotion ? 0.01 : 0.6 + Math.min(distance, 60) * 0.012;
 				arc = reduceMotion ? 0 : 2 + Math.min(distance, 60) * 0.08;
 				jump = 0;
+				trick = null;
 				facing = to.x < from.x ? -1 : 1;
 				flat.scale.x = facing;
 				squashSpring.velocity -= 4;
 			},
 			poke() {
-				hop = 1;
-				squashSpring.velocity -= 5;
+				if (!(solid && loaded) || reduceMotion || jump < 1) {
+					hop = 1;
+					squashSpring.velocity -= 5;
+					return;
+				}
+				trick = tricks[nextTrick];
+				nextTrick = (nextTrick + 1) % tricks.length;
+				trickLeft = trick.time;
+				trickSide = stops[stop].center.x < root.position.x ? -1 : 1;
+				if (trick.clip === 'Hop') {
+					hop = 1;
+					squashSpring.velocity -= 5;
+					trick = null;
+				}
 			},
 			tick(dt: number, time: number, look: THREE.Vector2) {
 				if (jump < 1) {
@@ -771,17 +798,25 @@ export async function start() {
 					root.position.copy(to);
 				}
 				if (hop > 0) {
-					hop = Math.max(0, hop - dt * 2.4);
+					hop = Math.max(0, hop - dt * (solid ? 1.7 : 2.4));
 					root.position.y += Math.sin(Math.PI * (1 - hop)) * 0.6;
 				}
 				const s = squashSpring.step(dt);
 				squash.scale.set(1 - s * 0.12, 1 + s * 0.18, solid ? 1 - s * 0.12 : 1);
 				const airborne = jump < 1 || hop > 0;
 				if (solid) {
-					// The figure turns towards where she is jumping, then back to face the camera.
-					turn = damp(turn, jump < 1 && !reduceMotion ? facing * 0.75 : 0, 7, dt);
+					if (trick) {
+						trickLeft -= dt;
+						if (trickLeft <= 0) trick = null;
+					}
+					const strolling = trick !== null && trick.clip !== 'Wave';
+					figure.play(trick ? (trick.clip as NixClip) : 'Sit');
+					// The figure turns towards where she is jumping or walking, then back to face the camera.
+					const turnTo = jump < 1 && !reduceMotion ? facing * 0.75 : strolling ? trickSide * 1.15 : 0;
+					turn = damp(turn, turnTo, 7, dt);
 					figure.group.rotation.y = turn;
-					figure.tick(dt, time, { airborne, look, still: reduceMotion });
+					const flight = jump < 1 ? jump : hop > 0 ? 1 - hop : null;
+					figure.tick(dt, time, { airborne, look: strolling ? zero : look, still: reduceMotion, jump: flight });
 				} else {
 					legs.forEach((leg, i) => {
 						const swingAngle = reduceMotion ? 0 : Math.sin(time * 2.6 + i * Math.PI) * 0.22;

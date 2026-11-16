@@ -1,6 +1,6 @@
 // The 3D Nixchan figure for the experimental homepage. The model is built in Blender by
 // tools/nixchan-3d/build.py; this file dresses it in toon shading with an inked outline, paints
-// her face on, and animates the empties the script leaves for it.
+// her face on, plays the clips baked into her rig, and turns her head and long hair on top of them.
 // Her origin is where she sits: y = 0 is the surface, z = 0 is its front edge, and she faces +z.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -189,12 +189,18 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 	geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
+/** The looping clips baked into the model. Jump is separate: the page scrubs it along her flight. */
+export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave';
+
 export interface NixFigure {
 	group: THREE.Group;
 	/** Resolves once the model is in, or rejects if it could not be loaded. */
 	ready: Promise<void>;
 	setBlink(closed: boolean): void;
-	tick(dt: number, time: number, state: { airborne: boolean; look: THREE.Vector2; still: boolean }): void;
+	/** Blend into a looping clip. */
+	play(clip: NixClip): void;
+	/** `jump` is how far through a jump she is (0 → 1), or null on the ground. */
+	tick(dt: number, time: number, state: { airborne: boolean; look: THREE.Vector2; still: boolean; jump: number | null }): void;
 }
 
 export function buildNixFigure(url: string): NixFigure {
@@ -243,8 +249,11 @@ export function buildNixFigure(url: string): NixFigure {
 	const group = new THREE.Group();
 	let head: THREE.Object3D | null = null;
 	let longHair: THREE.Object3D | null = null;
-	let knees: THREE.Object3D[] = [];
-	const rest = { head: new THREE.Vector3(), hair: new THREE.Vector3() };
+	let mixer: THREE.AnimationMixer | null = null;
+	const actions = new Map<string, THREE.AnimationAction>();
+	const weights = new Map<THREE.AnimationAction, number>();
+	let clip: NixClip = 'Sit';
+	const rest = { head: new THREE.Quaternion(), hair: new THREE.Quaternion() };
 
 	const ready = new GLTFLoader().loadAsync(url).then((gltf) => {
 		const model = gltf.scene;
@@ -264,7 +273,18 @@ export function buildNixFigure(url: string): NixFigure {
 			}
 			placeholder.dispose();
 			mesh.castShadow = true;
-			if (!uninked.test(owner)) mesh.add(new THREE.Mesh(mesh.geometry, mesh.material === materials.Hair ? hairLine : outline));
+			if (uninked.test(owner)) continue;
+			const lineMat = mesh.material === materials.Hair ? hairLine : outline;
+			if (mesh instanceof THREE.SkinnedMesh) {
+				// The hoodie and sleeves bend with the rig, so their ink line has to as well.
+				const line = new THREE.SkinnedMesh(mesh.geometry, lineMat);
+				line.bind(mesh.skeleton, mesh.bindMatrix);
+				// Their bounds are measured standing in rest, which says little about where they are posed.
+				mesh.frustumCulled = line.frustumCulled = false;
+				mesh.add(line);
+			} else {
+				mesh.add(new THREE.Mesh(mesh.geometry, lineMat));
+			}
 		}
 		for (const [name, size] of [
 			['FlakeHat', 0.34],
@@ -272,40 +292,77 @@ export function buildNixFigure(url: string): NixFigure {
 		] as const) {
 			model.getObjectByName(name)?.add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), snowMat));
 		}
-		head = model.getObjectByName('HeadPivot') ?? null;
-		longHair = model.getObjectByName('LongHair') ?? null;
-		knees = ['KneeL', 'KneeR'].map((n) => model.getObjectByName(n)).filter((o): o is THREE.Object3D => !!o);
-		if (head) rest.head.copy(head.position);
-		if (longHair) rest.hair.copy(longHair.position);
+		// The rig's bones: the clips pose the body, and the page turns the head and long hair on top.
+		head = model.getObjectByName('Head') ?? null;
+		longHair = model.getObjectByName('Hair') ?? null;
+		if (head) rest.head.copy(head.quaternion);
+		if (longHair) rest.hair.copy(longHair.quaternion);
+		mixer = new THREE.AnimationMixer(model);
+		for (const animation of gltf.animations) {
+			const action = mixer.clipAction(animation);
+			if (animation.name === 'Jump') {
+				action.setLoop(THREE.LoopOnce, 1);
+				action.clampWhenFinished = true;
+				action.paused = true;
+			}
+			action.play();
+			action.setEffectiveWeight(0);
+			actions.set(animation.name, action);
+			weights.set(action, 0);
+		}
+		const sit = actions.get('Sit');
+		if (sit) {
+			sit.setEffectiveWeight(1);
+			weights.set(sit, 1);
+		}
 		group.add(model);
 	});
 
 	let yaw = 0;
 	let pitch = 0;
 	let flow = 0;
+	let jumpWeight = 0;
+	const look = new THREE.Quaternion();
+	const euler = new THREE.Euler();
 	return {
 		group,
 		ready,
 		setBlink(closed) {
 			faceMat.map = closed ? closedFace : openFace;
 		},
-		tick(dt, time, { airborne, look, still }) {
-			if (!head || !longHair) return;
+		play(next) {
+			if (next === clip) return;
+			clip = next;
+			// A clip that has faded right out starts again from the top, so a wave begins with the hand coming up.
+			const action = actions.get(next);
+			if (action && (weights.get(action) ?? 0) < 0.05) action.time = 0;
+		},
+		tick(dt, time, { airborne, look: pointer, still, jump }) {
+			if (!head || !longHair || !mixer) return;
 			const damp = (from: number, to: number, rate: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
-			// She glances towards the pointer, and her hair lifts while she is in the air.
-			yaw = damp(yaw, THREE.MathUtils.clamp(look.x, -1, 1) * 0.28, 4);
-			pitch = damp(pitch, THREE.MathUtils.clamp(-look.y, -1, 1) * 0.12, 4);
-			flow = damp(flow, airborne ? -0.2 : 0, airborne ? 6 : 3);
-			const bob = still ? 0 : Math.sin(time * 1.7) * 0.012;
-			head.rotation.set(pitch, yaw, still ? 0 : Math.sin(time * 0.8) * 0.03);
-			head.position.y = rest.head.y + bob;
-			// The long hair hangs from the head but is only half as stiff, so it trails a turn.
-			longHair.rotation.set(flow, yaw * 0.55, 0);
-			longHair.position.y = rest.hair.y + bob;
-			knees.forEach((knee, i) => {
-				const swing = still ? 0 : Math.sin(time * 2.6 + i * Math.PI) * 0.28 - 0.08;
-				knee.rotation.x = damp(knee.rotation.x, airborne ? 0.75 - i * 0.2 : swing, 10);
-			});
+			// Every clip but Jump eases towards full or no weight; Jump cuts in quickly over the top of them.
+			jumpWeight = damp(jumpWeight, jump === null ? 0 : 1, jump === null ? 8 : 18);
+			const jumpAction = actions.get('Jump');
+			for (const [name, action] of actions) {
+				if (action === jumpAction) continue;
+				const w = damp(weights.get(action) ?? 0, name === clip ? 1 : 0, 5);
+				weights.set(action, w);
+				action.setEffectiveWeight(w * (1 - jumpWeight));
+			}
+			if (jumpAction) {
+				if (jump !== null) jumpAction.time = THREE.MathUtils.clamp(jump, 0, 1) * jumpAction.getClip().duration;
+				jumpAction.setEffectiveWeight(jumpWeight);
+			}
+			mixer.update(still ? 0 : dt);
+
+			// She glances towards the pointer, and her hair streams back when she runs or lifts in the air.
+			yaw = damp(yaw, THREE.MathUtils.clamp(pointer.x, -1, 1) * 0.28, 4);
+			pitch = damp(pitch, THREE.MathUtils.clamp(-pointer.y, -1, 1) * 0.12, 4);
+			const stream = clip === 'Run' ? 0.3 : clip === 'Walk' ? 0.1 : 0;
+			flow = damp(flow, airborne ? -0.2 : stream + (still ? 0 : Math.sin(time * 1.7) * 0.02), airborne ? 6 : 3);
+			head.quaternion.copy(rest.head).multiply(look.setFromEuler(euler.set(pitch, yaw, still ? 0 : Math.sin(time * 0.8) * 0.03)));
+			// The long hair hangs from her shoulders and is only half as stiff, so it trails a turn of the head.
+			longHair.quaternion.copy(rest.hair).multiply(look.setFromEuler(euler.set(flow, yaw * 0.55, 0)));
 		},
 	};
 }

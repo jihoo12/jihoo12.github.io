@@ -4,15 +4,16 @@
 #
 # Everything is modelled straight in three.js coordinates (y up, she faces +z, y = 0 is the seat,
 # z = 0 the front edge of whatever she sits on) and exported without the y-up conversion.
-# Materials are only placeholders: the page swaps them for toon materials by name, paints the
-# face onto the "Face" mesh, and animates the empties "HeadPivot", "LongHair", "KneeL" and "KneeR".
+# Materials are only placeholders: the page swaps them for toon materials by name and paints the
+# face onto the "Face" mesh. She is rigged, standing in rest, with clips Sit, Idle, Walk, Run, Wave
+# and Jump baked in; the page plays those, and turns the "Head" and "Hair" bones itself.
 import math
 import os
 import sys
 
 import bmesh
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 argv = sys.argv[sys.argv.index('--') + 1 :] if '--' in sys.argv else []
 OUT = os.path.abspath(argv[0] if argv else 'nixchan.glb')
@@ -285,9 +286,29 @@ def remeshed(voxel=0.016, iterations=6):
     ]
 
 
-root = empty('Nixchan')
+# ---------- the skeleton's joints ----------
+# She is modelled standing, arms a little out from her sides, and the clips pose everything else,
+# sitting included. Every limb hangs from a ball at its joint, so turning it never opens a gap.
+SIDES = ((1, 'L'), (-1, 'R'))  # her left is +x
+HIP_Y = 0.135
+ARM_OUT = 0.3
+UPPER_ARM = 0.25
+FOREARM = 0.27
+THIGH = 0.36
+ANKLE = 0.44  # from knee to ankle
+JOINT = {'Hips': Vector((0, HIP_Y, BODY_Z)), 'Chest': Vector((0, 0.34, BODY_Z)), 'Head': HEAD.copy(), 'Hair': HEAD.copy()}
+ARM_DIR = {}
+for side, s in SIDES:
+    d = Vector((side * math.sin(ARM_OUT), -math.cos(ARM_OUT), 0))
+    ARM_DIR[s] = d
+    JOINT['UpperArm' + s] = Vector((side * 0.28, 0.62, BODY_Z))
+    JOINT['LowerArm' + s] = JOINT['UpperArm' + s] + d * UPPER_ARM
+    JOINT['Hand' + s] = JOINT['LowerArm' + s] + d * FOREARM
+    JOINT['Thigh' + s] = Vector((side * 0.16, HIP_Y, BODY_Z))
+    JOINT['Shin' + s] = Vector((side * 0.165, HIP_Y - THIGH, BODY_Z))
+    JOINT['Foot' + s] = JOINT['Shin' + s] + Vector((0, -ANKLE, 0))
 
-# ---------- hoodie: torso, sleeves, collar, hood and pocket melted into one ----------
+# ---------- hoodie: torso and pocket melted into one ----------
 bm = bmesh.new()
 lathe(
     bm,
@@ -295,57 +316,60 @@ lathe(
     zscale=0.8,
     centre=Vector((0, 0, BODY_Z)),
 )
-SLEEVE = {}
-for side in (-1, 1):
-    # A baggy sleeve from the shoulder, round the elbow, to paws that meet in her lap.
-    path = [Vector((side * 0.28, 0.62, BODY_Z)), Vector((side * 0.41, 0.46, BODY_Z + 0.04)), Vector((side * 0.33, 0.33, BODY_Z + 0.25)), Vector((side * 0.125, 0.305, BODY_Z + 0.4))]
-    sweep(bm, path, lambda t: 0.105 + 0.04 * math.sin(math.pi * min(1.0, t * 1.1)))
-    SLEEVE[side] = (path[-1], (path[-1] - path[-2]).normalized())
 # The kangaroo pocket.
 sphere(bm, Vector((0, 0.2, BODY_Z + 0.31)), 1, scale=(0.25, 0.12, 0.065))
-body = mesh_object('Body', bm, ['Navy'], parent=root)
+body = mesh_object('Body', bm, ['Navy'])
 modify(body, *remeshed(), ('DECIMATE', {'ratio': 0.3}))
+
+# Baggy sleeves, apart from the torso so they can swing through it.
+bm = bmesh.new()
+for side, s in SIDES:
+    a, e, w, d = JOINT['UpperArm' + s], JOINT['LowerArm' + s], JOINT['Hand' + s], ARM_DIR[s]
+    sweep(bm, [a, a + d * 0.12, e, e + d * 0.13, w], lambda t: 0.105 + 0.04 * math.sin(math.pi * min(1.0, t * 1.1)))
+sleeves = mesh_object('Sleeves', bm, ['Navy'])
+modify(sleeves, *remeshed(0.014, 5), ('DECIMATE', {'ratio': 0.3}))
 
 # The hood: a thick collar under her chin, dipping at the front, and the rest lying on her back.
 bm = bmesh.new()
 torus(bm, Vector(), 0.25, 0.08, matrix=Matrix.Translation((0, 0.705, BODY_Z + 0.01)) @ Matrix.Rotation(0.22, 4, 'X'))
 sphere(bm, Vector((0, 0.63, BODY_Z - 0.27)), 1, scale=(0.31, 0.22, 0.14))
-hood = mesh_object('Hood', bm, ['Navy'], parent=root)
+hood = mesh_object('Hood', bm, ['Navy'])
 modify(hood, *remeshed(), ('DECIMATE', {'ratio': 0.3}))
 
-# Ribbed cuffs, their own mesh so the ink line picks them out.
-bm = bmesh.new()
-for side in (-1, 1):
-    end, along = SLEEVE[side]
-    torus(bm, Vector(), 0.066, 0.036, segments=20, sides=10, yscale=0.9, matrix=facing(along, end + along * 0.05) @ Matrix.Rotation(math.pi / 2, 4, 'X'))
-cuffs = mesh_object('Cuffs', bm, ['NavyDeep'], parent=root)
-smooth(cuffs)
-
-bm = bmesh.new()
-for side in (-1, 1):
-    end, along = SLEEVE[side]
-    palm = end + along * 0.1 + Vector((0, -0.01, 0.035))
-    sphere(bm, palm, 1, scale=(0.07, 0.055, 0.075), seg=(16, 10))
-    sphere(bm, palm + Vector((-side * 0.03, 0.035, 0.03)), 0.03, seg=(12, 8))
-hands = mesh_object('Hands', bm, ['Skin'], parent=root)
-smooth(hands)
+# Ribbed cuffs and paws, one of each per side so they can follow their own bones.
+CUFFS, HANDS = {}, {}
+for side, s in SIDES:
+    w, d = JOINT['Hand' + s], ARM_DIR[s]
+    bm = bmesh.new()
+    torus(bm, Vector(), 0.066, 0.036, segments=20, sides=10, yscale=0.9, matrix=facing(d, w + d * 0.05) @ Matrix.Rotation(math.pi / 2, 4, 'X'))
+    CUFFS[s] = mesh_object('Cuff' + s, bm, ['NavyDeep'])
+    smooth(CUFFS[s])
+    bm = bmesh.new()
+    palm = w + d * 0.11
+    sphere(bm, palm, 1, scale=(0.066, 0.078, 0.062), seg=(16, 10))
+    # The thumb, towards the front and her middle.
+    sphere(bm, palm + Vector((-side * 0.03, 0.02, 0.045)), 0.03, seg=(12, 8))
+    HANDS[s] = mesh_object('Hand' + s, bm, ['Skin'])
+    smooth(HANDS[s])
 
 # Drawstrings either side of the snowflake, each ending in a stubby tip.
 bm = bmesh.new()
 for side in (-1, 1):
     pts = [Vector((side * 0.085, 0.66, BODY_Z + 0.27)), Vector((side * 0.12, 0.58, BODY_Z + 0.318)), Vector((side * 0.145, 0.47, BODY_Z + 0.352)), Vector((side * 0.15, 0.38, BODY_Z + 0.375))]
     tube(bm, pts, lambda t: 0.013 if t < 0.8 else 0.021, n=20)
-cords = mesh_object('Cords', bm, ['Cord'], parent=root)
+cords = mesh_object('Cords', bm, ['Cord'])
 smooth(cords)
 
-flake_chest = empty('FlakeChest', parent=root, matrix=facing((0, 0.2, 1), Vector((0, 0.47, BODY_Z + 0.352))))
+flake_chest = empty('FlakeChest', matrix=facing((0, 0.2, 1), Vector((0, 0.47, BODY_Z + 0.352))))
 
-# ---------- legs: thighs on the seat, shins and sneakers swinging from the knees ----------
-bm = bmesh.new()
-for side in (-1, 1):
-    sweep(bm, [Vector((side * 0.16, 0.135, BODY_Z - 0.05)), Vector((side * 0.165, 0.135, BODY_Z + 0.37))], lambda t: 0.14, steps=12)
-legs = mesh_object('Legs', bm, ['Navy'], parent=root)
-modify(legs, *remeshed(), ('DECIMATE', {'ratio': 0.3}))
+# ---------- legs: thighs from the hips, shins and sneakers from the knees ----------
+THIGHS = {}
+for side, s in SIDES:
+    hip = JOINT['Thigh' + s]
+    bm = bmesh.new()
+    sweep(bm, [hip + Vector((0, 0.05, 0)), JOINT['Shin' + s] + Vector((0, -0.01, 0))], lambda t: 0.14, steps=12)
+    THIGHS[s] = mesh_object('Thigh' + s, bm, ['Navy'])
+    modify(THIGHS[s], *remeshed(), ('DECIMATE', {'ratio': 0.3}))
 
 SHOE = Vector((0, -0.475, 0.065))
 SHOE_SIZE = Vector((0.108, 0.078, 0.172))
@@ -357,8 +381,13 @@ def instep(x, z):
     return SHOE.y + SHOE_SIZE.y * math.sqrt(max(d, 0.0))
 
 
-for side, name in ((-1, 'KneeL'), (1, 'KneeR')):
-    knee = empty(name, Vector((side * 0.165, 0.135, BODY_Z + 0.36)), parent=root)
+KNEES, FEET = {}, {}
+for side, s in SIDES:
+    # Shins and sneakers are modelled around the knee; the sneakers turn at the ankle.
+    name = 'Knee' + s
+    knee = KNEES[s] = empty(name, JOINT['Shin' + s])
+    ankle = FEET[s] = empty('Ankle' + s, JOINT['Foot' + s])
+    to_knee = Vector((0, ANKLE, 0))
     # Joggers: loose down the shin, gathered into a cuff at the ankle.
     bm = bmesh.new()
     sweep(bm, [Vector((0, 0, 0)), Vector((0, -0.18, 0.005)), Vector((0, -0.33, 0))], lambda t: 0.118 + 0.014 * math.sin(math.pi * t), steps=14)
@@ -369,24 +398,27 @@ for side, name in ((-1, 'KneeL'), (1, 'KneeR')):
     bm = bmesh.new()
     sphere(bm, SHOE, 1, scale=SHOE_SIZE)
     sphere(bm, Vector((0, -0.425, -0.005)), 0.098)
-    upper = mesh_object(name + 'Shoe', bm, ['NavyDeep'], parent=knee)
+    upper = mesh_object(name + 'Shoe', bm, ['NavyDeep'], parent=ankle, position=to_knee)
     modify(upper, *remeshed(0.012, 4), ('DECIMATE', {'ratio': 0.25}))
 
     # The white rubber: a toe cap and a sole a little wider than the upper.
     bm = bmesh.new()
     sphere(bm, Vector((0, -0.492, 0.172)), 1, scale=(0.1, 0.062, 0.078), seg=(20, 12))
     lathe(bm, [(0.085, -0.572), (0.112, -0.562), (0.118, -0.535), (0.112, -0.512), (0.09, -0.505)], segments=28, zscale=1.62, centre=Vector((0, 0, 0.068)))
-    rubber = mesh_object(name + 'Rubber', bm, ['Cord'], parent=knee)
+    rubber = mesh_object(name + 'Rubber', bm, ['Cord'], parent=ankle, position=to_knee)
     smooth(rubber)
 
     bm = bmesh.new()
     for z in (0.085, 0.118, 0.151):
         tube(bm, [Vector((x, instep(x, z) + 0.006, z + abs(x) * 0.15)) for x in (-0.062, -0.032, 0, 0.032, 0.062)], 0.0095, n=8, sides=6)
-    laces = mesh_object(name + 'Laces', bm, ['Cord'], parent=knee)
+    laces = mesh_object(name + 'Laces', bm, ['Cord'], parent=ankle, position=to_knee)
     smooth(laces)
 
+# Where the sole meets the ground, from the ankle: heel, ball and toe.
+SOLE = [Vector((0, -0.572 + ANKLE, z)) for z in (-0.09, 0.07, 0.22)]
+
 # ---------- head ----------
-head = empty('HeadPivot', HEAD, parent=root)
+head = empty('HeadPivot', HEAD)
 bm = bmesh.new()
 verts = sphere(bm, Vector(), HEAD_R, scale=(1.04, 0.97, 1), seg=(64, 40))
 for v in verts:
@@ -457,7 +489,7 @@ bangs_obj = mesh_object('Bangs', bm, ['Hair'], parent=head)
 smooth(bangs_obj)
 
 # ---------- long hair: trails the head a little when she turns ----------
-long_hair = empty('LongHair', HEAD, parent=root)
+long_hair = empty('LongHair', HEAD)
 horizontal = lambda p: Vector((p.x, 0, p.z)) if Vector((p.x, 0, p.z)).length > 1e-4 else Vector((0, 0, -1))
 # How far the mass of hair stands out from the head's axis on its way down to the seat.
 MASS = [(-1.08, 0.6), (-0.98, 0.7), (-0.85, 0.75), (-0.6, 0.71), (-0.3, 0.655), (-0.1, 0.62), (0.05, 0.585), (0.14, 0.542)]
@@ -589,6 +621,308 @@ for spin in (math.pi / 4, -math.pi / 4):
     bmesh.ops.transform(bm, matrix=orient @ Matrix.Rotation(spin, 4, 'Z') @ Matrix.Diagonal((0.27, 0.042, 0.035, 1)), verts=verts)
 pin = mesh_object('Pin', bm, ['Ink'], parent=head)
 
+# ---------- the rig ----------
+# Every bone points straight up with no roll, so in rest each one's axes are the world's: a pose is
+# just rotations about x (forwards and back), y (turning) and z (sideways), and locations in metres.
+PARENT = {'Hips': None, 'Chest': 'Hips', 'Head': 'Chest', 'Hair': 'Chest'}
+for _, s in SIDES:
+    PARENT.update({'UpperArm' + s: 'Chest', 'LowerArm' + s: 'UpperArm' + s, 'Hand' + s: 'LowerArm' + s, 'Thigh' + s: 'Hips', 'Shin' + s: 'Thigh' + s, 'Foot' + s: 'Shin' + s})
+BONE_LEN = 0.1
+rig_data = bpy.data.armatures.new('Rig')
+rig = bpy.data.objects.new('Nixchan', rig_data)
+scene.collection.objects.link(rig)
+bpy.context.view_layer.objects.active = rig
+bpy.ops.object.mode_set(mode='EDIT')
+for name, parent in PARENT.items():
+    eb = rig_data.edit_bones.new(name)
+    eb.head = JOINT[name]
+    eb.tail = JOINT[name] + Vector((0, BONE_LEN, 0))
+    eb.roll = 0
+    if parent:
+        eb.parent = rig_data.edit_bones[parent]
+bpy.ops.object.mode_set(mode='OBJECT')
+for pb in rig.pose.bones:
+    pb.rotation_mode = 'QUATERNION'
+
+
+def attach(obj, bone):
+    """Hang a rigid part off a bone, where it already is. Blender hangs it from the bone's tail."""
+    world = obj.matrix_basis.copy()
+    obj.parent = rig
+    obj.parent_type = 'BONE'
+    obj.parent_bone = bone
+    obj.matrix_parent_inverse = Matrix.Identity(4)
+    obj.matrix_basis = Matrix.Translation(-(JOINT[bone] + Vector((0, BONE_LEN, 0)))) @ world
+
+
+for obj in (hood, cords, flake_chest):
+    attach(obj, 'Chest')
+attach(head, 'Head')
+attach(long_hair, 'Hair')
+for _, s in SIDES:
+    attach(CUFFS[s], 'LowerArm' + s)
+    attach(HANDS[s], 'Hand' + s)
+    attach(THIGHS[s], 'Thigh' + s)
+    attach(KNEES[s], 'Shin' + s)
+    attach(FEET[s], 'Foot' + s)
+
+
+def skin(obj, weigh):
+    """Bind a soft part to the rig, with `weigh(position)` giving {bone: weight} for each vertex."""
+    obj.parent = rig
+    groups = {}
+    for v in obj.data.vertices:
+        for bone, w in weigh(v.co).items():
+            if w > 1e-3:
+                if bone not in groups:
+                    groups[bone] = obj.vertex_groups.new(name=bone)
+                groups[bone].add([v.index], w, 'REPLACE')
+    obj.modifiers.new('rig', 'ARMATURE').object = rig
+
+
+def torso_weights(co):
+    c = smoothstep(0.18, 0.46, co.y)
+    return {'Chest': c, 'Hips': 1 - c}
+
+
+def sleeve_weights(co):
+    s = 'L' if co.x > 0 else 'R'
+    along = (co - JOINT['UpperArm' + s]).dot(ARM_DIR[s])
+    lower = smoothstep(UPPER_ARM - 0.06, UPPER_ARM + 0.06, along)
+    return {'UpperArm' + s: 1 - lower, 'LowerArm' + s: lower}
+
+
+skin(body, torso_weights)
+skin(sleeves, sleeve_weights)
+
+# ---------- poses ----------
+
+
+def euler(x=0.0, y=0.0, z=0.0):
+    return Euler((x, y, z), 'XYZ').to_quaternion()
+
+
+def new_pose():
+    return {b: [Vector(), Quaternion()] for b in PARENT}
+
+
+def fk(pose):
+    """Each bone's matrix in the rig's space; a rest point p on bone b lands at world[b] @ (p - JOINT[b])."""
+    world = {}
+    for b, parent in PARENT.items():
+        loc, q = pose[b]
+        local = Matrix.Translation(JOINT[b] - (JOINT[parent] if parent else Vector()) + loc) @ q.to_matrix().to_4x4()
+        world[b] = world[parent] @ local if parent else local
+    return world
+
+
+def ground(pose, lift=0.0):
+    """Raise or drop her so the lower sole rests on y = 0 (plus `lift`)."""
+    world = fk(pose)
+    low = min((world['Foot' + s] @ p).y for _, s in SIDES for p in SOLE)
+    pose['Hips'][0].y += lift - low
+
+
+def frame(a, f):
+    return Matrix((a, f, a.cross(f))).transposed()
+
+
+REST_FRAME = {s: frame(ARM_DIR[s], Vector((0, 0, 1))) for _, s in SIDES}
+
+
+def reach(pose, s, target, pole, hand=None):
+    """Bend an arm so its wrist reaches `target`, given in the chest's rest frame, elbow towards `pole`.
+    In rest the forearm would bend forwards (+z); the bend is carried over so the sleeve never twists."""
+    shoulder = JOINT['UpperArm' + s]
+    to = Vector(target) - shoulder
+    dist = min(to.length, (UPPER_ARM + FOREARM) * 0.995)
+    a = to.normalized()
+    pole = Vector(pole)
+    pole = (pole - a * pole.dot(a)).normalized()
+    along = (UPPER_ARM**2 + dist**2 - FOREARM**2) / (2 * dist)
+    elbow = shoulder + a * along + pole * math.sqrt(max(UPPER_ARM**2 - along**2, 0.0))
+    wrist = shoulder + a * dist
+    upper, fore = (elbow - shoulder).normalized(), (wrist - elbow).normalized()
+    bend = fore - upper * fore.dot(upper)
+    f = bend.normalized() if bend.length > 1e-3 else -pole
+    r_upper = frame(upper, f) @ REST_FRAME[s].transposed()
+    axis = upper.cross(f)
+    r_fore = frame(fore, axis.cross(fore)) @ REST_FRAME[s].transposed()
+    pose['UpperArm' + s][1] = r_upper.to_quaternion()
+    pose['LowerArm' + s][1] = (r_upper.transposed() @ r_fore).to_quaternion()
+    pose['Hand' + s][1] = hand or Quaternion()
+
+
+def legs(pose, s, thigh, knee, foot, yaw=0.0, roll=0.0):
+    pose['Thigh' + s][1] = euler(thigh, yaw, roll)
+    pose['Shin' + s][1] = euler(knee)
+    pose['Foot' + s][1] = euler(foot)
+
+
+def hang(pose, s, side, forward=0.0, elbow=-0.25, inward=0.05):
+    """An arm hanging loosely from the shoulder."""
+    pose['UpperArm' + s][1] = euler(forward, 0, -side * inward)
+    pose['LowerArm' + s][1] = euler(elbow)
+    pose['Hand' + s][1] = Quaternion()
+
+
+TAU = 2 * math.pi
+# Standing, she steps back from the edge she sits on, so her toes stay on it.
+STAND_Z = -0.22
+LAP = lambda side: Vector((side * 0.15, 0.33, BODY_Z + 0.36))
+LAP_POLE = lambda side: (side, -0.3, -0.5)
+
+
+def sit(t):
+    p = new_pose()
+    p['Chest'][1] = euler(0.02 * math.sin(TAU * t))
+    for side, s in SIDES:
+        # Her legs swing from the knee, out of step with each other.
+        ph = TAU * t + (math.pi if side > 0 else 0)
+        legs(p, s, -math.pi / 2, math.pi / 2 + math.sin(ph) * 0.28 - 0.08, 0.12 * math.sin(ph - 0.8), yaw=side * 0.05)
+        reach(p, s, LAP(side), LAP_POLE(side))
+    return p
+
+
+def idle(t):
+    p = new_pose()
+    breathe = math.sin(TAU * t)
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(0, 0, 0.015 * breathe)
+    p['Chest'][1] = euler(0.025 * breathe, 0, -0.02 * breathe)
+    for side, s in SIDES:
+        legs(p, s, 0, 0.04, -0.04, roll=side * 0.03)
+        hang(p, s, side, forward=-0.06 - 0.03 * breathe)
+    ground(p)
+    return p
+
+
+def walk(t):
+    p = new_pose()
+    ph = TAU * t
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(0, -0.12 * math.sin(ph), 0)
+    p['Chest'][1] = euler(0.06, 0.2 * math.sin(ph), 0)
+    for side, s in SIDES:
+        q = ph + (0 if side > 0 else math.pi)
+        thigh = -0.42 * math.sin(q)
+        # The knee folds as the leg swings through, and the heel lifts as it pushes off behind.
+        knee = 0.08 + 0.8 * max(0.0, math.cos(q)) ** 1.6
+        legs(p, s, thigh, knee, -(thigh + knee) + 0.5 * max(0.0, thigh) - 0.1 * max(0.0, math.cos(q)), roll=side * 0.02)
+        hang(p, s, side, forward=0.38 * math.sin(q) - 0.05, elbow=-0.3 - 0.25 * max(0.0, -math.sin(q)))
+    ground(p)
+    return p
+
+
+def run(t):
+    p = new_pose()
+    ph = TAU * t
+    lean = 0.1
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(lean, -0.15 * math.sin(ph), 0)
+    p['Chest'][1] = euler(0.14, 0.28 * math.sin(ph), 0)
+    for side, s in SIDES:
+        q = ph + (0 if side > 0 else math.pi)
+        thigh = -0.35 - 0.8 * math.sin(q)
+        knee = 0.25 + 1.45 * (0.5 + 0.5 * math.cos(q - 0.4)) ** 1.5
+        legs(p, s, thigh - lean, knee, -(thigh + knee) * 0.6 + 0.2, roll=side * 0.02)
+        # Arms pump with the elbows bent, against the legs.
+        p['UpperArm' + s][1] = euler(0.7 * math.sin(q) - 0.2, 0, side * 0.1)
+        p['LowerArm' + s][1] = euler(-1.45)
+        p['Hand' + s][1] = euler(0.2)
+    # Both feet leave the ground between strides.
+    ground(p, lift=0.06 * max(0.0, math.sin(2 * ph + 0.6)))
+    return p
+
+
+def wave(t):
+    p = new_pose()
+    ph = TAU * t
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(0, 0, -0.03)
+    p['Chest'][1] = euler(0.02, 0.12, -0.05 + 0.015 * math.sin(2 * ph))
+    for side, s in SIDES:
+        legs(p, s, 0, 0.04, -0.04, roll=side * 0.03)
+    hang(p, 'L', 1, forward=-0.05)
+    # Her right hand up beside her face, in front of her hair, waving side to side.
+    reach(p, 'R', Vector((-0.42 - 0.07 * math.sin(2 * ph), 0.93, BODY_Z + 0.36)), (-1, -1, -0.3), hand=euler(0, 0, 0.3 * math.sin(2 * ph - 0.7)))
+    ground(p)
+    return p
+
+
+def jump_key(thigh, knee, foot, hips, chest, arms):
+    p = new_pose()
+    p['Hips'][0] = Vector(hips)
+    p['Chest'][1] = euler(chest)
+    for side, s in SIDES:
+        legs(p, s, thigh, knee, foot, yaw=side * 0.05)
+        target, pole = arms(side)
+        reach(p, s, target, pole)
+    return p
+
+
+JUMP = [
+    # Crouched to push off, arms swung back...
+    (0.0, jump_key(-1.25, 1.5, 0.1, (0, 0.05, -0.05), 0.25, lambda side: (Vector((side * 0.36, 0.4, BODY_Z - 0.16)), (side, 0, 0.6)))),
+    # ...stretched out as she leaves, arms flung up in front of her hair...
+    (0.15, jump_key(-0.15, 0.2, 0.6, (0, 0.4, -0.12), -0.12, lambda side: (Vector((side * 0.36, 0.92, BODY_Z + 0.36)), (side, -1, -0.2)))),
+    # ...tucked up in the air...
+    (0.45, jump_key(-1.15, 1.8, 0.3, (0, 0.22, -0.05), 0.05, lambda side: (Vector((side * 0.46, 0.72, BODY_Z + 0.36)), (side, -1, -0.3)))),
+    # ...reaching down for the landing...
+    (0.78, jump_key(-1.35, 1.1, -0.1, (0, 0.12, 0), 0.1, lambda side: (Vector((side * 0.42, 0.55, BODY_Z + 0.36)), (side, -1, -0.3)))),
+    # ...and landing in a sit, a little squashed.
+    (1.0, jump_key(-math.pi / 2, math.pi / 2, 0, (0, 0, 0), 0.12, lambda side: (LAP(side), LAP_POLE(side)))),
+]
+
+
+def jump(t):
+    for (t0, a), (t1, b) in zip(JUMP, JUMP[1:]):
+        if t <= t1:
+            u = smoothstep(t0, t1, t)
+            return {k: [a[k][0].lerp(b[k][0], u), a[k][1].slerp(b[k][1], u)] for k in a}
+    return JUMP[-1][1]
+
+
+# Looping clips end where they start; Jump plays once, and the page scrubs it along her flight.
+FPS = 30
+CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Jump': (30, jump)}
+# The page turns the head and the long hair itself.
+UNKEYED = {'Head', 'Hair'}
+scene.render.fps = FPS
+rig.animation_data_create()
+for name, (frames, fn) in CLIPS.items():
+    action = bpy.data.actions.new(name)
+    rig.animation_data.action = action
+    last = {}
+    for f in range(frames + 1):
+        for b, (loc, q) in fn(f / frames).items():
+            if b in UNKEYED:
+                continue
+            # Keep each quaternion on the same side as the last, so it never spins the long way round.
+            if b in last and last[b].dot(q) < 0:
+                q = -q
+            last[b] = q
+            pb = rig.pose.bones[b]
+            pb.rotation_quaternion = q
+            pb.keyframe_insert('rotation_quaternion', frame=f)
+            if b == 'Hips':
+                pb.location = loc
+                pb.keyframe_insert('location', frame=f)
+    track = rig.animation_data.nla_tracks.new()
+    track.name = name
+    track.strips.new(name, 0, action)
+    rig.animation_data.action = None
+
+
+def apply_pose(pose):
+    for b, (loc, q) in pose.items():
+        rig.pose.bones[b].location = loc
+        rig.pose.bones[b].rotation_quaternion = q
+    bpy.context.view_layer.update()
+
+
+apply_pose(new_pose())
+
 # ---------- export ----------
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(
@@ -599,6 +933,10 @@ bpy.ops.export_scene.gltf(
     export_texcoords=False,
     export_normals=True,
     export_materials='EXPORT',
+    export_skins=True,
+    export_animations=True,
+    export_animation_mode='ACTIONS',
+    export_force_sampling=True,
 )
 tris = sum(len(f.vertices) - 2 for o in scene.objects if o.type == 'MESH' for f in o.data.polygons)
 print(f'nixchan: wrote {OUT} ({tris} triangles, {os.path.getsize(OUT) // 1024} KiB)')
@@ -633,9 +971,24 @@ if PREVIEW:
         ('head-left', (-2.8, 2.6, 3.8), HEAD),
         ('head-right', (2.8, 2.6, 3.8), HEAD),
     )
+    only = os.environ.get('NIX_PREVIEW_VIEWS')
+    # The clips' NLA tracks would otherwise pose her over the top of these stills.
+    rig.animation_data.use_nla = False
+    apply_pose(sit(0))
     for name, at, look in views:
+        if only and name not in only.split(','):
+            continue
         pos = Vector(at)
         cam.matrix_world = facing(pos - look, pos)
         scene.render.filepath = os.path.join(PREVIEW, f'{name}.png')
         bpy.ops.render.render(write_still=True)
+    # One still from each clip, from the front and from her left.
+    standing = Vector((0, 1.15, BODY_Z))
+    for clip, t in (('Idle', 0), ('Walk', 0.25), ('Run', 0.25), ('Wave', 0.15), ('Jump', 0.15), ('Jump', 0.45)):
+        apply_pose(CLIPS[clip][1](t))
+        for view, at in (('front', (0, 1.4, 8)), ('side', (6, 1.6, 5))):
+            pos = Vector(at)
+            cam.matrix_world = facing(pos - standing, pos)
+            scene.render.filepath = os.path.join(PREVIEW, f'{clip.lower()}-{t}-{view}.png')
+            bpy.ops.render.render(write_still=True)
     print(f'nixchan: previews in {PREVIEW}')
