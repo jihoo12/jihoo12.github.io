@@ -13,8 +13,8 @@ const SNOW = '#5f9be8';
 const INK = '#1d1b3a';
 
 
-function toonRamp() {
-	const data = new Uint8Array([150, 215, 255]);
+function toonRamp(steps = [150, 215, 255]) {
+	const data = new Uint8Array(steps);
 	const ramp = new THREE.DataTexture(data, data.length, 1, THREE.RedFormat);
 	ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
 	ramp.needsUpdate = true;
@@ -44,34 +44,40 @@ function faceTexture(eyesClosed: boolean) {
 		ctx.lineCap = ctx.lineJoin = 'round';
 
 		for (const side of [-1, 1]) {
-			const blush = ctx.createRadialGradient(side * 0.6, 0.36, 0, side * 0.6, 0.36, 0.14);
+			const blush = ctx.createRadialGradient(side * 0.57, 0.47, 0, side * 0.57, 0.47, 0.14);
 			blush.addColorStop(0, 'rgba(244, 146, 158, 0.6)');
 			blush.addColorStop(1, 'rgba(244, 146, 158, 0)');
 			ctx.fillStyle = blush;
 			ctx.beginPath();
-			ctx.ellipse(side * 0.6, 0.36, 0.15, 0.09, 0, 0, Math.PI * 2);
+			ctx.ellipse(side * 0.57, 0.47, 0.15, 0.09, 0, 0, Math.PI * 2);
 			ctx.fill();
 			// The little hatch lines over the blush.
 			ctx.strokeStyle = 'rgba(226, 112, 128, 0.75)';
 			ctx.lineWidth = 0.012;
 			for (const dx of [-0.05, 0, 0.05]) {
 				ctx.beginPath();
-				ctx.moveTo(side * 0.6 + dx + 0.015, 0.33);
-				ctx.lineTo(side * 0.6 + dx - 0.015, 0.39);
+				ctx.moveTo(side * 0.57 + dx + 0.015, 0.44);
+				ctx.lineTo(side * 0.57 + dx - 0.015, 0.5);
 				ctx.stroke();
 			}
 		}
 
 		for (const side of [-1, 1]) {
-			const cx = side * 0.38;
-			const cy = 0.18;
+			const cx = side * 0.4;
+			const cy = 0.2;
+			// Drawn at the size the numbers below read naturally, then enlarged about the eye's centre.
+			ctx.save();
+			ctx.translate(cx, cy);
+			ctx.scale(1.16, 1.16);
+			ctx.translate(-cx, -cy);
 			if (eyesClosed) {
 				ctx.strokeStyle = INK;
 				ctx.lineWidth = 0.04;
 				ctx.beginPath();
-				ctx.moveTo(cx - 0.16, 0.19);
-				ctx.quadraticCurveTo(cx, 0.27, cx + 0.16, 0.19);
+				ctx.moveTo(cx - 0.16, cy + 0.01);
+				ctx.quadraticCurveTo(cx, cy + 0.09, cx + 0.16, cy + 0.01);
 				ctx.stroke();
+				ctx.restore();
 				continue;
 			}
 			ctx.save();
@@ -116,24 +122,27 @@ function faceTexture(eyesClosed: boolean) {
 			ctx.beginPath();
 			ctx.ellipse(cx, cy + 0.01, 0.18, 0.215, 0, Math.PI * 1.12, Math.PI * 1.88);
 			ctx.stroke();
+			ctx.fillStyle = INK;
 			ctx.beginPath();
-			ctx.moveTo(cx + side * 0.15, cy - 0.08);
-			ctx.lineTo(cx + side * 0.21, cy - 0.11);
-			ctx.stroke();
+			ctx.moveTo(cx + side * 0.12, cy - 0.15);
+			ctx.lineTo(cx + side * 0.235, cy - 0.135);
+			ctx.lineTo(cx + side * 0.17, cy - 0.04);
+			ctx.fill();
 			// A soft lower lash along the outer half.
 			ctx.lineWidth = 0.016;
 			ctx.beginPath();
 			ctx.ellipse(cx, cy - 0.01, 0.17, 0.225, 0, Math.PI * (side > 0 ? 0.08 : 0.62), Math.PI * (side > 0 ? 0.38 : 0.92));
 			ctx.stroke();
+			ctx.restore();
 		}
 
 		// The ":3" mouth.
 		ctx.strokeStyle = '#6b3a40';
 		ctx.lineWidth = 0.02;
 		ctx.beginPath();
-		ctx.arc(-0.042, 0.41, 0.042, 0.1, Math.PI);
-		ctx.moveTo(0.084, 0.41);
-		ctx.arc(0.042, 0.41, 0.042, 0, Math.PI - 0.1);
+		ctx.arc(-0.042, 0.46, 0.042, 0.1, Math.PI);
+		ctx.moveTo(0.084, 0.46);
+		ctx.arc(0.042, 0.46, 0.042, 0, Math.PI - 0.1);
 		ctx.stroke();
 	});
 }
@@ -205,7 +214,8 @@ export function buildNixFigure(url: string): NixFigure {
 	};
 	const openFace = faceTexture(false);
 	const closedFace = faceTexture(true);
-	const faceMat = toon('#ffffff', { map: openFace });
+	// Her face keeps a gentler shadow than her clothes, so it never cuts across her cheeks.
+	const faceMat = toon('#ffffff', { map: openFace, gradientMap: toonRamp([226, 244, 255]) });
 	const materials: Record<string, THREE.Material> = {
 		Navy: toon(NAVY),
 		NavyDeep: toon(NAVY_DEEP),
@@ -227,7 +237,8 @@ export function buildNixFigure(url: string): NixFigure {
 	};
 	const outline = inkLine(INK, 0.012);
 	const hairLine = inkLine('#8a85c4', 0.006);
-	const uninked = new Set(['Cords', 'Pin']);
+	// Too fine to carry a line of their own.
+	const uninked = /^(Cords|Pin)$|Laces$/;
 
 	const group = new THREE.Group();
 	let head: THREE.Object3D | null = null;
@@ -253,7 +264,7 @@ export function buildNixFigure(url: string): NixFigure {
 			}
 			placeholder.dispose();
 			mesh.castShadow = true;
-			if (!uninked.has(owner)) mesh.add(new THREE.Mesh(mesh.geometry, mesh.material === materials.Hair ? hairLine : outline));
+			if (!uninked.test(owner)) mesh.add(new THREE.Mesh(mesh.geometry, mesh.material === materials.Hair ? hairLine : outline));
 		}
 		for (const [name, size] of [
 			['FlakeHat', 0.34],

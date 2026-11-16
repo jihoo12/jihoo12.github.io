@@ -25,8 +25,12 @@ BODY_Z = -0.18
 HEAD_R = 0.56
 HEAD = Vector((0, 1.26, BODY_Z))
 CAP_R = HEAD_R * 1.09
+CAP_TALL = 1.18
+# Where the hat ends, in radians down from its own crown.
+RIM = math.pi * 0.45
 # Tipped back so the bangs show, and a little lopsided.
-BEANIE_TILT = Matrix.Rotation(-0.2, 4, 'X') @ Matrix.Rotation(-0.08, 4, 'Z')
+BEANIE_TILT = Matrix.Rotation(-0.22, 4, 'X') @ Matrix.Rotation(-0.08, 4, 'Z')
+SEAT = -HEAD.y
 
 COLORS = {
     'Navy': '#2c2a52',
@@ -174,12 +178,57 @@ def ribbon(bm, points, width, thick, outward, n=28, sides=8, mat=0):
         f.material_index = mat
 
 
-def lock_width(w0):
-    return lambda t: w0 * (1 - t**1.7) * (0.8 + 0.4 * math.sin(math.pi * t)) + 0.004
+def lock_width(w0, root=0.6):
+    """A chunky lock: swells out of its root, holds its width, then comes to a point."""
+
+    def width(t):
+        swell = root + (1 - root) * math.sin(min(t / 0.4, 1.0) * math.pi / 2)
+        taper = 1 - max(0.0, (t - 0.5) / 0.5) ** 2.2
+        return w0 * swell * taper + 0.006
+
+    return width
 
 
 def lock_thick(h0):
-    return lambda t: h0 * (1 - t**1.5) + 0.004
+    return lock_width(h0, root=0.75)
+
+
+def tube(bm, points, radius, n=14, sides=8, mat=0):
+    r = radius if callable(radius) else (lambda t: radius)
+    ribbon(bm, points, lambda t: 2 * r(t), lambda t: 2 * r(t), outward=lambda p: Vector((0.3, 0.2, 1)), n=n, sides=sides, mat=mat)
+
+
+def smoothstep(a, b, x):
+    t = max(0.0, min(1.0, (x - a) / (b - a)))
+    return t * t * (3 - 2 * t)
+
+
+def interpolate(table, x):
+    """Piecewise-linear lookup in [(x, value), ...], sorted by x."""
+    if x <= table[0][0]:
+        return table[0][1]
+    for (x0, v0), (x1, v1) in zip(table, table[1:]):
+        if x <= x1:
+            return v0 + (v1 - v0) * (x - x0) / (x1 - x0)
+    return table[-1][1]
+
+
+def grid(bm, rings, closed=True, mat=0):
+    """Quads between consecutive rings of points; `closed` joins each ring's end to its start."""
+    rings = [[bm.verts.new(p) for p in ring] for ring in rings]
+    n = len(rings[0])
+    for lo, hi in zip(rings, rings[1:]):
+        for k in range(n if closed else n - 1):
+            f = bm.faces.new((lo[k], lo[(k + 1) % n], hi[(k + 1) % n], hi[k]))
+            f.material_index = mat
+    return rings
+
+
+def face_outward(bm, centre=Vector()):
+    """Point an open sheet's normals away from `centre`, so a solidify knows which way is in."""
+    bm.normal_update()
+    if sum(f.normal.dot(f.calc_center_median() - centre) for f in bm.faces) < 0:
+        bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
 
 
 # ---------- object helpers ----------
@@ -193,8 +242,11 @@ def empty(name, position=Vector(), parent=None, matrix=None):
     return obj
 
 
-def mesh_object(name, bm, materials, parent=None, position=Vector()):
+def mesh_object(name, bm, materials, parent=None, position=Vector(), closed=True):
     me = bpy.data.meshes.new(name)
+    if closed:
+        # The page inks each mesh with a back-facing hull, which needs the normals to point out.
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     bm.normal_update()
     bm.to_mesh(me)
     bm.free()
@@ -235,181 +287,302 @@ def remeshed(voxel=0.016, iterations=6):
 
 root = empty('Nixchan')
 
-# ---------- hoodie and legs, melted into one ----------
+# ---------- hoodie: torso, sleeves, collar, hood and pocket melted into one ----------
 bm = bmesh.new()
 lathe(
     bm,
-    [(0.3, 0.0), (0.4, 0.03), (0.44, 0.16), (0.44, 0.34), (0.39, 0.52), (0.3, 0.66), (0.17, 0.76), (0.08, 0.8)],
+    [(0.3, 0.0), (0.41, 0.03), (0.45, 0.15), (0.44, 0.34), (0.39, 0.52), (0.3, 0.66), (0.17, 0.76), (0.08, 0.8)],
     zscale=0.8,
     centre=Vector((0, 0, BODY_Z)),
 )
+SLEEVE = {}
 for side in (-1, 1):
-    # A baggy sleeve from the shoulder, round the elbow, to a hand on the knee.
-    sweep(
-        bm,
-        [Vector((side * 0.28, 0.62, BODY_Z)), Vector((side * 0.4, 0.46, BODY_Z + 0.04)), Vector((side * 0.34, 0.33, BODY_Z + 0.24)), Vector((side * 0.2, 0.3, BODY_Z + 0.4))],
-        lambda t: 0.1 + 0.035 * math.sin(math.pi * min(1.0, t * 1.15)),
-    )
-    # Thighs, reaching just past the front edge.
-    sweep(bm, [Vector((side * 0.16, 0.13, BODY_Z - 0.05)), Vector((side * 0.165, 0.13, BODY_Z + 0.37))], lambda t: 0.135, steps=12)
-# The hood, lying on her back, and the kangaroo pocket.
-sphere(bm, Vector((0, 0.66, BODY_Z - 0.24)), 1, scale=(0.3, 0.2, 0.13))
-torus(bm, Vector((0, 0.74, BODY_Z)), 0.22, 0.085)
-sphere(bm, Vector((0, 0.2, BODY_Z + 0.31)), 1, scale=(0.24, 0.12, 0.06))
+    # A baggy sleeve from the shoulder, round the elbow, to paws that meet in her lap.
+    path = [Vector((side * 0.28, 0.62, BODY_Z)), Vector((side * 0.41, 0.46, BODY_Z + 0.04)), Vector((side * 0.33, 0.33, BODY_Z + 0.25)), Vector((side * 0.125, 0.305, BODY_Z + 0.4))]
+    sweep(bm, path, lambda t: 0.105 + 0.04 * math.sin(math.pi * min(1.0, t * 1.1)))
+    SLEEVE[side] = (path[-1], (path[-1] - path[-2]).normalized())
+# The kangaroo pocket.
+sphere(bm, Vector((0, 0.2, BODY_Z + 0.31)), 1, scale=(0.25, 0.12, 0.065))
 body = mesh_object('Body', bm, ['Navy'], parent=root)
-modify(body, *remeshed(), ('DECIMATE', {'ratio': 0.45}))
+modify(body, *remeshed(), ('DECIMATE', {'ratio': 0.3}))
+
+# The hood: a thick collar under her chin, dipping at the front, and the rest lying on her back.
+bm = bmesh.new()
+torus(bm, Vector(), 0.25, 0.08, matrix=Matrix.Translation((0, 0.705, BODY_Z + 0.01)) @ Matrix.Rotation(0.22, 4, 'X'))
+sphere(bm, Vector((0, 0.63, BODY_Z - 0.27)), 1, scale=(0.31, 0.22, 0.14))
+hood = mesh_object('Hood', bm, ['Navy'], parent=root)
+modify(hood, *remeshed(), ('DECIMATE', {'ratio': 0.3}))
+
+# Ribbed cuffs, their own mesh so the ink line picks them out.
+bm = bmesh.new()
+for side in (-1, 1):
+    end, along = SLEEVE[side]
+    torus(bm, Vector(), 0.066, 0.036, segments=20, sides=10, yscale=0.9, matrix=facing(along, end + along * 0.05) @ Matrix.Rotation(math.pi / 2, 4, 'X'))
+cuffs = mesh_object('Cuffs', bm, ['NavyDeep'], parent=root)
+smooth(cuffs)
 
 bm = bmesh.new()
 for side in (-1, 1):
-    top = Vector((side * 0.065, 0.66, BODY_Z + 0.31))
-    sweep(bm, [top, top + Vector((0, -0.2, 0.06))], lambda t: 0.013, steps=8)
-    sphere(bm, Vector((side * 0.065, 0.45, BODY_Z + 0.38)), 0.026, seg=(12, 8))
-cords = mesh_object('Cords', bm, ['Cord'], parent=root)
-modify(cords, ('REMESH', {'mode': 'VOXEL', 'voxel_size': 0.006}), ('DECIMATE', {'ratio': 0.3}))
-
-bm = bmesh.new()
-for side in (-1, 1):
-    sphere(bm, Vector((side * 0.16, 0.29, BODY_Z + 0.43)), 1, scale=(0.085, 0.06, 0.08))
-    sphere(bm, Vector((side * 0.1, 0.3, BODY_Z + 0.43)), 0.032)
+    end, along = SLEEVE[side]
+    palm = end + along * 0.1 + Vector((0, -0.01, 0.035))
+    sphere(bm, palm, 1, scale=(0.07, 0.055, 0.075), seg=(16, 10))
+    sphere(bm, palm + Vector((-side * 0.03, 0.035, 0.03)), 0.03, seg=(12, 8))
 hands = mesh_object('Hands', bm, ['Skin'], parent=root)
-modify(hands, ('REMESH', {'mode': 'VOXEL', 'voxel_size': 0.008}), ('LAPLACIANSMOOTH', {'iterations': 4, 'lambda_factor': 0.8}), ('DECIMATE', {'ratio': 0.4}))
+smooth(hands)
+
+# Drawstrings either side of the snowflake, each ending in a stubby tip.
+bm = bmesh.new()
+for side in (-1, 1):
+    pts = [Vector((side * 0.085, 0.66, BODY_Z + 0.27)), Vector((side * 0.12, 0.58, BODY_Z + 0.318)), Vector((side * 0.145, 0.47, BODY_Z + 0.352)), Vector((side * 0.15, 0.38, BODY_Z + 0.375))]
+    tube(bm, pts, lambda t: 0.013 if t < 0.8 else 0.021, n=20)
+cords = mesh_object('Cords', bm, ['Cord'], parent=root)
+smooth(cords)
+
+flake_chest = empty('FlakeChest', parent=root, matrix=facing((0, 0.2, 1), Vector((0, 0.47, BODY_Z + 0.352))))
+
+# ---------- legs: thighs on the seat, shins and sneakers swinging from the knees ----------
+bm = bmesh.new()
+for side in (-1, 1):
+    sweep(bm, [Vector((side * 0.16, 0.135, BODY_Z - 0.05)), Vector((side * 0.165, 0.135, BODY_Z + 0.37))], lambda t: 0.14, steps=12)
+legs = mesh_object('Legs', bm, ['Navy'], parent=root)
+modify(legs, *remeshed(), ('DECIMATE', {'ratio': 0.3}))
+
+SHOE = Vector((0, -0.475, 0.065))
+SHOE_SIZE = Vector((0.108, 0.078, 0.172))
+
+
+def instep(x, z):
+    """The height of the shoe's upper at (x, z), for laying the laces on it."""
+    d = 1 - (x / SHOE_SIZE.x) ** 2 - ((z - SHOE.z) / SHOE_SIZE.z) ** 2
+    return SHOE.y + SHOE_SIZE.y * math.sqrt(max(d, 0.0))
+
 
 for side, name in ((-1, 'KneeL'), (1, 'KneeR')):
-    knee = empty(name, Vector((side * 0.165, 0.13, BODY_Z + 0.36)), parent=root)
+    knee = empty(name, Vector((side * 0.165, 0.135, BODY_Z + 0.36)), parent=root)
+    # Joggers: loose down the shin, gathered into a cuff at the ankle.
     bm = bmesh.new()
-    sweep(bm, [Vector((0, 0, 0)), Vector((0, -0.2, 0)), Vector((0, -0.38, 0))], lambda t: 0.11 - 0.015 * t, steps=14)
+    sweep(bm, [Vector((0, 0, 0)), Vector((0, -0.18, 0.005)), Vector((0, -0.33, 0))], lambda t: 0.118 + 0.014 * math.sin(math.pi * t), steps=14)
+    torus(bm, Vector((0, -0.36, 0)), 0.062, 0.05, segments=20, sides=10)
     shin = mesh_object(name + 'Shin', bm, ['Navy'], parent=knee)
-    modify(shin, *remeshed(0.012, 4), ('DECIMATE', {'ratio': 0.4}))
-    bm = bmesh.new()
-    sphere(bm, Vector((0, -0.44, 0.05)), 1, scale=(0.11, 0.085, 0.16))
-    sphere(bm, Vector((0, -0.4, 0.0)), 0.1)
-    shoe = mesh_object(name + 'Shoe', bm, ['Ink'], parent=knee)
-    modify(shoe, *remeshed(0.012, 4), ('DECIMATE', {'ratio': 0.4}))
+    modify(shin, *remeshed(0.012, 4), ('DECIMATE', {'ratio': 0.25}))
 
-flake_chest = empty('FlakeChest', parent=root, matrix=facing((0, 0.2, 1), Vector((0, 0.42, BODY_Z + 0.355))))
+    bm = bmesh.new()
+    sphere(bm, SHOE, 1, scale=SHOE_SIZE)
+    sphere(bm, Vector((0, -0.425, -0.005)), 0.098)
+    upper = mesh_object(name + 'Shoe', bm, ['NavyDeep'], parent=knee)
+    modify(upper, *remeshed(0.012, 4), ('DECIMATE', {'ratio': 0.25}))
+
+    # The white rubber: a toe cap and a sole a little wider than the upper.
+    bm = bmesh.new()
+    sphere(bm, Vector((0, -0.492, 0.172)), 1, scale=(0.1, 0.062, 0.078), seg=(20, 12))
+    lathe(bm, [(0.085, -0.572), (0.112, -0.562), (0.118, -0.535), (0.112, -0.512), (0.09, -0.505)], segments=28, zscale=1.62, centre=Vector((0, 0, 0.068)))
+    rubber = mesh_object(name + 'Rubber', bm, ['Cord'], parent=knee)
+    smooth(rubber)
+
+    bm = bmesh.new()
+    for z in (0.085, 0.118, 0.151):
+        tube(bm, [Vector((x, instep(x, z) + 0.006, z + abs(x) * 0.15)) for x in (-0.062, -0.032, 0, 0.032, 0.062)], 0.0095, n=8, sides=6)
+    laces = mesh_object(name + 'Laces', bm, ['Cord'], parent=knee)
+    smooth(laces)
 
 # ---------- head ----------
 head = empty('HeadPivot', HEAD, parent=root)
 bm = bmesh.new()
-sphere(bm, Vector(), HEAD_R, scale=(1.03, 0.98, 1), seg=(64, 40))
+verts = sphere(bm, Vector(), HEAD_R, scale=(1.04, 0.97, 1), seg=(64, 40))
+for v in verts:
+    # Fuller cheeks and a softer chin than a plain ball.
+    d = v.co.normalized()
+    if d.y < 0:
+        low = -d.y
+        v.co.x *= 1 + 0.05 * math.sin(math.pi * min(1.0, low * 1.6)) * max(0.0, d.z)
+        v.co.y *= 1 - 0.05 * low
 face = mesh_object('Face', bm, ['Skin'], parent=head)
 smooth(face)
 
-# The hair over the back and sides of the head, open where the face is.
+
+def cap_point(around, polar, r=CAP_R):
+    """A point on the hat, in the hat's own untilted frame."""
+    return Vector((math.sin(polar) * math.sin(around) * r, math.cos(polar) * r * CAP_TALL + 0.02, math.sin(polar) * math.cos(around) * r))
+
+
+def rim(around):
+    """The hat hangs a little lower over her ears than a flat cut would."""
+    return RIM + 0.07 * math.sin(around) ** 2
+
+
+# The hair over the back and sides of the skull, open where the face is.
 bm = bmesh.new()
-verts = sphere(bm, Vector(), HEAD_R * 1.03, seg=(56, 36))
+verts = sphere(bm, Vector(), HEAD_R * 1.03, seg=(48, 30))
 doomed = []
-# The beanie is tipped and lopsided, so its rim has to be found in the beanie's own frame.
+# The hat is tipped and lopsided, so its rim has to be found in the hat's own frame.
 untilt = BEANIE_TILT.inverted().to_3x3()
 for v in verts:
     d = v.co.normalized()
-    under_cap = math.acos(max(-1, min(1, (untilt @ d).y))) < math.pi * 0.43 - 0.08
+    h = untilt @ d
+    under_cap = math.acos(max(-1, min(1, h.y))) < rim(math.atan2(h.x, h.z)) - 0.1
     around = math.atan2(d.x, d.z)
     down = math.acos(max(-1, min(1, d.y)))
-    # Anything the beanie covers would only poke through it.
+    # Anything the hat covers would only poke through it.
     if under_cap or down > 2.25 or (abs(around) < 1.05 and down > 0.85):
         doomed.append(v)
 bmesh.ops.delete(bm, geom=doomed, context='VERTS')
-shell = mesh_object('HairShell', bm, ['Hair'], parent=head)
-modify(shell, ('SOLIDIFY', {'thickness': 0.04, 'offset': 1}), ('SUBSURF', {'levels': 1}))
+face_outward(bm)
+shell = mesh_object('HairShell', bm, ['Hair'], parent=head, closed=False)
+modify(shell, ('SOLIDIFY', {'thickness': 0.04, 'offset': 1}))
 
-# Bangs: flat locks following the skull from under the beanie to just above the eyes.
+# Bangs: chunky locks following the skull from under the hat to the eyes.
 bm = bmesh.new()
 bangs = [
     # around, tip (radians below the equator), curl, width
-    (-1.05, 0.66, 0.14, 0.26),
-    (-0.86, 0.34, 0.1, 0.27),
-    (-0.68, 0.12, 0.12, 0.28),
-    (-0.5, 0.02, 0.06, 0.27),
-    (-0.32, 0.08, 0.1, 0.27),
-    (-0.15, -0.03, -0.05, 0.26),
-    (0.02, 0.06, 0.07, 0.27),
-    (0.19, -0.02, -0.08, 0.26),
-    (0.36, 0.09, -0.06, 0.27),
-    (0.54, 0.03, -0.1, 0.28),
-    (0.72, 0.16, -0.1, 0.28),
-    (0.89, 0.36, -0.12, 0.27),
-    (1.06, 0.64, -0.14, 0.26),
+    (-1.02, 0.72, 0.1, 0.27),
+    (-0.8, 0.22, 0.06, 0.3),
+    (-0.52, -0.1, 0.08, 0.3),
+    (-0.25, -0.08, 0.12, 0.29),
+    (0.0, 0.2, 0.1, 0.25),
+    (0.26, -0.1, -0.06, 0.29),
+    (0.52, -0.07, -0.08, 0.3),
+    (0.8, 0.22, -0.06, 0.3),
+    (1.02, 0.72, -0.1, 0.27),
 ]
 for around, reach, curl, w in bangs:
     pts = []
     start, end = 1.0, math.pi / 2 + reach
     for i in range(7):
         t = i / 6
-        # Starts tucked inside the beanie, then lifts off the skull.
-        lift = 0.95 + 0.09 * min(1.0, t * 2.5) + 0.07 * math.sin(math.pi * t) + (0.05 * t if reach > 0.3 else 0)
+        # Starts tucked inside the hat, then lifts off the skull.
+        lift = 0.95 + 0.09 * min(1.0, t * 2.5) + 0.07 * math.sin(math.pi * t) + (0.05 * t if reach > 0.15 else 0)
         pts.append(on_head(around + curl * t * t, start + (end - start) * t, HEAD_R * lift))
-    ribbon(bm, pts, lock_width(w), lock_thick(0.075), outward=lambda p: p.copy())
+    ribbon(bm, pts, lock_width(w, root=0.85), lock_thick(0.085), outward=lambda p: p.copy(), n=16)
 bangs_obj = mesh_object('Bangs', bm, ['Hair'], parent=head)
-modify(bangs_obj, ('SUBSURF', {'levels': 1}), ('DECIMATE', {'ratio': 0.6}))
+smooth(bangs_obj)
 
 # ---------- long hair: trails the head a little when she turns ----------
 long_hair = empty('LongHair', HEAD, parent=root)
-bm = bmesh.new()
-seat = -HEAD.y
 horizontal = lambda p: Vector((p.x, 0, p.z)) if Vector((p.x, 0, p.z)).length > 1e-4 else Vector((0, 0, -1))
-for layer, (radius, angles) in enumerate(((0.8, [1.15, 1.4, 1.65, 1.9, 2.15, 2.4, 2.65, 2.9]), (0.9, [1.28, 1.52, 1.78, 2.02, 2.28, 2.52, 2.8, 3.05]))):
-    for side in (-1, 1):
-        for i, a in enumerate(angles):
-            around = side * a
-            end = seat + 0.08 + ((i + layer) % 3) * 0.1
-            pts = [on_head(around, 1.05, HEAD_R * 0.93), on_head(around, math.pi / 2, HEAD_R * 1.06)]
-            top = -HEAD_R * 0.5
-            for k in range(1, 7):
-                t = k / 6
-                y = top + (end - top) * t
-                r = HEAD_R * (1.06 + 0.12 * math.sin(math.pi * min(1.0, t * 1.4))) + (radius - HEAD_R) * t * t + layer * 0.05
-                wave = math.sin(t * math.pi * 2.6 + around * 3 + layer) * 0.13 * t
-                r += math.sin(t * math.pi * 3 + around * 5) * 0.04 * t
-                b = around + wave
-                pts.append(Vector((math.sin(b) * r, y, math.cos(b) * r)))
-            ribbon(bm, pts, lock_width(0.26 - layer * 0.03), lock_thick(0.07), outward=horizontal)
-# One lock down the middle of the back.
-pts = [on_head(math.pi, 1.05, HEAD_R * 0.93), on_head(math.pi, math.pi / 2, HEAD_R * 1.06)] + [Vector((0, -HEAD_R * 0.5 + (seat + 0.15 + HEAD_R * 0.5) * k / 6, -0.6 - 0.04 * k / 6)) for k in range(1, 7)]
-ribbon(bm, pts, lock_width(0.3), lock_thick(0.07), outward=horizontal)
-# Locks framing the face, hanging in front of the shoulders.
-for side in (-1, 1):
-    for j, (a, drop) in enumerate(((0.98, 0.95), (1.12, 0.82))):
-        pts = [
-            on_head(side * a, 1.25, HEAD_R * 0.95),
-            on_head(side * (a + 0.02), 1.65, HEAD_R * 1.06),
-            on_head(side * (a + 0.05), 2.05, HEAD_R * 1.07),
-            Vector((side * (0.46 + j * 0.06), -0.62, 0.2 - j * 0.06)),
-            Vector((side * (0.44 + j * 0.08), -drop, 0.22 - j * 0.06)),
-        ]
-        ribbon(bm, pts, lock_width(0.17), lock_thick(0.05), outward=lambda p, s=side: Vector((p.x, 0, p.z)).normalized() + Vector((0, 0, 0.3)))
-locks = mesh_object('Locks', bm, ['Hair'], parent=long_hair)
-modify(locks, ('SUBSURF', {'levels': 1}), ('DECIMATE', {'ratio': 0.5}))
+# How far the mass of hair stands out from the head's axis on its way down to the seat.
+MASS = [(-1.08, 0.6), (-0.98, 0.7), (-0.85, 0.75), (-0.6, 0.71), (-0.3, 0.655), (-0.1, 0.62), (0.05, 0.585), (0.14, 0.542)]
 
-# ---------- beanie with cat ears ----------
+
+def mass_r(y):
+    return interpolate(MASS, y)
+
+
+# One thick sheet behind her, so no gaps open between the locks.
 bm = bmesh.new()
-verts = sphere(bm, Vector((0, 0.02, 0)), CAP_R, seg=(56, 36))
-bmesh.ops.delete(bm, geom=[v for v in verts if (v.co.y - 0.02) / CAP_R < math.cos(math.pi * 0.44)], context='VERTS')
+rows = []
+for j in range(18):
+    y = 0.14 + (-1.08 - 0.14) * j / 17
+    gap = 1.12 + 0.2 * smoothstep(-0.4, -0.75, y)
+    rows.append([Vector((math.sin(a) * mass_r(y), y, math.cos(a) * mass_r(y))) for a in (gap + (2 * math.pi - 2 * gap) * i / 44 for i in range(45))])
+grid(bm, rows, closed=False)
+face_outward(bm)
+back = mesh_object('HairBack', bm, ['Hair'], parent=long_hair, closed=False)
+modify(back, ('SOLIDIFY', {'thickness': 0.07, 'offset': -1}))
+
+
+def long_lock(bm, around, y_end, lift, flick, wave, width, phase=0.0):
+    """A lock from under the hat down over the mass, kicking out and up at its tip."""
+    # It stays inside the mass until it is clear of the hat, so the band meets one smooth surface.
+    pts = [on_head(around, 1.1, HEAD_R * 0.94), on_head(around, 1.45, HEAD_R * 0.97)]
+    y0 = pts[-1].y
+    for k in range(1, 8):
+        t = k / 7
+        kick = smoothstep(0.55, 1.0, t) ** 2
+        y = y0 + (y_end - y0) * t + flick * 0.45 * smoothstep(0.8, 1.0, t)
+        r = mass_r(y) - 0.05 + (lift + 0.05) * smoothstep(0.08, 0.32, t) + flick * kick
+        b = around + wave * math.sin(t * math.pi * 1.6 + phase) * t
+        pts.append(Vector((math.sin(b) * r, y, math.cos(b) * r)))
+    ribbon(bm, pts, lock_width(width), lock_thick(0.115), outward=horizontal, n=18)
+
+
+bm = bmesh.new()
+# The long layer reaches the seat; a shorter layer over it flares out around her shoulders.
+long_layer = [(1.45, 0.1, 0.16, 0.5), (1.9, 0.02, 0.13, 2.0), (2.35, 0.08, 0.17, 3.4), (2.8, 0.0, 0.12, 5.0)]
+short_layer = [(1.26, 0.52, 0.2, 1.0), (1.68, 0.38, 0.22, 2.6), (2.12, 0.46, 0.19, 4.1), (2.58, 0.34, 0.23, 0.2), (3.0, 0.42, 0.2, 1.7)]
+for side in (-1, 1):
+    for a, up, flick, phase in long_layer:
+        long_lock(bm, side * a, SEAT + 0.05 + up, 0.03, flick, side * 0.1, 0.4, phase)
+    for a, up, flick, phase in short_layer:
+        long_lock(bm, side * a, SEAT + up, 0.085, flick, -side * 0.12, 0.34, phase)
+long_lock(bm, math.pi, SEAT + 0.07, 0.03, 0.14, 0.08, 0.42)
+# Locks framing the face and falling in front of her shoulders.
+for side in (-1, 1):
+    pts = [
+        on_head(side * 0.98, 1.2, HEAD_R * 0.97),
+        on_head(side * 1.05, 1.62, HEAD_R * 1.09),
+        on_head(side * 1.1, 2.0, HEAD_R * 1.1),
+        Vector((side * 0.57, -0.55, 0.27)),
+        Vector((side * 0.6, -0.8, 0.28)),
+        Vector((side * 0.63, -0.98, 0.31)),
+        Vector((side * 0.72, -1.05, 0.37)),
+    ]
+    ribbon(bm, pts, lock_width(0.25), lock_thick(0.1), outward=lambda p: horizontal(p).normalized() + Vector((0, 0, 0.4)), n=18)
+    pts = [
+        on_head(side * 1.14, 1.25, HEAD_R * 0.97),
+        on_head(side * 1.2, 1.7, HEAD_R * 1.12),
+        Vector((side * 0.64, -0.3, 0.2)),
+        Vector((side * 0.7, -0.52, 0.2)),
+        Vector((side * 0.84, -0.6, 0.22)),
+    ]
+    ribbon(bm, pts, lock_width(0.22), lock_thick(0.09), outward=lambda p: horizontal(p).normalized() + Vector((0, 0, 0.3)), n=16)
+locks = mesh_object('Locks', bm, ['Hair'], parent=long_hair)
+smooth(locks)
+
+# ---------- cat-ear hat ----------
+bm = bmesh.new()
+rows = [[cap_point(2 * math.pi * s / 48, rim(2 * math.pi * s / 48) * j / 12) for s in range(48)] for j in range(1, 13)]
+rings = grid(bm, rows)
+crown = bm.verts.new(cap_point(0, 0))
+for s in range(48):
+    bm.faces.new((crown, rings[0][s], rings[0][(s + 1) % 48]))
+# Closed underneath, where the head and the band hide it.
+bm.faces.new(rings[-1])
 cap = mesh_object('BeanieCap', bm, ['Navy'], parent=head)
-modify(cap, ('SOLIDIFY', {'thickness': 0.035, 'offset': -1}))
+smooth(cap)
 cap.data.transform(BEANIE_TILT)
 
+# The turned-up band round its edge: a flat roll lying on the hat.
 bm = bmesh.new()
-rim_angle = math.pi * 0.43
-torus(bm, Vector((0, 0.02 + CAP_R * math.cos(rim_angle), 0)), CAP_R * math.sin(rim_angle) - 0.01, 0.07, segments=56, yscale=1.35, matrix=BEANIE_TILT)
-rim = mesh_object('BeanieRim', bm, ['NavyDeep'], parent=head)
-smooth(rim)
+rows = []
+for s in range(56):
+    a = 2 * math.pi * s / 56
+    polar = rim(a) - 0.09
+    centre = cap_point(a, polar, CAP_R + 0.012)
+    down = (cap_point(a, polar + 0.01) - cap_point(a, polar - 0.01)).normalized()
+    out = (centre - Vector((0, 0.02, 0))).normalized()
+    squarish = lambda x: math.copysign(abs(x) ** 0.6, x)
+    rows.append([BEANIE_TILT @ (centre + down * squarish(math.cos(b)) * 0.085 + out * squarish(math.sin(b)) * 0.045) for b in (2 * math.pi * k / 12 for k in range(12))])
+rows.append(rows[0])
+grid(bm, rows)
+bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
+rim_obj = mesh_object('BeanieRim', bm, ['NavyDeep'], parent=head)
+smooth(rim_obj)
 
-bm = bmesh.new()
-for side in (-1, 1):
-    verts = bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=24, radius1=0.25, radius2=0.045, depth=0.42)['verts']
-    m = BEANIE_TILT @ Matrix.Translation((side * CAP_R * 0.56, CAP_R * 0.8, -0.04)) @ Matrix.Rotation(-side * 0.45, 4, 'Z') @ Matrix.Diagonal((1, 1, 0.42, 1)) @ Matrix.Rotation(-math.pi / 2, 4, 'X')
-    bmesh.ops.transform(bm, matrix=m, verts=verts)
-ears = mesh_object('BeanieEars', bm, ['Navy'], parent=head)
-modify(ears, ('SUBSURF', {'levels': 2}))
 
-flake_at = on_head(0.5, 0.88, CAP_R * 1.02) + Vector((0, 0.02, 0))
-empty('FlakeHat', parent=head, matrix=BEANIE_TILT @ facing(flake_at, flake_at))
+def ear(bm, base, height, flat, matrix):
+    rows = []
+    for j in range(10):
+        t = j / 9
+        r = base * (1 - t) ** 0.8 + 0.014
+        rows.append([matrix @ Vector((math.sin(a) * r, t * height, math.cos(a) * r * flat)) for a in (2 * math.pi * k / 20 for k in range(20))])
+    rings = grid(bm, rows)
+    bm.faces.new(rings[0])
+    bm.faces.new(rings[-1])
 
-# The X hairpin on her right.
+
+for name, mat, base, height, forward in (('BeanieEars', 'Navy', 0.36, 0.56, 0.0), ('BeanieEarsInner', 'Navy', 0.245, 0.45, 0.052)):
+    bm = bmesh.new()
+    for side in (-1, 1):
+        ear(bm, base, height, 0.4, BEANIE_TILT @ Matrix.Translation((side * 0.33, 0.36, -0.02 + forward)) @ Matrix.Rotation(-side * 0.42, 4, 'Z'))
+    smooth(mesh_object(name, bm, [mat], parent=head))
+
+flake_at = cap_point(0.55, 0.93, CAP_R * 1.02)
+empty('FlakeHat', parent=head, matrix=BEANIE_TILT @ facing(flake_at - Vector((0, 0.02, 0)), flake_at))
+
+# The X hairpin on her right, just under the band.
 bm = bmesh.new()
 # Clear of the bangs, which ride up to about 1.15 head radii here.
-pin_at = on_head(0.8, 1.56, HEAD_R * 1.22)
+pin_at = on_head(0.8, 1.5, HEAD_R * 1.2)
 orient = facing(pin_at, pin_at)
 for spin in (math.pi / 4, -math.pi / 4):
     verts = bmesh.ops.create_cube(bm, size=1)['verts']
@@ -427,8 +600,8 @@ bpy.ops.export_scene.gltf(
     export_normals=True,
     export_materials='EXPORT',
 )
-tris = sum(len(o.data.polygons) for o in scene.objects if o.type == 'MESH')
-print(f'nixchan: wrote {OUT} ({tris} faces)')
+tris = sum(len(f.vertices) - 2 for o in scene.objects if o.type == 'MESH' for f in o.data.polygons)
+print(f'nixchan: wrote {OUT} ({tris} triangles, {os.path.getsize(OUT) // 1024} KiB)')
 
 # ---------- previews, for checking the shape ----------
 if PREVIEW:
