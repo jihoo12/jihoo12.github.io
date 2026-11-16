@@ -616,7 +616,7 @@ export async function start() {
 		into.add(frame);
 		const shelfY = -1.2;
 		plank(7, 1.1, cx + 0.4, shelfY, 0.36);
-		pickables.push({ object: frame, label: 'Back to the 2D site', href: '/' });
+		pickables.push({ object: frame, label: 'Back to the 2D site', href: '/?view=2d' });
 		stops.push({ center: new THREE.Vector3(cx, -0.6, WALL_Z + 1), width: 8, height: 8.5, perch: new THREE.Vector3(cx + 2.2, shelfY, WALL_Z + 1.15), swing: 2 });
 	}
 

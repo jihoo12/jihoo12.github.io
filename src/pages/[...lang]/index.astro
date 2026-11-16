@@ -65,7 +65,15 @@ const dateLabel = dateFormat(lang);
 ---
 <!doctype html>
 <html lang={lang}>
-  <head><BaseHead title={t.title} description={t.description} locale={ogLocale(lang)} alternates={pairAlternates('/')} /></head>
+  <head>
+    <BaseHead title={t.title} description={t.description} locale={ogLocale(lang)} alternates={pairAlternates('/')} />
+    {/* On a computer the home page is the 3D one. This runs before anything is drawn, so this page never
+        flashes up first. `?view=2d` or `?view=3d` picks one and remembers it. Phones, tablets, browsers
+        without WebGL and crawlers stay here, so this is still the page search engines index. */}
+    {!ko && (
+      <script is:inline>(function(){var q=new URLSearchParams(location.search).get("view"),v=null;try{if(q==="2d"||q==="3d")localStorage.setItem("home-view",q);v=localStorage.getItem("home-view")}catch(e){}if((q||v)==="2d")return;if(/bot|crawl|spider|slurp|lighthouse|headless/i.test(navigator.userAgent))return;if(!matchMedia("(hover: hover) and (pointer: fine)").matches||innerWidth<900)return;var c=document.createElement("canvas");if(!(c.getContext("webgl2")||c.getContext("webgl")))return;location.replace("/experimental/")})()</script>
+    )}
+  </head>
   <body>
     <Header />
     <main>
