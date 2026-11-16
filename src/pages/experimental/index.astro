@@ -12,6 +12,7 @@ import bodyIdle from '../../assets/nixchan/live/body-idle.webp';
 import legL from '../../assets/nixchan/live/leg-l.webp';
 import legR from '../../assets/nixchan/live/leg-r.webp';
 import eyesClosed from '../../assets/nixchan/live/eyes-closed.webp';
+import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
 
 const title = 'Jihoo — in 3D (experimental)';
 const description = 'An experimental, walk-along 3D version of my little corner of the internet.';
@@ -47,7 +48,7 @@ const comics = await Promise.all(
 const art = {
 	thinking: (await getImage({ src: thinkingArt, width: 640, format: 'webp' })).src,
 	nap: (await getImage({ src: napArt, width: 400, format: 'webp' })).src,
-	nix: { body: bodyIdle.src, legL: legL.src, legR: legR.src, blink: eyesClosed.src },
+	nix: { body: bodyIdle.src, legL: legL.src, legR: legR.src, blink: eyesClosed.src, model: nixModel },
 };
 
 const scene = { projects, posts, comics, art };
@@ -67,6 +68,7 @@ const scene = { projects, posts, comics, art };
 			<span class="badge">3D · experimental</span>
 			<span class="spacer"></span>
 			<a class="pill" href="/">Back to 2D</a>
+			<button class="pill" type="button" data-nix-mode hidden aria-pressed="true">Nixchan: 3D</button>
 			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
 		</header>
 

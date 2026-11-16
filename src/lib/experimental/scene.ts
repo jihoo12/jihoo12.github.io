@@ -2,12 +2,13 @@
 // Everything still either stands on a plank or hangs from a string, like the 2D site.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { buildNixFigure } from './nix-figure';
 
 interface SceneData {
 	projects: { title: string; tagline: string; language: string; commits: number; href: string }[];
 	posts: { title: string; description: string; date: string; href: string }[];
 	comics: { title: string; href: string; image: string }[];
-	art: { thinking: string; nap: string; nix: { body: string; legL: string; legR: string; blink: string } };
+	art: { thinking: string; nap: string; nix: { body: string; legL: string; legR: string; blink: string; model: string } };
 }
 
 /** Where the camera looks at each stop, and how much of the wall it needs to fit. */
@@ -17,6 +18,8 @@ interface Stop {
 	height: number;
 	/** Where Nixchan sits while this stop is in view. */
 	perch: THREE.Vector3;
+	/** Where the 3D figure sits instead, when the flat perch has no room for her depth. */
+	perch3d?: THREE.Vector3;
 	/** Sideways camera swing, so the depth shows. */
 	swing: number;
 }
@@ -172,6 +175,8 @@ export async function start() {
 	const pickables: Pickable[] = [];
 	const tickers: ((dt: number, time: number) => void)[] = [];
 	const stops: Stop[] = [];
+	/** Things that only make sense while Nixchan is the 3D figure. */
+	const figureProps: THREE.Object3D[] = [];
 
 	// Light
 	const ambient = new THREE.AmbientLight('#ffffff', 1.4);
@@ -351,7 +356,17 @@ export async function start() {
 		});
 		pickables.push({ object: frame, label: 'Get to know me', href: '/about/', onHover: () => (wobble.velocity += 0.25) });
 
-		stops.push({ center: new THREE.Vector3(cx, 2.1, WALL_Z), width: 8, height: 10, perch: new THREE.Vector3(cx + 1.3, 1.6 + size / 2 + 0.03, WALL_Z + 0.3), swing: 2.5 });
+		// The frame's top edge is too thin for the 3D figure, so she gets a little shelf above it.
+		const shelfY = 1.6 + size / 2 + 0.4;
+		figureProps.push(plank(2.6, 1.05, cx + 1.3, shelfY, 0.28));
+		stops.push({
+			center: new THREE.Vector3(cx, 2.1, WALL_Z),
+			width: 8,
+			height: 10,
+			perch: new THREE.Vector3(cx + 1.3, 1.6 + size / 2 + 0.03, WALL_Z + 0.3),
+			perch3d: new THREE.Vector3(cx + 1.3, shelfY, WALL_Z + 1.05),
+			swing: 2.5,
+		});
 	}
 
 	// ---------- stop 2: project towers ----------
@@ -622,6 +637,8 @@ export async function start() {
 	}
 
 	// ---------- Nixchan ----------
+	const nixMode = document.querySelector<HTMLButtonElement>('[data-nix-mode]');
+	// Two of her share one rig: the flat layered sprite, and a 3D figure. A button in the bar picks one.
 	const nix = (() => {
 		const H = 2.7;
 		const W = (H * 525) / 890;
@@ -635,10 +652,10 @@ export async function start() {
 			return mesh;
 		};
 		const root = new THREE.Group();
-		const flip = new THREE.Group();
 		const squash = new THREE.Group();
-		root.add(flip);
-		flip.add(squash);
+		const flat = new THREE.Group();
+		root.add(squash);
+		squash.add(flat);
 		const legPivot = (p: { x: number; y: number }) => new THREE.Vector3((p.x - seat.x) * W, (seat.y - p.y) * H, -0.01);
 		const legs = [
 			{ x: 0.286, y: 0.713 },
@@ -647,62 +664,106 @@ export async function start() {
 			const g = new THREE.Group();
 			g.position.copy(legPivot(p));
 			g.add(plane(i === 0 ? data.art.nix.legL : data.art.nix.legR, p, 10));
-			squash.add(g);
+			flat.add(g);
 			return g;
 		});
 		const body = plane(data.art.nix.body, seat, 11);
 		const blink = plane(data.art.nix.blink, seat, 12);
 		blink.position.z = 0.01;
 		blink.visible = false;
-		squash.add(body, blink);
+		flat.add(body, blink);
 		// A shadow-only stand-in, since the transparent sprite itself can't cast a proper one.
 		const shadowCaster = new THREE.Mesh(new THREE.CircleGeometry(W * 0.36, 16), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
 		shadowCaster.position.set(0.05, H * 0.28, -0.05);
 		shadowCaster.scale.y = 1.35;
 		shadowCaster.castShadow = true;
-		squash.add(shadowCaster);
+		flat.add(shadowCaster);
+		const figure = buildNixFigure(data.art.nix.model);
+		squash.add(figure.group);
 		scene.add(root);
+		// Without the model there is only the sprite to show.
+		let modelFailed = false;
+		figure.ready.then(
+			() => {
+				loaded = true;
+				applyMode();
+			},
+			() => {
+			modelFailed = true;
+			if (solid) setSolid(false);
+				if (nixMode) nixMode.hidden = true;
+			},
+		);
+
+		let solid = true;
+		try {
+			solid = localStorage.getItem('nix-mode') !== '2d';
+		} catch {
+			// Default to the figure.
+		}
+		const perchOf = (index: number) => (solid && stops[index].perch3d) || stops[index].perch;
+		let loaded = false;
+		const applyMode = () => {
+			// Until the model has loaded she stays a sprite, so she never vanishes.
+			flat.visible = !(solid && loaded);
+			figure.group.visible = solid && loaded;
+			figureProps.forEach((o) => (o.visible = solid));
+		};
+		applyMode();
 
 		const from = new THREE.Vector3();
-		const to = stops[0].perch.clone();
+		const to = perchOf(0).clone();
+		function setSolid(value: boolean) {
+			solid = value && !modelFailed;
+			applyMode();
+			to.copy(perchOf(stop));
+			if (jump === 1) root.position.copy(to);
+			hop = 1;
+			squashSpring.velocity -= 5;
+		}
 		root.position.copy(to);
 		let stop = 0;
 		let jump = 1; // 0 → 1 while airborne
 		let jumpTime = 1;
 		let arc = 0;
-		let landed = 0;
+		let facing = 1;
+		let turn = 0;
 		let nextBlink = 2;
 		let hop = 0;
 		const squashSpring = new Spring(160, 10);
 
 		return {
 			root,
-			body,
+			squash,
+			get solid() {
+				return solid;
+			},
+			setSolid,
 			goTo(index: number) {
 				if (index === stop) return;
 				stop = index;
 				from.copy(root.position);
-				to.copy(stops[index].perch);
+				to.copy(perchOf(index));
 				const distance = from.distanceTo(to);
 				jumpTime = reduceMotion ? 0.01 : 0.6 + Math.min(distance, 60) * 0.012;
 				arc = reduceMotion ? 0 : 2 + Math.min(distance, 60) * 0.08;
 				jump = 0;
-				flip.scale.x = to.x < from.x ? -1 : 1;
+				facing = to.x < from.x ? -1 : 1;
+				flat.scale.x = facing;
 				squashSpring.velocity -= 4;
 			},
 			poke() {
 				hop = 1;
 				squashSpring.velocity -= 5;
 			},
-			tick(dt: number, time: number) {
+			tick(dt: number, time: number, look: THREE.Vector2) {
 				if (jump < 1) {
 					jump = Math.min(1, jump + dt / jumpTime);
 					const t = smooth(jump);
 					root.position.lerpVectors(from, to, t);
 					root.position.y += Math.sin(Math.PI * jump) * arc;
-					root.rotation.z = Math.sin(Math.PI * jump) * -0.25 * flip.scale.x;
+					root.rotation.z = Math.sin(Math.PI * jump) * -0.25 * facing;
 					if (jump === 1) {
-						landed = 1;
 						squashSpring.velocity -= 7;
 						root.rotation.z = 0;
 					}
@@ -713,27 +774,50 @@ export async function start() {
 					hop = Math.max(0, hop - dt * 2.4);
 					root.position.y += Math.sin(Math.PI * (1 - hop)) * 0.6;
 				}
-				landed = Math.max(0, landed - dt * 2);
 				const s = squashSpring.step(dt);
-				squash.scale.set(1 - s * 0.12, 1 + s * 0.18, 1);
+				squash.scale.set(1 - s * 0.12, 1 + s * 0.18, solid ? 1 - s * 0.12 : 1);
 				const airborne = jump < 1 || hop > 0;
-				legs.forEach((leg, i) => {
-					const swingAngle = reduceMotion ? 0 : Math.sin(time * 2.6 + i * Math.PI) * 0.22;
-					leg.rotation.z = damp(leg.rotation.z, airborne ? (i === 0 ? 0.5 : 0.35) : swingAngle, 10, dt);
-				});
+				if (solid) {
+					// The figure turns towards where she is jumping, then back to face the camera.
+					turn = damp(turn, jump < 1 && !reduceMotion ? facing * 0.75 : 0, 7, dt);
+					figure.group.rotation.y = turn;
+					figure.tick(dt, time, { airborne, look, still: reduceMotion });
+				} else {
+					legs.forEach((leg, i) => {
+						const swingAngle = reduceMotion ? 0 : Math.sin(time * 2.6 + i * Math.PI) * 0.22;
+						leg.rotation.z = damp(leg.rotation.z, airborne ? (i === 0 ? 0.5 : 0.35) : swingAngle, 10, dt);
+					});
+				}
 				nextBlink -= dt;
 				if (nextBlink < 0) {
-					blink.visible = true;
-					if (nextBlink < -0.13) {
-						blink.visible = false;
-						nextBlink = 2.5 + Math.random() * 3;
-					}
+					const closed = nextBlink > -0.13;
+					blink.visible = closed;
+					figure.setBlink(closed);
+					if (!closed) nextBlink = 2.5 + Math.random() * 3;
 				}
 				lantern.position.set(root.position.x + 0.6, root.position.y + 2, root.position.z + 1.5);
 			},
 		};
 	})();
-	pickables.push({ object: nix.body, label: 'Nixchan', onClick: () => nix.poke(), onHover: () => {} });
+	pickables.push({ object: nix.squash, label: 'Nixchan', onClick: () => nix.poke(), onHover: () => {} });
+
+	if (nixMode) {
+		const label = () => {
+			nixMode.textContent = nix.solid ? 'Nixchan: 3D' : 'Nixchan: 2D';
+			nixMode.setAttribute('aria-pressed', String(nix.solid));
+		};
+		label();
+		nixMode.hidden = false;
+		nixMode.addEventListener('click', () => {
+			nix.setSolid(!nix.solid);
+			label();
+			try {
+				localStorage.setItem('nix-mode', nix.solid ? '3d' : '2d');
+			} catch {
+				// The choice just won't be remembered.
+			}
+		});
+	}
 
 	// ---------- camera, scrolling, picking ----------
 	const sections = [...document.querySelectorAll<HTMLElement>('[data-stop]')];
@@ -750,6 +834,8 @@ export async function start() {
 	let height = 0;
 	let narrow = false;
 	let hovered: Pickable | null = null;
+	const nixHead = new THREE.Vector3();
+	const nixLook = new THREE.Vector2();
 
 	const fitFor = (stop: Stop, index: number) => {
 		const aspect = width / height;
@@ -876,7 +962,13 @@ export async function start() {
 			current = stop;
 			nix.goTo(stop);
 		}
-		nix.tick(dt, time);
+		// She looks from where she is on screen towards the pointer.
+		if (pointer.x <= 1) {
+			nixHead.copy(nix.root.position).y += 1.3;
+			nixHead.project(camera);
+			nixLook.set((pointer.x - nixHead.x) * 2, (pointer.y - nixHead.y) * 2);
+		} else nixLook.set(0, 0);
+		nix.tick(dt, time, nixLook);
 		tickers.forEach((f) => f(dt, time));
 
 		const hit = pointer.x <= 1 ? pick() : null;
