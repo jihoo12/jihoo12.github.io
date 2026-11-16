@@ -189,8 +189,12 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 	geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
-/** The looping clips baked into the model. Jump is separate: the page scrubs it along her flight. */
+/** The looping clips baked into the model. */
 export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave';
+/** The jumps, which the page scrubs along her flight, by where she leaps from and lands: a seat or her feet. */
+export type NixJump = 'Jump' | 'JumpUp' | 'JumpDown' | 'JumpStand';
+/** The jumps that land her on her feet, which a Land clip follows. */
+const LANDS_STANDING: NixJump[] = ['JumpDown', 'JumpStand'];
 
 export interface NixFigure {
 	group: THREE.Group;
@@ -199,8 +203,8 @@ export interface NixFigure {
 	setBlink(closed: boolean): void;
 	/** Blend into a looping clip, played at `speed` times its natural pace. */
 	play(clip: NixClip, speed?: number): void;
-	/** `jump` is how far through a jump she is (0 → 1), or null on the ground. */
-	tick(dt: number, time: number, state: { airborne: boolean; look: THREE.Vector2; still: boolean; jump: number | null }): void;
+	/** `jump` is the jump she's in and how far through it she is (0 → 1), or null on the ground. */
+	tick(dt: number, time: number, state: { airborne: boolean; look: THREE.Vector2; still: boolean; jump: { t: number; clip: NixJump } | null }): void;
 }
 
 export function buildNixFigure(url: string): NixFigure {
@@ -300,7 +304,8 @@ export function buildNixFigure(url: string): NixFigure {
 		mixer = new THREE.AnimationMixer(model);
 		for (const animation of gltf.animations) {
 			const action = mixer.clipAction(animation);
-			if (animation.name === 'Jump') {
+			// The jumps and the landing play once, and the page moves them along itself.
+			if (animation.name.startsWith('Jump') || animation.name === 'Land') {
 				action.setLoop(THREE.LoopOnce, 1);
 				action.clampWhenFinished = true;
 				action.paused = true;
@@ -322,6 +327,12 @@ export function buildNixFigure(url: string): NixFigure {
 	let pitch = 0;
 	let flow = 0;
 	let jumpWeight = 0;
+	let jumping: NixJump | null = null;
+	// The jump last played, which stays on as it fades out under a sit.
+	let shown: NixJump = 'Jump';
+	// How far into the landing she is, in seconds, or null when she isn't landing.
+	let landing: number | null = null;
+	let landWeight = 0;
 	const look = new THREE.Quaternion();
 	const euler = new THREE.Euler();
 	return {
@@ -342,18 +353,39 @@ export function buildNixFigure(url: string): NixFigure {
 		tick(dt, time, { airborne, look: pointer, still, jump }) {
 			if (!head || !longHair || !mixer) return;
 			const damp = (from: number, to: number, rate: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
-			// Every clip but Jump eases towards full or no weight; Jump cuts in quickly over the top of them.
-			jumpWeight = damp(jumpWeight, jump === null ? 0 : 1, jump === null ? 8 : 18);
-			const jumpAction = actions.get('Jump');
-			for (const [name, action] of actions) {
-				if (action === jumpAction) continue;
-				const w = damp(weights.get(action) ?? 0, name === clip ? 1 : 0, 5);
-				weights.set(action, w);
-				action.setEffectiveWeight(w * (1 - jumpWeight));
+			const landAction = actions.get('Land');
+			if (jump) {
+				jumping = shown = jump.clip;
+				landing = null;
+			} else if (jumping) {
+				// Down on her feet, she goes straight into the landing: knees bend, then she straightens up.
+				if (LANDS_STANDING.includes(jumping) && landAction && !still) {
+					landing = 0;
+					landWeight = 1;
+					jumpWeight = 0;
+				}
+				jumping = null;
 			}
-			if (jumpAction) {
-				if (jump !== null) jumpAction.time = THREE.MathUtils.clamp(jump, 0, 1) * jumpAction.getClip().duration;
-				jumpAction.setEffectiveWeight(jumpWeight);
+			// The jumps cut in quickly over the looping clips, and the landing over those too.
+			jumpWeight = damp(jumpWeight, jump === null ? 0 : 1, jump === null ? 8 : 18);
+			if (landing !== null) {
+				landing += dt;
+				if (landAction && landing >= landAction.getClip().duration) landing = null;
+			}
+			landWeight = damp(landWeight, landing === null ? 0 : 1, 12);
+			const under = (1 - jumpWeight) * (1 - landWeight);
+			for (const [name, action] of actions) {
+				if (name.startsWith('Jump')) {
+					if (jump && name === jump.clip) action.time = THREE.MathUtils.clamp(jump.t, 0, 1) * action.getClip().duration;
+					action.setEffectiveWeight(name === shown ? jumpWeight : 0);
+				} else if (action === landAction) {
+					action.time = Math.min(landing ?? action.getClip().duration, action.getClip().duration);
+					action.setEffectiveWeight(landWeight * (1 - jumpWeight));
+				} else {
+					const w = damp(weights.get(action) ?? 0, name === clip ? 1 : 0, 5);
+					weights.set(action, w);
+					action.setEffectiveWeight(w * under);
+				}
 			}
 			mixer.update(still ? 0 : dt);
 

@@ -6,7 +6,7 @@
 # z = 0 the front edge of whatever she sits on) and exported without the y-up conversion.
 # Materials are only placeholders: the page swaps them for toon materials by name and paints the
 # face onto the "Face" mesh. She is rigged, standing in rest, with clips Sit, Idle, Walk, Run, Wave
-# and Jump baked in; the page plays those, and turns the "Head" and "Hair" bones itself.
+# and the jumps and landing baked in; the page plays those, and turns the "Head" and "Hair" bones itself.
 import math
 import os
 import sys
@@ -861,31 +861,71 @@ def jump_key(thigh, knee, foot, hips, chest, arms):
     return p
 
 
-JUMP = [
-    # Crouched to push off, arms swung back...
-    (0.0, jump_key(-1.25, 1.5, 0.1, (0, 0.05, -0.05), 0.25, lambda side: (Vector((side * 0.36, 0.4, BODY_Z - 0.16)), (side, 0, 0.6)))),
-    # ...stretched out as she leaves, arms flung up in front of her hair...
-    (0.15, jump_key(-0.15, 0.2, 0.6, (0, 0.4, -0.12), -0.12, lambda side: (Vector((side * 0.36, 0.92, BODY_Z + 0.36)), (side, -1, -0.2)))),
-    # ...tucked up in the air...
-    (0.45, jump_key(-1.15, 1.8, 0.3, (0, 0.22, -0.05), 0.05, lambda side: (Vector((side * 0.46, 0.72, BODY_Z + 0.36)), (side, -1, -0.3)))),
-    # ...reaching down for the landing...
-    (0.78, jump_key(-1.35, 1.1, -0.1, (0, 0.12, 0), 0.1, lambda side: (Vector((side * 0.42, 0.55, BODY_Z + 0.36)), (side, -1, -0.3)))),
-    # ...and landing in a sit, a little squashed.
-    (1.0, jump_key(-math.pi / 2, math.pi / 2, 0, (0, 0, 0), 0.12, lambda side: (LAP(side), LAP_POLE(side)))),
-]
+# Arms through a jump: swung back to push off, flung up as she leaves, out for balance, lower to land.
+ARMS_BACK = lambda side: (Vector((side * 0.36, 0.4, BODY_Z - 0.16)), (side, 0, 0.6))
+ARMS_UP = lambda side: (Vector((side * 0.36, 0.92, BODY_Z + 0.36)), (side, -1, -0.2))
+ARMS_OUT = lambda side: (Vector((side * 0.46, 0.72, BODY_Z + 0.36)), (side, -1, -0.3))
+ARMS_LOW = lambda side: (Vector((side * 0.42, 0.55, BODY_Z + 0.36)), (side, -1, -0.3))
+ARMS_LAP = lambda side: (LAP(side), LAP_POLE(side))
 
 
-def jump(t):
-    for (t0, a), (t1, b) in zip(JUMP, JUMP[1:]):
-        if t <= t1:
-            u = smoothstep(t0, t1, t)
-            return {k: [a[k][0].lerp(b[k][0], u), a[k][1].slerp(b[k][1], u)] for k in a}
-    return JUMP[-1][1]
+def stand_key(thigh, knee, foot, chest, arms, lift=None):
+    """A jump pose from or to her feet: kept on the ground, or with her hips at `lift` in the air."""
+    p = jump_key(thigh, knee, foot, (0, 0, STAND_Z), chest, arms)
+    if lift is None:
+        ground(p)
+    else:
+        p['Hips'][0].y = lift
+    return p
 
 
-# Looping clips end where they start; Jump plays once, and the page scrubs it along her flight.
+# Off a seat: crouched forwards to push off, stretched out as she leaves, and tucked up in the air.
+SIT_CROUCH = jump_key(-1.25, 1.5, 0.1, (0, 0.05, -0.05), 0.25, ARMS_BACK)
+SIT_STRETCH = jump_key(-0.15, 0.2, 0.6, (0, 0.4, -0.12), -0.12, ARMS_UP)
+SIT_TUCK = jump_key(-1.15, 1.8, 0.3, (0, 0.22, -0.05), 0.05, ARMS_OUT)
+# Onto a seat: reaching forwards for it, and landing sat down.
+SIT_REACH = jump_key(-1.35, 1.1, -0.1, (0, 0.12, 0), 0.1, ARMS_LOW)
+SIT_LAND = jump_key(-math.pi / 2, math.pi / 2, 0, (0, 0, 0), 0.12, ARMS_LAP)
+# Off her feet: knees bent and arms back, then up onto her toes; tucked, her hips stay at standing
+# height, so the jump lifts her rather than dropping her into a squat.
+STAND_CROUCH = stand_key(-0.75, 1.35, -0.6, 0.3, ARMS_BACK)
+STAND_STRETCH = stand_key(-0.1, 0.15, 0.55, -0.12, ARMS_UP)
+STAND_TUCK = stand_key(-1.0, 1.7, 0.3, 0.05, ARMS_OUT, lift=0.72)
+# Onto her feet: legs reaching down, toes first.
+STAND_REACH = stand_key(-0.3, 0.4, 0.2, 0.08, ARMS_LOW)
+# And the landing that follows: the knees take it, then she straightens up.
+STAND_SQUASH = stand_key(-0.8, 1.45, -0.65, 0.3, ARMS_LOW)
+
+
+def keyed(keys):
+    """A clip that eases from each (time, pose) to the next."""
+
+    def clip(t):
+        for (t0, a), (t1, b) in zip(keys, keys[1:]):
+            if t <= t1:
+                u = smoothstep(t0, t1, t)
+                return {k: [a[k][0].lerp(b[k][0], u), a[k][1].slerp(b[k][1], u)] for k in a}
+        return keys[-1][1]
+
+    return clip
+
+
+# The page picks one by where she leaps from and to, and scrubs it along her flight.
+JUMPS = {
+    'Jump': [(0.0, SIT_CROUCH), (0.15, SIT_STRETCH), (0.45, SIT_TUCK), (0.78, SIT_REACH), (1.0, SIT_LAND)],
+    'JumpUp': [(0.0, STAND_CROUCH), (0.15, STAND_STRETCH), (0.45, STAND_TUCK), (0.78, SIT_REACH), (1.0, SIT_LAND)],
+    'JumpDown': [(0.0, SIT_CROUCH), (0.15, SIT_STRETCH), (0.45, SIT_TUCK), (0.82, STAND_REACH), (1.0, STAND_REACH)],
+    'JumpStand': [(0.0, STAND_CROUCH), (0.15, STAND_STRETCH), (0.45, STAND_TUCK), (0.82, STAND_REACH), (1.0, STAND_REACH)],
+}
+jump = keyed(JUMPS['Jump'])
+# Played straight after a jump that ends on her feet.
+land = keyed([(0.0, STAND_REACH), (0.3, STAND_SQUASH), (1.0, idle(0))])
+
+
+# Looping clips end where they start; the jumps and Land play once.
 FPS = 30
-CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Jump': (30, jump)}
+CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land)}
+CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
 UNKEYED = {'Head', 'Hair'}
 scene.render.fps = FPS
@@ -984,7 +1024,7 @@ if PREVIEW:
         bpy.ops.render.render(write_still=True)
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
-    for clip, t in (('Idle', 0), ('Walk', 0.25), ('Run', 0.25), ('Wave', 0.15), ('Jump', 0.15), ('Jump', 0.45)):
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45)):
         apply_pose(CLIPS[clip][1](t))
         for view, at in (('front', (0, 1.4, 8)), ('side', (6, 1.6, 5))):
             pos = Vector(at)

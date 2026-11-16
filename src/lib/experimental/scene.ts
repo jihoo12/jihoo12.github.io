@@ -3,7 +3,7 @@
 // planks or hanging from strings like the 2D site. Stations further down the path fade into the haze.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { buildNixFigure, type NixClip } from './nix-figure';
+import { buildNixFigure, type NixClip, type NixJump } from './nix-figure';
 
 interface SceneData {
 	projects: { title: string; tagline: string; language: string; commits: number; href: string }[];
@@ -985,7 +985,13 @@ export async function start() {
 		let gait: NixClip = 'Idle';
 		let gaitSpeed = 1;
 
+		/** The jump clip for the leap she's in, and for a hop. */
+		let leapClip: NixJump = 'Jump';
+		let hopClip: NixJump = 'Jump';
+		const onFeet = () => free || onPath;
 		const leap = (target: THREE.Vector3, land: typeof landing) => {
+			// Called before she's moved, so she still knows if she's leaving a seat or her feet.
+			leapClip = onFeet() ? (land === 'perch' ? 'JumpUp' : 'JumpStand') : land === 'perch' ? 'Jump' : 'JumpDown';
 			from.copy(root.position);
 			to.copy(target);
 			const distance = from.distanceTo(to);
@@ -1019,8 +1025,8 @@ export async function start() {
 			if (settling && Math.abs(s - want) < 1e-3) {
 				s = want;
 				stop = want;
-				onPath = false;
 				leap(perchOf(want), 'perch');
+				onPath = false;
 			}
 			return moved / Math.max(dt, 1e-4);
 		};
@@ -1079,10 +1085,10 @@ export async function start() {
 					steer.set(0, 0, 0);
 					vel.set(0, 0, 0);
 					if (free) {
-						free = false;
 						const k = stationNear(root.position, Infinity);
 						stop = k;
 						leap(perchOf(k), 'perch');
+						free = false;
 					}
 				}
 			},
@@ -1097,17 +1103,19 @@ export async function start() {
 				if (free) {
 					const k = stationNear(root.position);
 					if (k < 0) return;
-					free = false;
 					stop = k;
 					leap(perchOf(k), 'perch');
+					free = false;
 				} else if (!onPath) {
 					leap(anchors[stop], 'free');
 				}
 			},
 			hop() {
 				if (hop > 0 || jump < 1) return;
+				hopClip = onFeet() ? 'JumpStand' : 'Jump';
 				hop = 1;
-				squashSpring.velocity -= 5;
+				// The landing clip bends her knees, so her feet need no squash of their own.
+				if (!onFeet()) squashSpring.velocity -= 3;
 			},
 			/** Where the page has scrolled to, in stops. */
 			follow(p: number) {
@@ -1129,8 +1137,9 @@ export async function start() {
 			},
 			poke() {
 				if (!walks() || jump < 1 || onPath || free) {
+					hopClip = onFeet() ? 'JumpStand' : 'Jump';
 					hop = 1;
-					squashSpring.velocity -= 5;
+					if (!(solid && onFeet())) squashSpring.velocity -= solid ? 3 : 5;
 					return;
 				}
 				trick = tricks[nextTrick];
@@ -1138,8 +1147,9 @@ export async function start() {
 				trickLeft = trick.time;
 				trickSide = root.position.x > pathAt(stop).x ? -1 : 1;
 				if (trick.clip === 'Hop') {
+					hopClip = 'Jump';
 					hop = 1;
-					squashSpring.velocity -= 5;
+					squashSpring.velocity -= 3;
 					trick = null;
 				}
 			},
@@ -1152,7 +1162,10 @@ export async function start() {
 					root.position.y += Math.sin(Math.PI * jump) * arc;
 					root.rotation.z = Math.sin(Math.PI * jump) * -0.25 * facing;
 					if (jump === 1) {
-						squashSpring.velocity -= 7;
+						// The flat sprite lands with a squash. The figure's landings are in her clips: a soft
+						// one onto a seat, and onto her feet a landing clip that bends her knees, so no bounce.
+						if (!solid) squashSpring.velocity -= 7;
+						else if (landing === 'perch') squashSpring.velocity -= 2;
 						root.rotation.z = 0;
 						onPath = landing === 'path';
 						free = landing === 'free';
@@ -1168,8 +1181,9 @@ export async function start() {
 					if (roam && steer.lengthSq() > 0 && walks()) leap(anchors[stop], 'free');
 				}
 				if (hop > 0) {
-					hop = Math.max(0, hop - dt * (solid ? 1.7 : 2.4));
-					root.position.y += Math.sin(Math.PI * (1 - hop)) * 0.6;
+					hop = Math.max(0, hop - dt * (solid ? 1.5 : 2.4));
+					// On her feet she can really spring up; off a seat it's only a little hop.
+					root.position.y += Math.sin(Math.PI * (1 - hop)) * (solid && hopClip === 'JumpStand' ? 1.1 : 0.6);
 				}
 				const sq = squashSpring.step(dt);
 				squash.scale.set(1 - sq * 0.12, 1 + sq * 0.18, solid ? 1 - sq * 0.12 : 1);
@@ -1189,13 +1203,15 @@ export async function start() {
 						// Standing still on the path, she turns round to face the camera.
 						if (gait === 'Idle' && onPath) heading = 0;
 					} else {
-						figure.play(trick ? (trick.clip as NixClip) : 'Sit');
+						// Leaping down to her feet, she's already standing when she lands rather than getting up.
+						const standingUp = jump < 1 && landing !== 'perch';
+						figure.play(trick ? (trick.clip as NixClip) : standingUp ? 'Idle' : 'Sit');
 					}
 					// The figure faces where she's going, then turns back to the camera once she's sat down.
 					const turnTo = jump < 1 && !reduceMotion ? heading : onPath || free ? heading : strolling ? trickSide * 1.15 : 0;
 					turn += Math.atan2(Math.sin(turnTo - turn), Math.cos(turnTo - turn)) * (1 - Math.exp(-8 * dt));
 					figure.group.rotation.y = turn;
-					const flight = jump < 1 ? jump : hop > 0 ? 1 - hop : null;
+					const flight = jump < 1 ? { t: jump, clip: leapClip } : hop > 0 ? { t: 1 - hop, clip: hopClip } : null;
 					const busy = strolling || ((onPath || free) && gait !== 'Idle');
 					figure.tick(dt, time, { airborne, look: busy ? zero : look, still: reduceMotion, jump: flight });
 				} else {
