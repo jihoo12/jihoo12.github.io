@@ -1,5 +1,6 @@
-// The experimental 3D homepage: one long wall the camera walks along as the page scrolls.
-// Everything still either stands on a plank or hangs from a string, like the 2D site.
+// The experimental 3D homepage: a winding path that leads into the screen as the page scrolls.
+// Each stop is a little station by the side of the path, a freestanding wall with things standing on
+// planks or hanging from strings like the 2D site. Stations further down the path fade into the haze.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { buildNixFigure, type NixClip } from './nix-figure';
@@ -11,7 +12,7 @@ interface SceneData {
 	art: { thinking: string; nap: string; nix: { body: string; legL: string; legR: string; blink: string; model: string } };
 }
 
-/** Where the camera looks at each stop, and how much of the wall it needs to fit. */
+/** Where the camera looks at each stop, and how much of the station it needs to fit. */
 interface Stop {
 	center: THREE.Vector3;
 	width: number;
@@ -33,9 +34,13 @@ interface Pickable {
 	onClick?: () => void;
 }
 
+/** The back of each station, in its own frame; everything on it stands in front. */
 const WALL_Z = -2;
-const FLOOR_Y = -5.5;
-const STOP_GAP = 24;
+const FLOOR_Y = -3.2;
+/** How far down the path each station is from the last. */
+const STOP_GAP = 22;
+/** How far a station stands from the middle of the path, past its own half-width. */
+const ROADSIDE = 2.6;
 const LANGUAGE_COLORS: Record<string, string> = {
 	Rust: '#d39a6a',
 	C: '#8a9bb0',
@@ -195,17 +200,17 @@ export async function start() {
 	const lantern = new THREE.PointLight('#ffd38a', 0, 14, 1.4);
 	scene.add(ambient, sun, sun.target, lantern);
 
-	// The wall and the floor
+	// The ground, running off into the haze. Each station brings its own wall.
+	const fog = new THREE.Fog('#ffffff', 30, 78);
+	scene.fog = fog;
 	const wallMat = new THREE.MeshLambertMaterial();
-	const wall = new THREE.Mesh(new THREE.PlaneGeometry(260, 60), wallMat);
-	wall.position.set(STOP_GAP * 2.5, 6, WALL_Z);
-	wall.receiveShadow = true;
 	const floorMat = new THREE.MeshLambertMaterial();
-	const floor = new THREE.Mesh(new THREE.PlaneGeometry(260, 60), floorMat);
+	const pathMat = new THREE.MeshLambertMaterial();
+	const floor = new THREE.Mesh(new THREE.PlaneGeometry(160, STOP_GAP * 5 + 160), floorMat);
 	floor.rotation.x = -Math.PI / 2;
-	floor.position.set(STOP_GAP * 2.5, FLOOR_Y, WALL_Z + 30);
+	floor.position.set(0, FLOOR_Y, -STOP_GAP * 2.5);
 	floor.receiveShadow = true;
-	scene.add(wall, floor);
+	scene.add(floor);
 
 	// Shared materials that follow the palette
 	const plankMat = new THREE.MeshLambertMaterial();
@@ -216,8 +221,12 @@ export async function start() {
 	themed.push(() => {
 		const night = document.documentElement.dataset.time === 'night';
 		scene.background = color('--bg');
-		wallMat.color = color('--bg');
-		floorMat.color = color('--floor');
+		fog.color = color('--bg');
+		// A shade off the sky, so a station's wall reads as a thing standing in it.
+		wallMat.color = color('--bg').lerp(color('--plank'), night ? 0.16 : 0.08);
+		// By day a pale meadow with a paler path through it; by night the path glows faintly in the dark.
+		floorMat.color = night ? color('--floor') : color('--bg').lerp(color('--plank'), 0.3);
+		pathMat.color = night ? color('--floor').lerp(color('--surface'), 0.5) : color('--surface').lerp(color('--bg'), 0.35);
 		plankMat.color = color('--plank');
 		surfaceMat.color = color('--surface');
 		stringMat.color = color(night ? '--faint' : '--muted');
@@ -230,15 +239,25 @@ export async function start() {
 		lantern.intensity = night ? 18 : 0;
 	});
 
+	// Each stop is built around its own origin in a group of its own, and placed by the path later.
+	const stations: THREE.Group[] = [];
+	let into = new THREE.Group();
+	const station = () => {
+		into = new THREE.Group();
+		stations.push(into);
+		scene.add(into);
+		return into;
+	};
+
 	const plank = (width: number, depth: number, x: number, y: number, thickness = 0.36) => {
 		const mesh = new THREE.Mesh(new RoundedBoxGeometry(width, thickness, depth, 2, 0.08), plankMat);
 		mesh.position.set(x, y - thickness / 2, WALL_Z + depth / 2);
 		mesh.castShadow = mesh.receiveShadow = true;
-		scene.add(mesh);
+		into.add(mesh);
 		return mesh;
 	};
 
-	const string = (from: THREE.Vector3, to: THREE.Vector3, parent: THREE.Object3D = scene) => {
+	const string = (from: THREE.Vector3, to: THREE.Vector3, parent: THREE.Object3D = into) => {
 		const length = from.distanceTo(to);
 		const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, length, 5), stringMat);
 		mesh.position.copy(from).add(to).multiplyScalar(0.5);
@@ -249,6 +268,7 @@ export async function start() {
 
 	// ---------- stop 0: the wordmark ----------
 	{
+		station();
 		const FONT_PX = 256;
 		const HEIGHT = 4.2; // world units per font size
 		const scale = HEIGHT / FONT_PX;
@@ -304,7 +324,7 @@ export async function start() {
 			// Plane centre sits so the baseline lands on the shelf.
 			const cy = shelfY + (canvasH / 2 - baseline) * -scale;
 			letter.position.set(cx, cy, front);
-			scene.add(letter);
+			into.add(letter);
 			const top = shelfY + m.actualBoundingBoxAscent * scale;
 			if (char === 'o') perch.set(cx + 0.1, top, front + 0.05);
 
@@ -335,7 +355,8 @@ export async function start() {
 
 	// ---------- stop 1: a print on the wall ----------
 	{
-		const cx = STOP_GAP;
+		station();
+		const cx = 0;
 		const size = 5.4;
 		const frame = new THREE.Group();
 		const border = new THREE.Mesh(new RoundedBoxGeometry(size, size, 0.12, 2, 0.04), paperWhite);
@@ -349,7 +370,7 @@ export async function start() {
 		frame.add(border, picture, tape);
 		frame.position.set(cx, 1.6, WALL_Z + 0.08);
 		frame.rotation.z = 0.028;
-		scene.add(frame);
+		into.add(frame);
 		const wobble = new Spring(30, 3);
 		tickers.push((dt) => {
 			frame.rotation.z = 0.028 + wobble.step(dt);
@@ -371,7 +392,8 @@ export async function start() {
 
 	// ---------- stop 2: project towers ----------
 	{
-		const cx = STOP_GAP * 2;
+		station();
+		const cx = 0;
 		const projects = data.projects.length
 			? [...data.projects].sort((a, b) => a.commits - b.commits)
 			: [{ title: 'Projects', tagline: 'Everything I am building lives on the projects page.', language: '', commits: 0, href: '/projects/' }];
@@ -444,7 +466,7 @@ export async function start() {
 			const x = cx - rowW / 2 + W / 2 + i * (W + GAP);
 			const z = WALL_Z + 0.45 + D / 2;
 			tower.position.set(x, groundY, z);
-			scene.add(tower);
+			into.add(tower);
 			if (i === projects.length - 1) perch = new THREE.Vector3(x + 0.5, groundY + h, z + D / 2 + 0.05);
 			let hovered = 0;
 			let lift = 0;
@@ -461,7 +483,8 @@ export async function start() {
 
 	// ---------- stop 3: notes hung from a plank ----------
 	{
-		const cx = STOP_GAP * 3;
+		station();
+		const cx = 0;
 		const SW = 3.5;
 		const SH = 4.1;
 		const GAP = 0.6;
@@ -509,7 +532,7 @@ export async function start() {
 			for (const side of [-1, 1]) {
 				string(new THREE.Vector3(side * SW * 0.32, 0, 0), new THREE.Vector3(side * SW * 0.32, -drop - 0.05, 0), pivot);
 			}
-			scene.add(pivot);
+			into.add(pivot);
 			const swing = new Spring(9, 1.3);
 			const sway = new Spring(6, 1.6);
 			const phase = i * 1.7;
@@ -534,7 +557,8 @@ export async function start() {
 
 	// ---------- stop 4: comics on nails ----------
 	{
-		const cx = STOP_GAP * 4;
+		station();
+		const cx = 0;
 		const S = 3.6;
 		const GAP = 0.9;
 		const nailY = 4.3;
@@ -546,7 +570,7 @@ export async function start() {
 			const x = cx - rowW / 2 + S / 2 + i * (S + GAP);
 			const nail = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), plankMat);
 			nail.position.set(x, nailY, WALL_Z + 0.06);
-			scene.add(nail);
+			into.add(nail);
 			const pivot = new THREE.Group();
 			pivot.position.set(x, nailY, WALL_Z + 0.12);
 			const frame = new THREE.Group();
@@ -562,7 +586,7 @@ export async function start() {
 			const top = -hangs[i % hangs.length];
 			for (const side of [-1, 1]) string(new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * S * 0.38, top, 0), pivot);
 			pivot.rotation.z = tilts[i % tilts.length];
-			scene.add(pivot);
+			into.add(pivot);
 			const swing = new Spring(14, 2);
 			tickers.push((dt) => {
 				pivot.rotation.z = tilts[i % tilts.length] + swing.step(dt);
@@ -578,7 +602,8 @@ export async function start() {
 
 	// ---------- stop 5: the end, by the floor ----------
 	{
-		const cx = STOP_GAP * 5;
+		station();
+		const cx = 0;
 		const size = 3.4;
 		const frame = new THREE.Group();
 		const border = new THREE.Mesh(new RoundedBoxGeometry(size, size, 0.12, 2, 0.04), paperWhite);
@@ -588,22 +613,149 @@ export async function start() {
 		frame.add(border, picture);
 		frame.position.set(cx - 1.6, 1.4, WALL_Z + 0.08);
 		frame.rotation.z = -0.04;
-		scene.add(frame);
+		into.add(frame);
 		const shelfY = -1.2;
 		plank(7, 1.1, cx + 0.4, shelfY, 0.36);
 		pickables.push({ object: frame, label: 'Back to the 2D site', href: '/' });
 		stops.push({ center: new THREE.Vector3(cx, -0.6, WALL_Z + 1), width: 8, height: 8.5, perch: new THREE.Vector3(cx + 2.2, shelfY, WALL_Z + 1.15), swing: 2 });
 	}
 
-	// ---------- stars painted on the wall, out at night ----------
+	// ---------- the path, and the stations along it ----------
+	// The path wanders gently into the screen. Stations stand on alternate sides of it, the first one
+	// at its head, and the camera walks down it from one to the next.
+	const pathX = (z: number) => 1.4 * Math.sin(z * 0.11);
+	const sides = stops.map((_, i) => (i === 0 ? 0 : i % 2 ? 1 : -1));
+	/** Where on the path Nixchan stands to hop up to each stop's perch. */
+	const anchors: THREE.Vector3[] = [];
+	stops.forEach((stop, i) => {
+		const group = stations[i];
+		const side = sides[i];
+		const z = -i * STOP_GAP;
+		const origin = new THREE.Vector3(side === 0 ? 0 : pathX(z) + side * (stop.width / 2 + ROADSIDE), 0, z);
+		group.position.copy(origin);
+		// A freestanding wall behind each station, standing on the ground. The wordmark has a plinth
+		// under its plank instead, so its letters stand against the sky at the head of the path.
+		const top = i === 0 ? -0.5 : stop.center.y + stop.height / 2 - 1.2;
+		const depth = i === 0 ? 1.5 : 0.4;
+		const panel = new THREE.Mesh(new RoundedBoxGeometry(stop.width + 1.2, top - FLOOR_Y, depth, 3, 0.16), wallMat);
+		panel.position.set(stop.center.x, (top + FLOOR_Y) / 2, i === 0 ? WALL_Z + 0.85 : WALL_Z - 0.2);
+		panel.castShadow = panel.receiveShadow = true;
+		group.add(panel);
+		stop.center.add(origin);
+		stop.perch.add(origin);
+		stop.perch3d?.add(origin);
+		// The camera stands out over the path, so the way on stays in view.
+		if (side !== 0) stop.swing = -side * 3.2;
+		anchors.push(
+			side === 0
+				? new THREE.Vector3(stop.perch.x, FLOOR_Y, z + 3.2)
+				: new THREE.Vector3(pathX(z) + side * 0.9, FLOOR_Y, z + 1.6),
+		);
+	});
+
+	const pathPoints: THREE.Vector3[] = [new THREE.Vector3(anchors[0].x, FLOOR_Y, anchors[0].z + 7)];
+	const anchorIndex: number[] = [];
+	anchors.forEach((anchor, i) => {
+		anchorIndex.push(pathPoints.length);
+		pathPoints.push(anchor);
+		if (i === anchors.length - 1) return;
+		// Round the far side of the wordmark, then back to the middle of the path between stations.
+		if (i === 0) pathPoints.push(new THREE.Vector3(stops[0].width / 2 + 4, FLOOR_Y, -1));
+		const zm = -(i + 0.5) * STOP_GAP;
+		pathPoints.push(new THREE.Vector3(pathX(zm), FLOOR_Y, zm));
+	});
+	const lastZ = -(stops.length - 1) * STOP_GAP;
+	pathPoints.push(new THREE.Vector3(pathX(lastZ - 16), FLOOR_Y, lastZ - 16));
+	const path = new THREE.CatmullRomCurve3(pathPoints, false, 'centripetal');
+	const anchorT = anchorIndex.map((j) => j / (pathPoints.length - 1));
+	/** The path's parameter at `s`, counted in stops: s = 2 is the anchor of stop 2. */
+	const pathT = (s: number) => {
+		const k = THREE.MathUtils.clamp(Math.floor(s), 0, anchorT.length - 2);
+		return THREE.MathUtils.lerp(anchorT[k], anchorT[k + 1], THREE.MathUtils.clamp(s - k, 0, 1));
+	};
+	/** The point on the path `s` stops along it. */
+	const pathAt = (s: number, out = new THREE.Vector3()) => path.getPoint(pathT(s), out);
+	/** How far it is along the path from each stop's anchor to the next. */
+	const legLength = anchorT.slice(1).map((t1, k) => {
+		let length = 0;
+		const prev = path.getPoint(anchorT[k]);
+		const next = new THREE.Vector3();
+		for (let n = 1; n <= 60; n++) {
+			path.getPoint(THREE.MathUtils.lerp(anchorT[k], t1, n / 60), next);
+			length += next.distanceTo(prev);
+			prev.copy(next);
+		}
+		return length;
+	});
+
+	// The path itself: a flat ribbon laid on the ground.
+	{
+		const N = 480;
+		const PATH_W = 2.8;
+		const positions: number[] = [];
+		const index: number[] = [];
+		const p = new THREE.Vector3();
+		const tangent = new THREE.Vector3();
+		const across = new THREE.Vector3();
+		for (let n = 0; n <= N; n++) {
+			const t = n / N;
+			path.getPoint(t, p);
+			path.getTangent(t, tangent);
+			across.set(-tangent.z, 0, tangent.x).normalize().multiplyScalar(PATH_W / 2);
+			// Rounded off at either end.
+			const taper = Math.min(1, Math.sqrt(Math.min(t, 1 - t) * 60));
+			positions.push(p.x - across.x * taper, FLOOR_Y + 0.02, p.z - across.z * taper, p.x + across.x * taper, FLOOR_Y + 0.02, p.z + across.z * taper);
+			// Wound so the faces look up.
+			if (n < N) index.push(n * 2, n * 2 + 1, n * 2 + 2, n * 2 + 1, n * 2 + 3, n * 2 + 2);
+		}
+		const geo = new THREE.BufferGeometry();
+		geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+		geo.setIndex(index);
+		geo.computeVertexNormals();
+		const ribbon = new THREE.Mesh(geo, pathMat);
+		ribbon.receiveShadow = true;
+		scene.add(ribbon);
+
+		// Little lamps along the way, lit at night; going past them is what makes the walk feel like one.
+		const lampMat = new THREE.MeshBasicMaterial();
+		const postGeo = new THREE.CylinderGeometry(0.05, 0.07, 1.5, 6);
+		const bulbGeo = new THREE.SphereGeometry(0.17, 12, 8);
+		const total = path.getLength();
+		let flip = 1;
+		for (let d = 4; d < total - 3; d += 6.5) {
+			const t = d / total;
+			path.getPointAt(t, p);
+			path.getTangentAt(t, tangent);
+			across.set(-tangent.z, 0, tangent.x).normalize();
+			flip = -flip;
+			const at = p.clone().addScaledVector(across, flip * 2.1);
+			// Not in the way of a station, or of where she hops up to one.
+			if (anchors.some((a) => a.distanceTo(at) < 3.6)) continue;
+			if (stations.some((g, i) => Math.abs(at.z - g.position.z) < 3 && Math.abs(at.x - g.position.x) < stops[i].width / 2 + 1)) continue;
+			const post = new THREE.Mesh(postGeo, plankMat);
+			post.position.set(at.x, FLOOR_Y + 0.75, at.z);
+			post.castShadow = true;
+			const bulb = new THREE.Mesh(bulbGeo, lampMat);
+			bulb.position.set(at.x, FLOOR_Y + 1.6, at.z);
+			scene.add(post, bulb);
+		}
+		themed.push(() => {
+			const night = document.documentElement.dataset.time === 'night';
+			lampMat.color = night ? color('--star') : color('--surface');
+		});
+	}
+
+	// ---------- stars, out at night ----------
+	// Pinned to the sky: the dome travels with the camera, so they never come any closer.
+	const sky = new THREE.Group();
 	{
 		const rand = (() => {
 			let s = 12;
 			return () => ((s = (s * 16807) % 2147483647) / 2147483647);
 		})();
-		const dotMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true });
-		const sparkMat = new THREE.MeshBasicMaterial({ transparent: true });
-		const dots = new THREE.InstancedMesh(new THREE.CircleGeometry(0.05, 8), dotMat, 320);
+		const dotMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, fog: false, depthWrite: false });
+		const sparkMat = new THREE.MeshBasicMaterial({ transparent: true, fog: false, depthWrite: false });
+		const dots = new THREE.InstancedMesh(new THREE.CircleGeometry(0.16, 8), dotMat, 360);
 		const star = new THREE.Shape();
 		star.moveTo(0, 1);
 		star.quadraticCurveTo(0, 0, 1, 0);
@@ -611,19 +763,24 @@ export async function start() {
 		star.quadraticCurveTo(0, 0, -1, 0);
 		star.quadraticCurveTo(0, 0, 0, 1);
 		const sparks = new THREE.InstancedMesh(new THREE.ShapeGeometry(star, 4), sparkMat, 40);
-		const m = new THREE.Matrix4();
-		const q = new THREE.Quaternion();
-		for (let i = 0; i < dots.count; i++) {
-			const s = 0.5 + rand() * 1.4;
-			m.compose(new THREE.Vector3(-20 + rand() * (STOP_GAP * 5 + 40), FLOOR_Y + 1 + rand() * 18, WALL_Z + 0.01), q, new THREE.Vector3(s, s, 1));
-			dots.setMatrixAt(i, m);
-		}
-		for (let i = 0; i < sparks.count; i++) {
-			const s = 0.12 + rand() * 0.16;
-			m.compose(new THREE.Vector3(-20 + rand() * (STOP_GAP * 5 + 40), FLOOR_Y + 2 + rand() * 17, WALL_Z + 0.015), q, new THREE.Vector3(s, s, 1));
-			sparks.setMatrixAt(i, m);
-		}
-		scene.add(dots, sparks);
+		const place = new THREE.Object3D();
+		const scatter = (mesh: THREE.InstancedMesh, size: () => number) => {
+			for (let i = 0; i < mesh.count; i++) {
+				// Mostly ahead and above, where the camera looks.
+				place.position.set((rand() - 0.5) * 2.4, 0.04 + rand() * 0.9, -0.25 - rand()).normalize().multiplyScalar(120);
+				place.lookAt(0, 0, 0);
+				const s = size();
+				place.scale.set(s, s, 1);
+				place.updateMatrix();
+				mesh.setMatrixAt(i, place.matrix);
+			}
+			mesh.renderOrder = -1;
+			mesh.frustumCulled = false;
+		};
+		scatter(dots, () => 0.6 + rand() * 1.4);
+		scatter(sparks, () => 0.4 + rand() * 0.5);
+		sky.add(dots, sparks);
+		scene.add(sky);
 		themed.push(() => {
 			const night = document.documentElement.dataset.time === 'night';
 			dots.visible = sparks.visible = night;
@@ -713,9 +870,15 @@ export async function start() {
 
 		const from = new THREE.Vector3();
 		const to = perchOf(0).clone();
+		// In 3D she gets about on foot: down from her perch, along the path, up onto the next one.
+		// The flat sprite can't walk, so it leaps straight from perch to perch.
+		const walks = () => solid && loaded && !reduceMotion;
 		function setSolid(value: boolean) {
 			solid = value && !modelFailed;
 			applyMode();
+			// Wherever she was on the path, she starts over sitting on the perch in view.
+			onPath = false;
+			stop = Math.round(scroll);
 			to.copy(perchOf(stop));
 			if (jump === 1) root.position.copy(to);
 			hop = 1;
@@ -723,14 +886,20 @@ export async function start() {
 		}
 		root.position.copy(to);
 		let stop = 0;
+		let scroll = 0;
+		let onPath = false;
+		let s = 0; // where she is along the path, counted in stops
 		let jump = 1; // 0 → 1 while airborne
 		let jumpTime = 1;
 		let arc = 0;
+		let landOnPath = false;
 		let facing = 1;
 		let turn = 0;
+		let heading = 0;
 		let nextBlink = 2;
 		let hop = 0;
 		const squashSpring = new Spring(160, 10);
+		const was = new THREE.Vector3();
 		// Clicking the 3D figure has her show off one move after another, then sit back down.
 		const tricks = [
 			{ clip: 'Wave', time: 3.2 },
@@ -741,10 +910,53 @@ export async function start() {
 		let nextTrick = 0;
 		let trick: (typeof tricks)[number] | null = null;
 		let trickLeft = 0;
-		// Which way she turns to walk or run: towards the middle of the view, where there is room.
+		// Which way she turns to walk or run on the spot: towards the path, where there is room.
 		let trickSide = 1;
-		// While she walks or runs side-on she keeps her eyes on the way ahead.
+		// While she walks or runs she keeps her eyes on the way ahead.
 		const zero = new THREE.Vector2();
+		/** The clip she's on the path in, and how fast it plays. */
+		let gait: NixClip = 'Idle';
+		let gaitSpeed = 1;
+
+		const leap = (target: THREE.Vector3, toPath: boolean) => {
+			from.copy(root.position);
+			to.copy(target);
+			const distance = from.distanceTo(to);
+			jumpTime = reduceMotion ? 0.01 : 0.55 + Math.min(distance, 60) * 0.012;
+			arc = reduceMotion ? 0 : 1.2 + Math.min(distance, 60) * 0.07;
+			jump = 0;
+			landOnPath = toPath;
+			trick = null;
+			facing = to.x < from.x ? -1 : 1;
+			flat.scale.x = facing;
+			heading = Math.atan2(to.x - from.x, to.z - from.z);
+			squashSpring.velocity -= 4;
+		};
+
+		/** Walk her along the path towards where the page has scrolled to; returns her speed. */
+		const stroll = (dt: number) => {
+			const want = Math.round(scroll);
+			// Close to a stop, she heads for it rather than keeping pace with the scroll.
+			const settling = Math.abs(scroll - want) < 0.3;
+			const target = settling ? want : THREE.MathUtils.clamp(scroll, 0, stops.length - 1);
+			const leg = legLength[THREE.MathUtils.clamp(Math.floor(s), 0, legLength.length - 1)];
+			const gap = (target - s) * leg;
+			// She dawdles over a little way and sprints to catch up over a long one.
+			const speed = Math.min(11, Math.abs(gap) * 2.2 + 0.8);
+			const step = Math.sign(gap) * Math.min(Math.abs(gap), speed * dt);
+			s += step / leg;
+			was.copy(root.position);
+			pathAt(s, root.position);
+			const moved = root.position.distanceTo(was);
+			if (moved > 1e-4) heading = Math.atan2(root.position.x - was.x, root.position.z - was.z);
+			if (settling && Math.abs(s - want) < 1e-3) {
+				s = want;
+				stop = want;
+				onPath = false;
+				leap(perchOf(want), false);
+			}
+			return moved / Math.max(dt, 1e-4);
+		};
 
 		return {
 			root,
@@ -753,22 +965,25 @@ export async function start() {
 				return solid;
 			},
 			setSolid,
-			goTo(index: number) {
-				if (index === stop) return;
-				stop = index;
-				from.copy(root.position);
-				to.copy(perchOf(index));
-				const distance = from.distanceTo(to);
-				jumpTime = reduceMotion ? 0.01 : 0.6 + Math.min(distance, 60) * 0.012;
-				arc = reduceMotion ? 0 : 2 + Math.min(distance, 60) * 0.08;
-				jump = 0;
-				trick = null;
-				facing = to.x < from.x ? -1 : 1;
-				flat.scale.x = facing;
-				squashSpring.velocity -= 4;
+			/** Where the page has scrolled to, in stops. */
+			follow(p: number) {
+				scroll = p;
+				const want = Math.round(p);
+				if (jump < 1) return;
+				if (walks()) {
+					// Off her perch and down to the path as soon as the page starts moving on.
+					if (!onPath && Math.abs(p - stop) > 0.3) {
+						s = stop;
+						leap(pathAt(stop), true);
+					}
+				} else if (onPath || want !== stop) {
+					onPath = false;
+					stop = want;
+					leap(perchOf(want), false);
+				}
 			},
 			poke() {
-				if (!(solid && loaded) || reduceMotion || jump < 1) {
+				if (!walks() || jump < 1 || onPath) {
 					hop = 1;
 					squashSpring.velocity -= 5;
 					return;
@@ -776,7 +991,7 @@ export async function start() {
 				trick = tricks[nextTrick];
 				nextTrick = (nextTrick + 1) % tricks.length;
 				trickLeft = trick.time;
-				trickSide = stops[stop].center.x < root.position.x ? -1 : 1;
+				trickSide = root.position.x > pathAt(stop).x ? -1 : 1;
 				if (trick.clip === 'Hop') {
 					hop = 1;
 					squashSpring.velocity -= 5;
@@ -784,6 +999,7 @@ export async function start() {
 				}
 			},
 			tick(dt: number, time: number, look: THREE.Vector2) {
+				let speed = 0;
 				if (jump < 1) {
 					jump = Math.min(1, jump + dt / jumpTime);
 					const t = smooth(jump);
@@ -793,7 +1009,11 @@ export async function start() {
 					if (jump === 1) {
 						squashSpring.velocity -= 7;
 						root.rotation.z = 0;
+						onPath = landOnPath;
+						if (!onPath) heading = 0;
 					}
+				} else if (onPath) {
+					speed = stroll(dt);
 				} else {
 					root.position.copy(to);
 				}
@@ -801,8 +1021,8 @@ export async function start() {
 					hop = Math.max(0, hop - dt * (solid ? 1.7 : 2.4));
 					root.position.y += Math.sin(Math.PI * (1 - hop)) * 0.6;
 				}
-				const s = squashSpring.step(dt);
-				squash.scale.set(1 - s * 0.12, 1 + s * 0.18, solid ? 1 - s * 0.12 : 1);
+				const sq = squashSpring.step(dt);
+				squash.scale.set(1 - sq * 0.12, 1 + sq * 0.18, solid ? 1 - sq * 0.12 : 1);
 				const airborne = jump < 1 || hop > 0;
 				if (solid) {
 					if (trick) {
@@ -810,13 +1030,24 @@ export async function start() {
 						if (trickLeft <= 0) trick = null;
 					}
 					const strolling = trick !== null && trick.clip !== 'Wave';
-					figure.play(trick ? (trick.clip as NixClip) : 'Sit');
-					// The figure turns towards where she is jumping or walking, then back to face the camera.
-					const turnTo = jump < 1 && !reduceMotion ? facing * 0.75 : strolling ? trickSide * 1.15 : 0;
-					turn = damp(turn, turnTo, 7, dt);
+					if (onPath && jump === 1) {
+						// The gait follows her pace; the clips are cut for about 1.5 (walk) and 4.2 (run) a second.
+						const next: NixClip = speed > 3 ? 'Run' : speed > 0.25 ? 'Walk' : 'Idle';
+						if (next !== gait) gait = next;
+						gaitSpeed = gait === 'Run' ? THREE.MathUtils.clamp(speed / 4.2, 0.8, 2.4) : gait === 'Walk' ? THREE.MathUtils.clamp(speed / 1.5, 0.6, 1.8) : 1;
+						figure.play(gait, gaitSpeed);
+						// Standing still on the path, she turns round to face the camera.
+						if (gait === 'Idle') heading = 0;
+					} else {
+						figure.play(trick ? (trick.clip as NixClip) : 'Sit');
+					}
+					// The figure faces where she's going, then turns back to the camera once she's sat down.
+					const turnTo = jump < 1 && !reduceMotion ? heading : onPath ? heading : strolling ? trickSide * 1.15 : 0;
+					turn += Math.atan2(Math.sin(turnTo - turn), Math.cos(turnTo - turn)) * (1 - Math.exp(-8 * dt));
 					figure.group.rotation.y = turn;
 					const flight = jump < 1 ? jump : hop > 0 ? 1 - hop : null;
-					figure.tick(dt, time, { airborne, look: strolling ? zero : look, still: reduceMotion, jump: flight });
+					const busy = strolling || (onPath && gait !== 'Idle');
+					figure.tick(dt, time, { airborne, look: busy ? zero : look, still: reduceMotion, jump: flight });
 				} else {
 					legs.forEach((leg, i) => {
 						const swingAngle = reduceMotion ? 0 : Math.sin(time * 2.6 + i * Math.PI) * 0.22;
@@ -864,6 +1095,8 @@ export async function start() {
 	const camLook = new THREE.Vector3();
 	const wantPos = new THREE.Vector3();
 	const wantLook = new THREE.Vector3();
+	const behind = new THREE.Vector3();
+	const ahead = new THREE.Vector3();
 	let viewShift = { x: 0, y: 0 };
 	let width = 0;
 	let height = 0;
@@ -903,9 +1136,19 @@ export async function start() {
 		const distance = THREE.MathUtils.lerp(fa.distance, fb.distance, f);
 		wantLook.lerpVectors(a.center, b.center, f);
 		const swing = THREE.MathUtils.lerp(a.swing, b.swing, f);
-		// Step back from the wall mid-walk, so the trip between stops reads as moving through space.
-		const back = Math.sin(Math.PI * f) * 5;
-		wantPos.set(wantLook.x + swing, wantLook.y + 1.2 + distance * 0.08, wantLook.z + distance + back);
+		wantPos.set(wantLook.x + swing, wantLook.y + 1.2 + distance * 0.08, wantLook.z + distance);
+		// Between stops the camera leaves the stations and walks the path itself, a little behind
+		// and above, looking on down the way, so it goes round the stations rather than through them.
+		const walk = Math.sin(Math.PI * f) ** 0.7;
+		if (walk > 0) {
+			const at = i + f;
+			pathAt(Math.max(0, at - 0.34), behind);
+			pathAt(Math.min(stops.length - 1, at + 0.32), ahead);
+			behind.y += 7.5;
+			ahead.y += 0.5;
+			wantPos.lerp(behind, walk);
+			wantLook.lerp(ahead, walk);
+		}
 		viewShift = { x: THREE.MathUtils.lerp(fa.shiftX, fb.shiftX, f), y: THREE.MathUtils.lerp(fa.shiftY, fb.shiftY, f) };
 	};
 
@@ -971,7 +1214,6 @@ export async function start() {
 	camLook.copy(wantLook);
 
 	const clock = new THREE.Clock();
-	let current = Math.round(progress());
 	renderer.setAnimationLoop(() => {
 		const dt = Math.min(clock.getDelta(), 0.05);
 		const time = clock.elapsedTime;
@@ -992,11 +1234,8 @@ export async function start() {
 		sun.target.position.copy(camLook);
 		sun.position.copy(camLook).add(new THREE.Vector3(-7, 13, 12));
 
-		const stop = Math.round(p);
-		if (stop !== current) {
-			current = stop;
-			nix.goTo(stop);
-		}
+		nix.follow(p);
+		sky.position.copy(camera.position);
 		// She looks from where she is on screen towards the pointer.
 		if (pointer.x <= 1) {
 			nixHead.copy(nix.root.position).y += 1.3;

@@ -197,8 +197,8 @@ export interface NixFigure {
 	/** Resolves once the model is in, or rejects if it could not be loaded. */
 	ready: Promise<void>;
 	setBlink(closed: boolean): void;
-	/** Blend into a looping clip. */
-	play(clip: NixClip): void;
+	/** Blend into a looping clip, played at `speed` times its natural pace. */
+	play(clip: NixClip, speed?: number): void;
 	/** `jump` is how far through a jump she is (0 → 1), or null on the ground. */
 	tick(dt: number, time: number, state: { airborne: boolean; look: THREE.Vector2; still: boolean; jump: number | null }): void;
 }
@@ -330,7 +330,9 @@ export function buildNixFigure(url: string): NixFigure {
 		setBlink(closed) {
 			faceMat.map = closed ? closedFace : openFace;
 		},
-		play(next) {
+		play(next, speed = 1) {
+			const playing = actions.get(next);
+			if (playing) playing.timeScale = speed;
 			if (next === clip) return;
 			clip = next;
 			// A clip that has faded right out starts again from the top, so a wave begins with the hand coming up.
