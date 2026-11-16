@@ -625,6 +625,8 @@ export async function start() {
 	// at its head, and the camera walks down it from one to the next.
 	const pathX = (z: number) => 1.4 * Math.sin(z * 0.11);
 	const sides = stops.map((_, i) => (i === 0 ? 0 : i % 2 ? 1 : -1));
+	/** The stations' walls, which the camera keeps to its own side of while you walk about. */
+	const walls: THREE.Mesh[] = [];
 	/** Where on the path Nixchan stands to hop up to each stop's perch. */
 	const anchors: THREE.Vector3[] = [];
 	stops.forEach((stop, i) => {
@@ -638,6 +640,7 @@ export async function start() {
 		const top = i === 0 ? -0.5 : stop.center.y + stop.height / 2 - 1.2;
 		const depth = i === 0 ? 1.5 : 0.4;
 		const panel = new THREE.Mesh(new RoundedBoxGeometry(stop.width + 1.2, top - FLOOR_Y, depth, 3, 0.16), wallMat);
+		walls.push(panel);
 		panel.position.set(stop.center.x, (top + FLOOR_Y) / 2, i === 0 ? WALL_Z + 0.85 : WALL_Z - 0.2);
 		panel.castShadow = panel.receiveShadow = true;
 		group.add(panel);
@@ -673,6 +676,8 @@ export async function start() {
 		const k = THREE.MathUtils.clamp(Math.floor(s), 0, anchorT.length - 2);
 		return THREE.MathUtils.lerp(anchorT[k], anchorT[k + 1], THREE.MathUtils.clamp(s - k, 0, 1));
 	};
+	/** Where the lamp posts stand, for walking round them. */
+	const posts: THREE.Vector3[] = [];
 	/** The point on the path `s` stops along it. */
 	const pathAt = (s: number, out = new THREE.Vector3()) => path.getPoint(pathT(s), out);
 	/** How far it is along the path from each stop's anchor to the next. */
@@ -722,6 +727,7 @@ export async function start() {
 		const bulbGeo = new THREE.SphereGeometry(0.17, 12, 8);
 		const total = path.getLength();
 		let flip = 1;
+		posts.length = 0;
 		for (let d = 4; d < total - 3; d += 6.5) {
 			const t = d / total;
 			path.getPointAt(t, p);
@@ -732,6 +738,7 @@ export async function start() {
 			// Not in the way of a station, or of where she hops up to one.
 			if (anchors.some((a) => a.distanceTo(at) < 3.6)) continue;
 			if (stations.some((g, i) => Math.abs(at.z - g.position.z) < 3 && Math.abs(at.x - g.position.x) < stops[i].width / 2 + 1)) continue;
+			posts.push(at.clone());
 			const post = new THREE.Mesh(postGeo, plankMat);
 			post.position.set(at.x, FLOOR_Y + 0.75, at.z);
 			post.castShadow = true;
@@ -744,6 +751,58 @@ export async function start() {
 			lampMat.color = night ? color('--star') : color('--surface');
 		});
 	}
+
+	// ---------- walking about: what's in the way, and which station is close ----------
+	// Each station's footprint on the ground; she walks round it, not through it.
+	const footprints = stations.map((group) => {
+		group.updateMatrixWorld(true);
+		return new THREE.Box3().setFromObject(group);
+	});
+	const BODY_R = 0.45;
+	const collide = (p: THREE.Vector3) => {
+		for (const box of footprints) {
+			const dx0 = p.x - (box.min.x - BODY_R);
+			const dx1 = box.max.x + BODY_R - p.x;
+			const dz0 = p.z - (box.min.z - BODY_R);
+			const dz1 = box.max.z + BODY_R - p.z;
+			if (dx0 <= 0 || dx1 <= 0 || dz0 <= 0 || dz1 <= 0) continue;
+			// Out by the shortest way.
+			const least = Math.min(dx0, dx1, dz0, dz1);
+			if (least === dx0) p.x -= dx0;
+			else if (least === dx1) p.x += dx1;
+			else if (least === dz0) p.z -= dz0;
+			else p.z += dz1;
+		}
+		for (const post of posts) {
+			const dx = p.x - post.x;
+			const dz = p.z - post.z;
+			const d = Math.hypot(dx, dz);
+			const min = BODY_R + 0.12;
+			if (d < min && d > 1e-5) {
+				p.x = post.x + (dx / d) * min;
+				p.z = post.z + (dz / d) * min;
+			}
+		}
+		// The edge of the world: the meadow goes on, but she stays near the path.
+		p.x = THREE.MathUtils.clamp(p.x, -40, 40);
+		p.z = THREE.MathUtils.clamp(p.z, lastZ - 22, 14);
+	};
+	/** The station whose footprint is within `reach` of `p`, nearest first, or -1. */
+	const stationNear = (p: THREE.Vector3, reach = 3.5) => {
+		let best = -1;
+		let bestD = reach;
+		footprints.forEach((box, i) => {
+			const dx = Math.max(box.min.x - p.x, 0, p.x - box.max.x);
+			const dz = Math.max(box.min.z - p.z, 0, p.z - box.max.z);
+			// Standing where she'd hop up from counts as being by it too.
+			const d = Math.min(Math.hypot(dx, dz), Math.hypot(p.x - anchors[i].x, p.z - anchors[i].z));
+			if (d < bestD || (reach === Infinity && best < 0)) {
+				best = i;
+				bestD = d;
+			}
+		});
+		return best;
+	};
 
 	// ---------- stars, out at night ----------
 	// Pinned to the sky: the dome travels with the camera, so they never come any closer.
@@ -878,6 +937,7 @@ export async function start() {
 			applyMode();
 			// Wherever she was on the path, she starts over sitting on the perch in view.
 			onPath = false;
+			free = false;
 			stop = Math.round(scroll);
 			to.copy(perchOf(stop));
 			if (jump === 1) root.position.copy(to);
@@ -892,7 +952,14 @@ export async function start() {
 		let jump = 1; // 0 → 1 while airborne
 		let jumpTime = 1;
 		let arc = 0;
-		let landOnPath = false;
+		/** Where a leap puts her: on the path to stroll, on a perch to sit, or on the ground to be steered. */
+		let landing: 'path' | 'perch' | 'free' = 'perch';
+		// Walking about freely: she is steered with the keys rather than following the scroll.
+		let roam = false;
+		let free = false;
+		const steer = new THREE.Vector3();
+		let running = false;
+		const vel = new THREE.Vector3();
 		let facing = 1;
 		let turn = 0;
 		let heading = 0;
@@ -918,14 +985,14 @@ export async function start() {
 		let gait: NixClip = 'Idle';
 		let gaitSpeed = 1;
 
-		const leap = (target: THREE.Vector3, toPath: boolean) => {
+		const leap = (target: THREE.Vector3, land: typeof landing) => {
 			from.copy(root.position);
 			to.copy(target);
 			const distance = from.distanceTo(to);
 			jumpTime = reduceMotion ? 0.01 : 0.55 + Math.min(distance, 60) * 0.012;
 			arc = reduceMotion ? 0 : 1.2 + Math.min(distance, 60) * 0.07;
 			jump = 0;
-			landOnPath = toPath;
+			landing = land;
 			trick = null;
 			facing = to.x < from.x ? -1 : 1;
 			flat.scale.x = facing;
@@ -953,8 +1020,22 @@ export async function start() {
 				s = want;
 				stop = want;
 				onPath = false;
-				leap(perchOf(want), false);
+				leap(perchOf(want), 'perch');
 			}
+			return moved / Math.max(dt, 1e-4);
+		};
+
+		const WALK = 3;
+		const RUN = 7.5;
+		/** Steer her about the ground with the keys; returns her speed. */
+		const drive = (dt: number) => {
+			vel.lerp(steer.clone().multiplyScalar(running ? RUN : WALK), 1 - Math.exp(-10 * dt));
+			was.copy(root.position);
+			root.position.addScaledVector(vel, dt);
+			root.position.y = FLOOR_Y;
+			collide(root.position);
+			const moved = Math.hypot(root.position.x - was.x, root.position.z - was.z);
+			if (vel.lengthSq() > 0.04) heading = Math.atan2(vel.x, vel.z);
 			return moved / Math.max(dt, 1e-4);
 		};
 
@@ -965,25 +1046,89 @@ export async function start() {
 				return solid;
 			},
 			setSolid,
+			/** Resolves once the 3D figure is in. */
+			ready: figure.ready,
+			/** Whether she can get about on foot just now: the 3D figure, loaded, with motion allowed. */
+			get canWalk() {
+				return walks();
+			},
+			/** The stop she belongs to: the one she sits on, or last sat on or was sent up to. */
+			get stop() {
+				return stop;
+			},
+			get state() {
+				return jump < 1 ? 'air' : free ? 'free' : onPath ? 'path' : 'perched';
+			},
+			/** The stop she is standing by or sitting on, or -1 when she's out on her own. */
+			get near() {
+				if (!roam) return Math.round(scroll);
+				if (!free && !onPath) return stop;
+				return stationNear(root.position);
+			},
+			/** Switch between walking her about with the keys and following the scroll. */
+			setRoam(on: boolean) {
+				if (on === roam) return;
+				roam = on;
+				if (on) {
+					// Out on the path she just carries on from where she is.
+					if (onPath) {
+						onPath = false;
+						free = true;
+					}
+				} else {
+					steer.set(0, 0, 0);
+					vel.set(0, 0, 0);
+					if (free) {
+						free = false;
+						const k = stationNear(root.position, Infinity);
+						stop = k;
+						leap(perchOf(k), 'perch');
+					}
+				}
+			},
+			/** The way the keys point, on the ground, and whether Shift is held. */
+			steer(direction: THREE.Vector3, run: boolean) {
+				steer.copy(direction);
+				running = run;
+			},
+			/** E: sit on the perch she's by, or get down off the one she's on. */
+			act() {
+				if (!roam || jump < 1) return;
+				if (free) {
+					const k = stationNear(root.position);
+					if (k < 0) return;
+					free = false;
+					stop = k;
+					leap(perchOf(k), 'perch');
+				} else if (!onPath) {
+					leap(anchors[stop], 'free');
+				}
+			},
+			hop() {
+				if (hop > 0 || jump < 1) return;
+				hop = 1;
+				squashSpring.velocity -= 5;
+			},
 			/** Where the page has scrolled to, in stops. */
 			follow(p: number) {
 				scroll = p;
+				if (roam) return;
 				const want = Math.round(p);
 				if (jump < 1) return;
 				if (walks()) {
 					// Off her perch and down to the path as soon as the page starts moving on.
 					if (!onPath && Math.abs(p - stop) > 0.3) {
 						s = stop;
-						leap(pathAt(stop), true);
+						leap(pathAt(stop), 'path');
 					}
 				} else if (onPath || want !== stop) {
 					onPath = false;
 					stop = want;
-					leap(perchOf(want), false);
+					leap(perchOf(want), 'perch');
 				}
 			},
 			poke() {
-				if (!walks() || jump < 1 || onPath) {
+				if (!walks() || jump < 1 || onPath || free) {
 					hop = 1;
 					squashSpring.velocity -= 5;
 					return;
@@ -1009,13 +1154,18 @@ export async function start() {
 					if (jump === 1) {
 						squashSpring.velocity -= 7;
 						root.rotation.z = 0;
-						onPath = landOnPath;
-						if (!onPath) heading = 0;
+						onPath = landing === 'path';
+						free = landing === 'free';
+						if (landing === 'perch') heading = 0;
 					}
+				} else if (free) {
+					speed = drive(dt);
 				} else if (onPath) {
 					speed = stroll(dt);
 				} else {
 					root.position.copy(to);
+					// Set off walking and she hops down off her perch first.
+					if (roam && steer.lengthSq() > 0 && walks()) leap(anchors[stop], 'free');
 				}
 				if (hop > 0) {
 					hop = Math.max(0, hop - dt * (solid ? 1.7 : 2.4));
@@ -1030,23 +1180,23 @@ export async function start() {
 						if (trickLeft <= 0) trick = null;
 					}
 					const strolling = trick !== null && trick.clip !== 'Wave';
-					if (onPath && jump === 1) {
+					if ((onPath || free) && jump === 1) {
 						// The gait follows her pace; the clips are cut for about 1.5 (walk) and 4.2 (run) a second.
 						const next: NixClip = speed > 3 ? 'Run' : speed > 0.25 ? 'Walk' : 'Idle';
 						if (next !== gait) gait = next;
 						gaitSpeed = gait === 'Run' ? THREE.MathUtils.clamp(speed / 4.2, 0.8, 2.4) : gait === 'Walk' ? THREE.MathUtils.clamp(speed / 1.5, 0.6, 1.8) : 1;
 						figure.play(gait, gaitSpeed);
 						// Standing still on the path, she turns round to face the camera.
-						if (gait === 'Idle') heading = 0;
+						if (gait === 'Idle' && onPath) heading = 0;
 					} else {
 						figure.play(trick ? (trick.clip as NixClip) : 'Sit');
 					}
 					// The figure faces where she's going, then turns back to the camera once she's sat down.
-					const turnTo = jump < 1 && !reduceMotion ? heading : onPath ? heading : strolling ? trickSide * 1.15 : 0;
+					const turnTo = jump < 1 && !reduceMotion ? heading : onPath || free ? heading : strolling ? trickSide * 1.15 : 0;
 					turn += Math.atan2(Math.sin(turnTo - turn), Math.cos(turnTo - turn)) * (1 - Math.exp(-8 * dt));
 					figure.group.rotation.y = turn;
 					const flight = jump < 1 ? jump : hop > 0 ? 1 - hop : null;
-					const busy = strolling || (onPath && gait !== 'Idle');
+					const busy = strolling || ((onPath || free) && gait !== 'Idle');
 					figure.tick(dt, time, { airborne, look: busy ? zero : look, still: reduceMotion, jump: flight });
 				} else {
 					legs.forEach((leg, i) => {
@@ -1075,8 +1225,11 @@ export async function start() {
 		label();
 		nixMode.hidden = false;
 		nixMode.addEventListener('click', () => {
+			// The flat sprite can't walk, so walking about ends with the 3D figure.
+			if (nix.solid) setRoam(false, false);
 			nix.setSolid(!nix.solid);
 			label();
+			roamLabel();
 			try {
 				localStorage.setItem('nix-mode', nix.solid ? '3d' : '2d');
 			} catch {
@@ -1084,6 +1237,153 @@ export async function start() {
 			}
 		});
 	}
+
+	// ---------- walking about with the keys ----------
+	// On a computer, she can be walked about the world with WASD while the mouse drags the camera round
+	// her. Phones, the flat sprite and reduced motion keep the scroll tour, which is always one click away.
+	const roamButton = document.querySelector<HTMLButtonElement>('[data-roam]');
+	const keyhint = document.querySelector<HTMLElement>('[data-keyhint]');
+	const keyhintAct = keyhint?.querySelector<HTMLElement>('[data-keyhint-act]') ?? null;
+	const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+	const roamable = () => finePointer && nix.canWalk;
+	let roam = false;
+	const keys = new Set<string>();
+	let orbitYaw = 0;
+	let orbitPitch = 0.4;
+	let orbitDistance = 11;
+	const steerDir = new THREE.Vector3();
+	const orbitDir = new THREE.Vector3();
+	const roamTarget = new THREE.Vector3();
+	const wallRay = new THREE.Raycaster();
+	let nearShown = -2;
+	let actShown = '';
+	const roamLabel = () => {
+		if (!roamButton) return;
+		roamButton.hidden = !roamable();
+		roamButton.textContent = roam ? 'Walk: WASD' : 'Walk: scroll';
+		roamButton.setAttribute('aria-pressed', String(roam));
+	};
+	function setRoam(on: boolean, remember = true) {
+		on = on && roamable();
+		if (on === roam) return;
+		// Where she is, asked before she stops being steered, while she still knows.
+		const wasNear = nix.near;
+		roam = on;
+		document.documentElement.classList.toggle('roam', roam);
+		nix.setRoam(roam);
+		keys.clear();
+		if (keyhint) keyhint.hidden = !roam;
+		if (roam) {
+			// Pick the camera up from wherever the scroll tour left it.
+			orbitYaw = Math.atan2(camPos.x - nix.root.position.x, camPos.z - nix.root.position.z);
+		} else {
+			sections.forEach((section) => section.classList.remove('near'));
+			nearShown = -2;
+			// Back on the page, scrolled straight to the stop she's at or heading up to, before the
+			// scroll tour gets a chance to send her somewhere else.
+			const k = wasNear >= 0 ? wasNear : nix.stop;
+			sections[k]?.scrollIntoView({ block: 'center', behavior: 'instant' });
+		}
+		roamLabel();
+		if (remember) {
+			try {
+				localStorage.setItem('nix-roam', roam ? 'on' : 'off');
+			} catch {
+				// The choice just won't be remembered.
+			}
+		}
+	}
+	roamButton?.addEventListener('click', () => setRoam(!roam));
+	nix.ready.then(
+		() => {
+			let wanted = true;
+			try {
+				wanted = localStorage.getItem('nix-roam') !== 'off';
+			} catch {
+				// Walk about by default.
+			}
+			roamLabel();
+			if (wanted) setRoam(true, false);
+		},
+		() => {},
+	);
+
+	const MOVE_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'];
+	addEventListener('keydown', (e) => {
+		if (!roam || e.ctrlKey || e.metaKey || e.altKey) return;
+		const target = e.target instanceof Element ? e.target : null;
+		if (target?.closest('input, textarea, select, [contenteditable]')) return;
+		const key = e.key.toLowerCase();
+		if (MOVE_KEYS.includes(key)) {
+			keys.add(key);
+			if (key.startsWith('arrow')) e.preventDefault();
+		} else if (key === ' ') {
+			// Space still presses a focused button or link.
+			if (target?.closest('a, button')) return;
+			e.preventDefault();
+			nix.hop();
+		} else if (key === 'e' && !e.repeat) {
+			nix.act();
+		}
+	});
+	addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+	addEventListener('blur', () => keys.clear());
+	canvas.addEventListener('pointermove', (e) => {
+		if (!roam || !(e.buttons & 1)) return;
+		orbitYaw -= e.movementX * 0.006;
+		orbitPitch = THREE.MathUtils.clamp(orbitPitch + e.movementY * 0.004, 0.06, 1.15);
+	});
+	addEventListener(
+		'wheel',
+		(e) => {
+			if (!roam) return;
+			e.preventDefault();
+			orbitDistance = THREE.MathUtils.clamp(orbitDistance * Math.exp(e.deltaY * 0.0012), 4.5, 22);
+		},
+		{ passive: false },
+	);
+
+	/** One frame of walking about: steer her from the keys, and swing the camera round behind her. */
+	const roamFrame = (dt: number) => {
+		const held = (...names: string[]) => (names.some((n) => keys.has(n)) ? 1 : 0);
+		const forward = held('w', 'arrowup') - held('s', 'arrowdown');
+		const right = held('d', 'arrowright') - held('a', 'arrowleft');
+		// The keys point the way the camera faces.
+		steerDir.set(-Math.sin(orbitYaw) * forward + Math.cos(orbitYaw) * right, 0, -Math.cos(orbitYaw) * forward - Math.sin(orbitYaw) * right);
+		if (steerDir.lengthSq() > 1) steerDir.normalize();
+		nix.steer(steerDir, keys.has('shift'));
+
+		roamTarget.copy(nix.root.position).y += 1.5;
+		camLook.x = damp(camLook.x, roamTarget.x, 9, dt);
+		camLook.y = damp(camLook.y, roamTarget.y, 6, dt);
+		camLook.z = damp(camLook.z, roamTarget.z, 9, dt);
+		orbitDir.set(Math.sin(orbitYaw) * Math.cos(orbitPitch), Math.sin(orbitPitch), Math.cos(orbitYaw) * Math.cos(orbitPitch));
+		// Never through a station's wall: if one is in the way, come in in front of it.
+		let distance = orbitDistance;
+		wallRay.set(camLook, orbitDir);
+		wallRay.far = orbitDistance;
+		const blocked = wallRay.intersectObjects(walls, false)[0];
+		if (blocked) distance = Math.max(2.2, blocked.distance - 0.5);
+		camPos.copy(camLook).addScaledVector(orbitDir, distance);
+		camPos.y = Math.max(camPos.y, FLOOR_Y + 0.6);
+
+		// The card for the station she's by fades in beside her.
+		const near = nix.near;
+		if (near !== nearShown) {
+			nearShown = near;
+			sections.forEach((section, i) => section.classList.toggle('near', i === near));
+		}
+		const side = near >= 0 && !narrow ? -0.13 : 0;
+		viewShift = { x: damp(viewShift.x, side, 4, dt), y: damp(viewShift.y, 0, 4, dt) };
+		const state = nix.state;
+		const act = state === 'perched' ? 'get down' : state === 'free' && near >= 0 ? 'sit here' : '';
+		if (act !== actShown && keyhintAct) {
+			actShown = act;
+			keyhintAct.hidden = !act;
+			const label = keyhintAct.querySelector('span');
+			if (label) label.textContent = act;
+		}
+	};
 
 	// ---------- camera, scrolling, picking ----------
 	const sections = [...document.querySelectorAll<HTMLElement>('[data-stop]')];
@@ -1217,16 +1517,22 @@ export async function start() {
 	renderer.setAnimationLoop(() => {
 		const dt = Math.min(clock.getDelta(), 0.05);
 		const time = clock.elapsedTime;
-		const p = progress();
-		target(p);
-		const rate = reduceMotion ? 30 : 5;
-		const sway = new THREE.Vector3(parallax.x * 0.8, parallax.y * 0.45, 0);
-		camPos.x = damp(camPos.x, wantPos.x + sway.x, rate, dt);
-		camPos.y = damp(camPos.y, wantPos.y + sway.y, rate, dt);
-		camPos.z = damp(camPos.z, wantPos.z, rate, dt);
-		camLook.x = damp(camLook.x, wantLook.x, rate, dt);
-		camLook.y = damp(camLook.y, wantLook.y, rate, dt);
-		camLook.z = damp(camLook.z, wantLook.z, rate, dt);
+		if (roam && !roamable()) setRoam(false, false);
+		if (roam) {
+			roamFrame(dt);
+		} else {
+			const p = progress();
+			target(p);
+			const rate = reduceMotion ? 30 : 5;
+			const sway = new THREE.Vector3(parallax.x * 0.8, parallax.y * 0.45, 0);
+			camPos.x = damp(camPos.x, wantPos.x + sway.x, rate, dt);
+			camPos.y = damp(camPos.y, wantPos.y + sway.y, rate, dt);
+			camPos.z = damp(camPos.z, wantPos.z, rate, dt);
+			camLook.x = damp(camLook.x, wantLook.x, rate, dt);
+			camLook.y = damp(camLook.y, wantLook.y, rate, dt);
+			camLook.z = damp(camLook.z, wantLook.z, rate, dt);
+			nix.follow(p);
+		}
 		camera.position.copy(camPos);
 		camera.lookAt(camLook);
 		camera.setViewOffset(width, height, viewShift.x * width, viewShift.y * height, width, height);
@@ -1234,7 +1540,6 @@ export async function start() {
 		sun.target.position.copy(camLook);
 		sun.position.copy(camLook).add(new THREE.Vector3(-7, 13, 12));
 
-		nix.follow(p);
 		sky.position.copy(camera.position);
 		// She looks from where she is on screen towards the pointer.
 		if (pointer.x <= 1) {
