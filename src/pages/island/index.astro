@@ -1,0 +1,173 @@
+---
+// Nixchan's island: a little game where the 3D Nixchan runs about an island hunting for snowflakes.
+import BaseHead from '../../components/BaseHead.astro';
+import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
+
+const title = "Nixchan's island (experimental)";
+const description = 'Run Nixchan around a little toon island and find all the snowflakes.';
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={title} description={description} />
+		<meta name="robots" content="noindex" />
+	</head>
+	<body class="isle">
+		<canvas class="stage" data-stage data-model={nixModel} aria-label="Nixchan on her island"></canvas>
+
+		<header class="bar">
+			<a class="brand" href="/">jihoo<span class="period">.</span></a>
+			<span class="badge">island · experimental</span>
+			<span class="spacer"></span>
+			<a class="pill" href="/experimental/">3D home</a>
+			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
+		</header>
+
+		<p class="count" aria-live="polite"><span class="flake" aria-hidden="true">❄</span> <span data-count>0 / 12</span><span class="sr-only"> snowflakes found</span></p>
+		<canvas class="map" data-map width="150" height="150" aria-hidden="true"></canvas>
+
+		<p class="keyhint">
+			<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span>
+			<span><kbd>Shift</kbd> run</span>
+			<span><kbd>Space</kbd> jump</span>
+			<span><kbd>E</kbd> wave</span>
+			<span>drag to look</span>
+		</p>
+		<p class="touchhint">Left thumb to walk · drag to look</p>
+
+		<div class="stick" data-stick hidden aria-hidden="true"><div class="knob" data-knob></div></div>
+		<button class="jump" type="button" data-jump aria-label="Jump">⤒</button>
+
+		<div class="toast" data-toast hidden role="status">
+			<p data-toast-text></p>
+			<button class="button primary" type="button" data-again>Play again</button>
+		</div>
+		<p class="loading" data-loading>Nixchan is on her way…</p>
+		<noscript><p class="loading">The island needs JavaScript to run.</p></noscript>
+	</body>
+</html>
+
+<script>
+	import { startIsland } from '../../lib/island/game';
+
+	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
+	button?.addEventListener('click', () => {
+		const next = document.documentElement.dataset.time === 'night' ? 'day' : 'night';
+		document.documentElement.dataset.time = next;
+		try {
+			localStorage.setItem('time', next);
+		} catch {
+			// The choice just won't be remembered.
+		}
+		window.dispatchEvent(new Event('site-time'));
+		button.blur();
+	});
+
+	startIsland();
+</script>
+
+<style>
+	:global(html:has(body.isle)), :global(body.isle) { overflow: hidden; height: 100%; }
+	:global(body.isle::before), :global(body.isle::after) { display: none; }
+	:global(body.isle) { background: var(--bg); }
+
+	.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+	.stage:active { cursor: grabbing; }
+	:global(.no-3d) .stage { display: none; }
+
+	.bar {
+		position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+		display: flex; align-items: center; gap: 12px; padding: 16px clamp(16px, 4vw, 40px);
+		pointer-events: none;
+	}
+	.bar > * { pointer-events: auto; }
+	.brand { font-family: var(--display); font-size: 28px; line-height: 1; color: var(--ink); }
+	.badge { background: var(--star); color: #1c1a3e; font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px; transform: rotate(-3deg); }
+	.spacer { flex: 1; }
+	.pill {
+		border: 0; border-radius: 9px; padding: 8px 15px; background: var(--surface); color: var(--ink);
+		font: 800 15px var(--sans); box-shadow: 0 4px 0 var(--edge); cursor: pointer;
+	}
+	.pill:hover { transform: translateY(-2px); }
+	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }
+	:global([data-time='night']) .clock .moon { display: inline; }
+
+	.count {
+		position: fixed; z-index: 20; top: 72px; right: clamp(16px, 4vw, 40px); margin: 0;
+		padding: 6px 14px; border-radius: 12px; font: 900 20px var(--sans); color: var(--ink);
+		background: color-mix(in srgb, var(--surface) 82%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+		box-shadow: 0 4px 0 var(--edge);
+	}
+	.count .flake { color: #5f9be8; }
+	.map {
+		position: fixed; z-index: 20; right: clamp(16px, 4vw, 40px); bottom: 18px;
+		width: 150px; height: 150px; border-radius: 50%;
+		background: color-mix(in srgb, #3a86d0 70%, transparent);
+		box-shadow: 0 0 0 4px var(--surface), 0 8px 18px -8px var(--shadow);
+	}
+
+	.keyhint, .touchhint {
+		position: fixed; z-index: 20; left: 50%; bottom: 18px; transform: translateX(-50%); margin: 0;
+		display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; max-width: calc(100% - 220px);
+		padding: 8px 14px; border-radius: 12px; pointer-events: none;
+		background: color-mix(in srgb, var(--surface) 82%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+		color: var(--muted); font-size: 13px; font-weight: 800;
+	}
+	.keyhint kbd {
+		display: inline-block; min-width: 1.6em; margin-right: 2px; padding: 1px 5px; border-radius: 5px;
+		background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--edge);
+		font: 900 12px var(--sans); text-align: center;
+	}
+	.touchhint, .jump { display: none; }
+
+	.stick {
+		position: fixed; z-index: 25; left: 0; top: 0; width: 0; height: 0; pointer-events: none;
+	}
+	.stick[hidden] { display: none; }
+	.stick::before, .knob {
+		content: ''; position: absolute; border-radius: 50%;
+	}
+	.stick::before {
+		left: -60px; top: -60px; width: 120px; height: 120px;
+		background: color-mix(in srgb, var(--surface) 45%, transparent); box-shadow: inset 0 0 0 3px var(--surface);
+	}
+	.knob { left: -26px; top: -26px; width: 52px; height: 52px; background: var(--surface); box-shadow: 0 4px 0 var(--edge); }
+	.jump {
+		position: fixed; z-index: 25; right: 24px; bottom: 190px; width: 72px; height: 72px; border: 0; border-radius: 50%;
+		background: var(--surface); color: var(--ink); font: 900 32px var(--sans); box-shadow: 0 5px 0 var(--edge);
+		touch-action: none;
+	}
+	.jump:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--edge); }
+
+	@media (pointer: coarse) {
+		.keyhint { display: none; }
+		.touchhint { display: block; }
+		.jump { display: block; }
+	}
+
+	.toast {
+		position: fixed; z-index: 30; left: 50%; top: 50%; transform: translate(-50%, -50%);
+		width: min(360px, calc(100% - 32px)); padding: 22px 24px; border-radius: 16px; text-align: center;
+		background: color-mix(in srgb, var(--surface) 90%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+		box-shadow: 0 14px 30px -18px var(--shadow);
+	}
+	.toast[hidden] { display: none; }
+	.toast p { margin: 0 0 16px; font: 900 20px var(--sans); color: var(--ink); }
+
+	.loading {
+		position: fixed; z-index: 40; inset: 0; margin: 0; display: grid; place-items: center; padding: 16px; text-align: center;
+		background: var(--bg); color: var(--ink); font: 900 20px var(--sans);
+	}
+	.loading[hidden] { display: none; }
+	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+	@media (max-width: 640px) {
+		.badge { display: none; }
+		.count { top: 68px; font-size: 17px; }
+		.map { width: 110px; height: 110px; bottom: auto; top: 116px; }
+		.touchhint { width: max-content; max-width: calc(100% - 32px); }
+	}
+</style>

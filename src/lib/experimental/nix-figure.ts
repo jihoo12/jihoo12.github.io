@@ -147,7 +147,7 @@ function faceTexture(eyesClosed: boolean) {
 	});
 }
 
-function snowflakeTexture() {
+export function snowflakeTexture() {
 	return canvasTexture(256, 256, (ctx) => {
 		ctx.translate(128, 128);
 		ctx.strokeStyle = SNOW;
