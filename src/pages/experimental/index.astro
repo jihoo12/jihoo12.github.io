@@ -1,0 +1,227 @@
+---
+// An experimental 3D take on the homepage. The regular 2D site is untouched; this page only reads the same data.
+import BaseHead from '../../components/BaseHead.astro';
+import { getCollection } from 'astro:content';
+import { getImage } from 'astro:assets';
+import { featuredProjects } from '../../lib/projects';
+import { publishedComics, comicSlug } from '../../lib/comics';
+import { ACTIVITY_DAYS } from '../../lib/activity';
+import thinkingArt from '../../assets/nixchan/nixchan-math-thinking-01.png';
+import napArt from '../../assets/nixchan/nixchan-penguin-nap-01.png';
+import bodyIdle from '../../assets/nixchan/live/body-idle.webp';
+import legL from '../../assets/nixchan/live/leg-l.webp';
+import legR from '../../assets/nixchan/live/leg-r.webp';
+import eyesClosed from '../../assets/nixchan/live/eyes-closed.webp';
+
+const title = 'Jihoo — in 3D (experimental)';
+const description = 'An experimental, walk-along 3D version of my little corner of the internet.';
+
+const dateLabel = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+
+const projects = (await featuredProjects(3)).map(({ data, commits }) => ({
+	title: data.title,
+	tagline: data.tagline,
+	language: data.language,
+	commits,
+	href: data.repo,
+}));
+
+const posts = (await getCollection('blog'))
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+	.slice(0, 3)
+	.map((post) => ({
+		title: post.data.title,
+		description: post.data.description,
+		date: dateLabel.format(post.data.pubDate),
+		href: `/blog/${post.id}/`,
+	}));
+
+const comics = await Promise.all(
+	(await publishedComics()).slice(0, 3).map(async (comic) => ({
+		title: comic.data.title,
+		href: `/comics/${comicSlug(comic.id)}/`,
+		image: (await getImage({ src: comic.data.cover ?? comic.data.pages[0].src, width: 640, format: 'webp' })).src,
+	})),
+);
+
+const art = {
+	thinking: (await getImage({ src: thinkingArt, width: 640, format: 'webp' })).src,
+	nap: (await getImage({ src: napArt, width: 400, format: 'webp' })).src,
+	nix: { body: bodyIdle.src, legL: legL.src, legR: legR.src, blink: eyesClosed.src },
+};
+
+const scene = { projects, posts, comics, art };
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={title} description={description} />
+		<meta name="robots" content="noindex" />
+	</head>
+	<body class="x3d">
+		<canvas class="stage" data-stage aria-hidden="true"></canvas>
+		<script type="application/json" data-scene set:html={JSON.stringify(scene)} />
+
+		<header class="bar">
+			<a class="brand" href="/">jihoo<span class="period">.</span></a>
+			<span class="badge">3D · experimental</span>
+			<span class="spacer"></span>
+			<a class="pill" href="/">Back to 2D</a>
+			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
+		</header>
+
+		<main class="track">
+			<section class="stop hero" data-stop aria-labelledby="hero-title">
+				<div class="card">
+					<h1 id="hero-title" class="sr-only">Jihoo</h1>
+					<p>Hey there. I build what sparks my curiosity and write down what I learn, finding joy in the little things along the way.</p>
+					<div class="keys">
+						<a class="button primary" href="/about/">More about me</a>
+						<a class="button secondary" href="/blog/">Read the journal</a>
+					</div>
+					<p class="hint" aria-hidden="true">Scroll to walk along the wall ↓</p>
+				</div>
+			</section>
+
+			<section class="stop side" data-stop aria-labelledby="space-title">
+				<div class="card">
+					<h2 id="space-title" class="display">A little curiosity goes a long way<span class="period">.</span></h2>
+					<p>This is my little space to share projects, lessons from building things, and the occasional thought from everyday life. One small step at a time, at my own pace.</p>
+					<a class="text-link" href="/about/">Get to know me <span aria-hidden="true">→</span></a>
+				</div>
+			</section>
+
+			<section class="stop side" data-stop aria-labelledby="projects-title">
+				<div class="card">
+					<h2 id="projects-title" class="display">Things I'm building<span class="period">.</span></h2>
+					<p>Taller means busier in the last {ACTIVITY_DAYS} days. Click a tower to open it on GitHub.</p>
+					<ul class="links">
+						{projects.map((p) => <li><a href={p.href} target="_blank" rel="noopener noreferrer">{p.title}</a> — {p.tagline}</li>)}
+					</ul>
+					<a class="text-link" href="/projects/">See all projects <span aria-hidden="true">→</span></a>
+				</div>
+			</section>
+
+			<section class="stop side" data-stop aria-labelledby="notes-title">
+				<div class="card">
+					<h2 id="notes-title" class="display">Recent notes<span class="period">.</span></h2>
+					<p>Fresh pages, hung up to dry. Click one to read it.</p>
+					<ul class="links">
+						{posts.map((p) => <li><a href={p.href}>{p.title}</a> <span class="when">{p.date}</span></li>)}
+					</ul>
+					<a class="text-link" href="/blog/">View all <span aria-hidden="true">→</span></a>
+				</div>
+			</section>
+
+			<section class="stop side" data-stop aria-labelledby="comics-title">
+				<div class="card">
+					<h2 id="comics-title" class="display">Comics<span class="period">.</span></h2>
+					<p>Little stories starring Nixchan and friends.</p>
+					<ul class="links">
+						{comics.map((c) => <li><a href={c.href}>{c.title}</a></li>)}
+					</ul>
+					<a class="text-link" href="/comics/">All comics <span aria-hidden="true">→</span></a>
+				</div>
+			</section>
+
+			<section class="stop side end" data-stop aria-labelledby="end-title">
+				<div class="card">
+					<h2 id="end-title" class="display">A little at a time, at my own pace<span class="period">.</span></h2>
+					<p>That's the end of the wall. This 3D version is an experiment — the regular site has everything.</p>
+					<div class="keys">
+						<a class="button primary" href="/">Back to the 2D site</a>
+						<a class="button secondary" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<div class="tip" data-tip hidden></div>
+		<noscript><style>.x3d .links { position: static; width: auto; height: auto; clip: auto; }</style></noscript>
+	</body>
+</html>
+
+<script>
+	import { start } from '../../lib/experimental/scene';
+
+	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
+	button?.addEventListener('click', () => {
+		const next = document.documentElement.dataset.time === 'night' ? 'day' : 'night';
+		document.documentElement.dataset.time = next;
+		try {
+			localStorage.setItem('time', next);
+		} catch {
+			// The choice just won't be remembered.
+		}
+		window.dispatchEvent(new Event('site-time'));
+	});
+
+	start();
+</script>
+
+<style>
+	/* The wall and its stars are drawn in 3D, so the 2D wallpaper steps aside. */
+	:global(body.x3d::before), :global(body.x3d::after) { display: none; }
+	:global(body.x3d) { background: var(--bg); }
+
+	.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+	:global(.no-3d) .stage { display: none; }
+
+	.bar {
+		position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+		display: flex; align-items: center; gap: 12px; padding: 16px clamp(16px, 4vw, 40px);
+		pointer-events: none;
+	}
+	.bar > * { pointer-events: auto; }
+	.brand { font-family: var(--display); font-size: 28px; line-height: 1; color: var(--ink); }
+	.badge { background: var(--star); color: #1c1a3e; font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px; transform: rotate(-3deg); }
+	.spacer { flex: 1; }
+	.pill {
+		border: 0; border-radius: 9px; padding: 8px 15px; background: var(--surface); color: var(--ink);
+		font: 800 15px var(--sans); box-shadow: 0 4px 0 var(--edge); cursor: pointer;
+	}
+	.pill:hover { transform: translateY(-2px); }
+	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }
+	:global([data-time='night']) .clock .moon { display: inline; }
+
+	.track { position: relative; z-index: 10; pointer-events: none; }
+	.stop { min-height: 100vh; min-height: 100svh; display: flex; padding: 110px clamp(16px, 5vw, 64px) 48px; }
+	.stop .card { pointer-events: auto; max-width: 30em; }
+	.hero { align-items: flex-end; justify-content: center; }
+	.hero .card { text-align: center; }
+	.hero .card p { font-size: clamp(17px, 1.8vw, 21px); font-weight: 800; line-height: 1.45; }
+	.hero .keys { justify-content: center; }
+	.hero .card .hint { font-size: 14px; color: var(--muted); margin: 18px 0 0; }
+	.side { align-items: center; }
+	.side .card { width: min(34%, 30em); }
+	.card {
+		background: color-mix(in srgb, var(--surface) 82%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+		border-radius: 16px; padding: 22px 24px; box-shadow: 0 14px 30px -18px var(--shadow);
+	}
+	.card h2 { font-size: clamp(30px, 3.6vw, 46px); margin: 0 0 10px; }
+	.card p { margin: 0 0 16px; color: var(--muted); font-weight: 600; }
+	.keys { display: flex; flex-wrap: wrap; gap: 12px; }
+	.links { margin: 0 0 16px; padding-left: 18px; color: var(--muted); font-size: 15px; }
+	.links a { color: var(--accent); font-weight: 800; }
+	.when { color: var(--faint); font-size: 13px; }
+
+	/* With the 3D scene running the objects are the links; the lists stay for keyboards and screen readers. */
+	:global(.has-3d) .links { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+	:global(.has-3d) .links:focus-within { position: static; width: auto; height: auto; clip: auto; white-space: normal; }
+	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+	.tip {
+		position: fixed; z-index: 30; left: 0; top: 0; max-width: 260px; pointer-events: none;
+		background: var(--btn-bg); color: var(--btn-ink); font-size: 13px; font-weight: 800;
+		padding: 6px 10px; border-radius: 8px; box-shadow: 0 4px 0 var(--btn-edge);
+	}
+
+	@media (max-width: 850px) {
+		.badge { display: none; }
+		.side { align-items: flex-end; }
+		.side .card { width: 100%; max-width: none; }
+		.card { padding: 18px; }
+		.card h2 { font-size: 30px; }
+	}
+</style>
