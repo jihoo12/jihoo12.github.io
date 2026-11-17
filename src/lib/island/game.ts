@@ -23,7 +23,7 @@ import { createFollowCamera } from './camera';
 import { createControls, type Orbit } from './controls';
 import { createExplore } from './explore';
 import { createFarm } from './farm';
-import { addFeature, groundAt, roomy } from './features';
+import { addFeature, groundAt, removeFeature, roomy } from './features';
 import { createForge, type Upgrade } from './forge';
 import { MAX_SPRINKLERS, createMachines } from './machines';
 import { createFishing, SPECIES } from './fishing';
@@ -148,6 +148,7 @@ export async function startIsland() {
 			return held;
 		},
 		clip: () => forge.clip ?? farm.clip ?? fishing.clip,
+		carrying: () => machines.carrying,
 		// Remade at the forge, the glider flies faster and sinks slower.
 		glider: () => (forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
 	});
@@ -279,10 +280,14 @@ export async function startIsland() {
 		garden: farm.garden,
 		groundAt,
 		addFeature,
+		removeFeature,
 		scene,
 		pos,
 		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
 		toast: (text) => fishing.toast(text),
+		figure,
+		swimming: () => player.swimming,
+		closeMenu: () => menu.close(),
 	});
 	for (const id of ['can', 'rod', 'glider', 'helper'] as const) if (forge.has(id)) showUpgrade(id);
 	farm.setMachines(machines.machines);

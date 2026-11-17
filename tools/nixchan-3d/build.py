@@ -13,6 +13,7 @@
 # out) are in her right hand in every clip, and the page shows each only when she's using it. The
 # garden clips are Tend (crouched, patting the soil) and Water. Her smithing hammer ("Hammer") is in
 # that hand too, for Smith, a loop of strikes on the anvil in front of her.
+# Carry and CarryWalk hold something in both arms in front of her (the page puts it there).
 # For /skills she has a fighting stance (Ready), a held spell (Charge), and four spells that each
 # play once from Ready back to Ready: Shot, Slam, Summon and Dash.
 import math
@@ -1133,6 +1134,33 @@ def show(t):
     return p
 
 
+# Carrying something in both arms in front of her, as she takes a sprinkler to where it goes: Carry
+# standing, CarryWalk on the move. The page puts what she carries between her hands.
+CARRY = lambda side: Vector((side * 0.23, 0.52, BODY_Z + 0.42))
+CARRY_POLE = lambda side: (side, -1, -0.4)
+
+
+def carry(t):
+    p = new_pose()
+    breathe = math.sin(TAU * t)
+    stance(p, bend=0.05)
+    p['Chest'][1] = euler(-0.06 + 0.02 * breathe)
+    for side, s in SIDES:
+        reach(p, s, CARRY(side) + Vector((0, 0.01 * breathe, 0)), CARRY_POLE(side))
+    ground(p)
+    return p
+
+
+def carry_walk(t):
+    p = walk(t)
+    ph = TAU * t
+    # Leaning back a little against the weight, arms steady but for a bounce with each step.
+    p['Chest'][1] = euler(-0.08, 0.08 * math.sin(ph), 0)
+    for side, s in SIDES:
+        reach(p, s, CARRY(side) + Vector((0, 0.02 * math.cos(2 * ph), 0)), CARRY_POLE(side))
+    return p
+
+
 # ---------- the garden ----------
 
 
@@ -1387,6 +1415,7 @@ dash = keyed([
 FPS = 30
 CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land), 'Swim': (30, swim), 'Tread': (60, tread)}
 CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show), 'Water': (54, water), 'Tend': (30, tend), 'Plant': (72, plant), 'Smith': (36, smith)})
+CLIPS.update({'Carry': (60, carry), 'CarryWalk': (30, carry_walk)})
 CLIPS.update({'Ready': (40, ready), 'Charge': (24, charge), 'Shot': (27, shot), 'Slam': (42, slam), 'Summon': (90, summon), 'Dash': (27, dash)})
 CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
@@ -1488,7 +1517,7 @@ if PREVIEW:
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
     only_clips = os.environ.get('NIX_PREVIEW_CLIPS')
-    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74), ('Smith', 0.4), ('Smith', 0.62), ('Ready', 0), ('Charge', 0), ('Shot', 0.15), ('Shot', 0.3), ('Slam', 0.32), ('Slam', 0.55), ('Summon', 0.3), ('Summon', 0.55), ('Dash', 0.2), ('Dash', 0.4)):
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74), ('Smith', 0.4), ('Smith', 0.62), ('Ready', 0), ('Charge', 0), ('Shot', 0.15), ('Shot', 0.3), ('Slam', 0.32), ('Slam', 0.55), ('Summon', 0.3), ('Summon', 0.55), ('Dash', 0.2), ('Dash', 0.4), ('Carry', 0), ('CarryWalk', 0), ('CarryWalk', 0.25)):
         if only_clips and clip not in only_clips.split(','):
             continue
         apply_pose(CLIPS[clip][1](t))

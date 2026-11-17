@@ -1,7 +1,9 @@
 // The garden's machines, made at the forge: sprinklers, and Sprocket, the clockwork helper.
 //
-// A sprinkler goes where four plots meet (E, with one in her bag) and keeps those four watered from
-// then on: there's room for four of them, which covers the whole garden. Sprocket keeps to its spot
+// A sprinkler goes where four plots meet and keeps those four watered from then on: there's room for
+// four of them, which covers the whole garden. She carries one there in her arms (taken out of the
+// bag, or picked up from where it stood, to move it), a see-through one shows where it would go, the
+// nearest free spot, and E sets it down there. Sprocket keeps to its spot
 // beside the harvest crate; when something's ripe it trots over, picks it into its basket and drops
 // it in the crate, and plants the same again if there are seeds of it in her bag. She collects the
 // crate with E. All of it goes on by the clock, page open or not (farm.ts works the garden forward
@@ -9,6 +11,7 @@
 // Sprocket and the crate are Blender models (tools/island-farm).
 import * as THREE from 'three';
 import type { Feature } from './features';
+import type { NixFigure } from '../experimental/nix-figure';
 import type { Crop, GardenMachines, createFarm } from './farm';
 import type { Offer } from './interact';
 import type { Inventory } from './inventory';
@@ -22,11 +25,18 @@ export interface MachinesContext {
 	garden: Garden;
 	groundAt: (x: number, z: number) => number;
 	addFeature: (f: Feature) => void;
+	removeFeature: (f: Feature) => void;
 	scene: THREE.Scene;
 	/** Where she is. */
 	pos: THREE.Vector3;
 	canAct: () => boolean;
 	toast: (text: string) => void;
+	/** Her, for holding a sprinkler between her hands. */
+	figure: NixFigure;
+	/** Whether she's in the water (where she can't carry anything). */
+	swimming: () => boolean;
+	/** Shuts the bag, when she takes a sprinkler out of it. */
+	closeMenu: () => void;
 }
 
 export const SPRINKLER = 'sprinkler';
@@ -47,6 +57,8 @@ const BASKET = new THREE.Vector3(0, 0.33, 0.24);
 const CRATE = { lx: 4.7, lz: 2.3 };
 const HOME = { lx: 4.4, lz: 1.0 };
 const WALK = 1.4;
+/** How far from where she stands a free spot may be for the one she carries to go there. */
+const REACH = 2.4;
 
 interface Saved {
 	sprinklers: { slot: number; at: number }[];
@@ -77,8 +89,17 @@ export function createMachines(ctx: MachinesContext) {
 		id: SPRINKLER,
 		name: 'Sprinkler',
 		kind: 'tool',
-		description: 'Made at the forge. Stand where four plots meet in the garden and press E to set it up; it keeps all four watered.',
+		description: 'Made at the forge. Carry it to the garden and set it down where four plots meet; it keeps all four watered. One already set up can be picked up again with E, to move it.',
 		color: '#c97b4a',
+		actions: [
+			{
+				label: 'Carry it',
+				run: () => {
+					startCarrying();
+					ctx.closeMenu();
+				},
+			},
+		],
 	});
 
 	// ---------- where things are ----------
@@ -105,20 +126,27 @@ export function createMachines(ctx: MachinesContext) {
 
 	// ---------- the models ----------
 
-	const sprinklerViews = new Map<number, { head: THREE.Object3D | null; spin: number; spraying: number; target: number }>();
+	const sprinklerViews = new Map<number, { base: THREE.Object3D | null; head: THREE.Object3D | null; spin: number; spraying: number; target: number; gone?: boolean }>();
+	// Each spot's post, there for her to walk round while a sprinkler stands on it.
+	const posts = SLOTS.map((_, slot) => {
+		const p = slotAt(slot);
+		return { x: p.x, z: p.z, r: 0.12 };
+	});
 	const showSprinkler = (slot: number) => {
 		if (sprinklerViews.has(slot)) return;
-		const view = { head: null as THREE.Object3D | null, spin: Math.random() * 6, spraying: 0, target: slotPlots(slot)[0] };
+		const view = { base: null as THREE.Object3D | null, head: null as THREE.Object3D | null, spin: Math.random() * 6, spraying: 0, target: slotPlots(slot)[0], gone: false };
 		sprinklerViews.set(slot, view);
 		const p = slotAt(slot);
-		ctx.addFeature({ x: p.x, z: p.z, r: 0.12 });
+		ctx.addFeature(posts[slot]);
 		garden.onModels(() => {
+			if (view.gone) return;
 			const base = garden.make('Sprinkler');
 			const head = garden.make('SprinklerHead');
 			if (base) {
 				base.position.copy(p);
 				base.rotation.y = garden.angle + slot;
 				ctx.scene.add(base);
+				view.base = base;
 			}
 			if (head) {
 				head.position.copy(p).setY(p.y + SPRINKLER_TOP);
@@ -127,7 +155,131 @@ export function createMachines(ctx: MachinesContext) {
 			}
 		});
 	};
+	const hideSprinkler = (slot: number) => {
+		const view = sprinklerViews.get(slot);
+		if (!view) return;
+		view.gone = true;
+		view.base?.removeFromParent();
+		view.head?.removeFromParent();
+		sprinklerViews.delete(slot);
+		ctx.removeFeature(posts[slot]);
+	};
 	for (const k of state.sprinklers) showSprinkler(k.slot);
+
+	// ---------- carrying one ----------
+
+	/** A sprinkler on its stake with its head on, put together as one thing to hold or show. */
+	const wholeSprinkler = () => {
+		const base = garden.make('Sprinkler');
+		const head = garden.make('SprinklerHead');
+		if (!base) return null;
+		const g = new THREE.Group();
+		g.add(base);
+		if (head) {
+			head.position.y = SPRINKLER_TOP;
+			g.add(head);
+		}
+		return g;
+	};
+	const carry = {
+		on: false,
+		/** In her arms. */
+		held: null as THREE.Group | null,
+		/** Where it would go: a see-through one, and a ring on the ground round the spot. */
+		ghost: null as THREE.Group | null,
+		ring: null as THREE.Mesh | null,
+		/** The spot it would go, if there's one in reach. */
+		slot: -1,
+	};
+	garden.onModels(() => {
+		carry.held = wholeSprinkler();
+		if (carry.held) {
+			carry.held.scale.setScalar(0.85);
+			carry.held.visible = false;
+			ctx.figure.group.add(carry.held);
+		}
+		const ghost = wholeSprinkler();
+		if (ghost) {
+			const glass = new THREE.MeshBasicMaterial({ color: '#bff0ff', transparent: true, opacity: 0.45, depthWrite: false });
+			ghost.traverse((o) => {
+				if (o instanceof THREE.Mesh) {
+					o.material = glass;
+					o.castShadow = false;
+				}
+			});
+			ghost.visible = false;
+			ctx.scene.add(ghost);
+			carry.ghost = ghost;
+		}
+	});
+	{
+		const ring = new THREE.Mesh(
+			new THREE.RingGeometry(0.42, 0.55, 40).rotateX(-Math.PI / 2),
+			new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.7, depthWrite: false }),
+		);
+		ring.visible = false;
+		ring.renderOrder = 2;
+		ctx.scene.add(ring);
+		carry.ring = ring;
+	}
+	const freeSlots = () => SLOTS.map((_, i) => i).filter((slot) => !state.sprinklers.some((k) => k.slot === slot));
+	function startCarrying() {
+		if (!inventory.has(SPRINKLER)) return;
+		if (!freeSlots().length) {
+			ctx.toast('There are sprinklers everywhere they can go already.');
+			return;
+		}
+		carry.on = true;
+	}
+	const stopCarrying = () => {
+		carry.on = false;
+		carry.slot = -1;
+	};
+	/** The free spot nearest a little in front of her, if one's in reach. */
+	const aim = new THREE.Vector3();
+	const pickSlot = () => {
+		const turn = ctx.figure.group.getWorldDirection(aim);
+		const fx = ctx.pos.x + turn.x * 0.6;
+		const fz = ctx.pos.z + turn.z * 0.6;
+		let best = -1;
+		let bestD = REACH;
+		for (const slot of freeSlots()) {
+			const p = slotAt(slot);
+			const d = Math.hypot(p.x - fx, p.z - fz);
+			if (d < bestD) {
+				best = slot;
+				bestD = d;
+			}
+		}
+		return best;
+	};
+	const setDown = (slot: number) => {
+		if (!inventory.remove(SPRINKLER)) return stopCarrying();
+		state.sprinklers.push({ slot, at: Date.now() });
+		save();
+		showSprinkler(slot);
+		garden.grow();
+		const more = inventory.count(SPRINKLER);
+		if (more && freeSlots().length) ctx.toast(`Set up! ${more} more to carry over.`);
+		else {
+			stopCarrying();
+			ctx.toast('The sprinkler will keep the four plots round it watered.');
+		}
+	};
+	const pickUp = (slot: number) => {
+		if (!inventory.fits(SPRINKLER)) {
+			ctx.toast('Your bag is too full to take it.');
+			return;
+		}
+		// Whatever it's watered so far stays watered: the garden's worked up to now before it goes.
+		garden.grow();
+		state.sprinklers = state.sprinklers.filter((k) => k.slot !== slot);
+		save();
+		hideSprinkler(slot);
+		inventory.add(SPRINKLER);
+		carry.on = true;
+		ctx.toast('Picked up the sprinkler. Carry it to where it should go.');
+	};
 
 	let crateView: THREE.Group | null = null;
 	const crateHeap = new THREE.Group();
@@ -287,23 +439,26 @@ export function createMachines(ctx: MachinesContext) {
 
 	const near = (p: THREE.Vector3, r: number) => Math.hypot(p.x - ctx.pos.x, p.z - ctx.pos.z) < r;
 	const crateCount = () => Object.values(state.crate).reduce((a, b) => a + b, 0);
+	const nearGarden = (r: number) => {
+		const c = garden.world(0, 0.6);
+		return Math.hypot(c.x - ctx.pos.x, c.z - ctx.pos.z) < r;
+	};
 	const offer = (): Offer | null => {
 		if (!ctx.canAct()) return null;
-		if (inventory.has(SPRINKLER))
-			for (let slot = 0; slot < SLOTS.length; slot++) {
-				if (state.sprinklers.some((k) => k.slot === slot) || !near(slotAt(slot), 0.85)) continue;
-				return {
-					label: 'Set up a sprinkler here',
-					go: () => {
-						if (!inventory.remove(SPRINKLER)) return;
-						state.sprinklers.push({ slot, at: Date.now() });
-						save();
-						showSprinkler(slot);
-						garden.grow();
-						ctx.toast('The sprinkler will keep the four plots round it watered.');
-					},
-				};
+		if (carry.on) {
+			if (carry.slot >= 0) {
+				const slot = carry.slot;
+				return { label: 'Set the sprinkler down here', go: () => setDown(slot) };
 			}
+			// Hands full in the garden: nothing else to do there till it's set down (or put away).
+			if (nearGarden(7)) return { label: 'Put the sprinkler back in the bag', go: stopCarrying };
+		} else {
+			for (const k of state.sprinklers)
+				if (near(slotAt(k.slot), 0.9)) {
+					const slot = k.slot;
+					return { label: 'Pick up the sprinkler', go: () => pickUp(slot) };
+				}
+		}
 		if (near(crateAt, 1.4)) {
 			const n = crateCount();
 			if (!n) return state.helper !== null ? { label: 'The harvest crate is empty' } : null;
@@ -336,11 +491,10 @@ export function createMachines(ctx: MachinesContext) {
 		}
 		return null;
 	};
-	/** Asked after the garden's own offers: a nudge for where a sprinkler goes. */
+	/** Asked after the garden's own offers: in the garden with a sprinkler in her bag, take it out. */
 	const hint = (): Offer | null => {
-		if (!ctx.canAct() || !inventory.has(SPRINKLER) || state.sprinklers.length >= SLOTS.length) return null;
-		const c = garden.world(0, 0.6);
-		return Math.hypot(c.x - ctx.pos.x, c.z - ctx.pos.z) < 6 ? { label: 'Stand where four plots meet to set up a sprinkler' } : null;
+		if (carry.on || !ctx.canAct() || !inventory.has(SPRINKLER) || !freeSlots().length) return null;
+		return nearGarden(7) ? { label: 'Take out a sprinkler to set up', go: startCarrying } : null;
 	};
 
 	// ---------- every frame ----------
@@ -348,7 +502,40 @@ export function createMachines(ctx: MachinesContext) {
 	const v = new THREE.Vector3();
 	const nozzle = new THREE.Vector3();
 	const drop = new THREE.Vector3();
+	const mid = new THREE.Vector3();
+	const other = new THREE.Vector3();
 	const update = (dt: number, time: number) => {
+		// What she's carrying: in her arms, and where it would go, shown there.
+		if (carry.on && (!inventory.has(SPRINKLER) || ctx.swimming())) stopCarrying();
+		carry.slot = carry.on ? pickSlot() : -1;
+		if (carry.held) {
+			carry.held.visible = carry.on;
+			const l = ctx.figure.node('HandL');
+			const r = ctx.figure.node('HandR');
+			if (carry.on && l && r) {
+				l.getWorldPosition(mid);
+				r.getWorldPosition(other);
+				mid.add(other).multiplyScalar(0.5);
+				ctx.figure.group.worldToLocal(mid);
+				carry.held.position.copy(mid).add(other.set(0, -0.3, 0.1));
+			}
+		}
+		const spot = carry.slot >= 0 ? slotAt(carry.slot) : null;
+		if (carry.ghost) {
+			carry.ghost.visible = !!spot;
+			if (spot) {
+				carry.ghost.position.copy(spot);
+				carry.ghost.rotation.y = garden.angle + carry.slot;
+			}
+		}
+		if (carry.ring) {
+			carry.ring.visible = !!spot;
+			if (spot) {
+				carry.ring.position.copy(spot).setY(spot.y + 0.04);
+				carry.ring.scale.setScalar(1 + Math.sin(time * 5) * 0.08);
+			}
+		}
+
 		// Sprinklers turn slowly while they've something growing to look after, and fast while spraying.
 		for (const [slot, view] of sprinklerViews) {
 			const busy = slotPlots(slot).some((i) => garden.plots[i].crop && garden.plots[i].stage < 3);
@@ -433,6 +620,10 @@ export function createMachines(ctx: MachinesContext) {
 			save();
 			showHelper();
 			garden.grow();
+		},
+		/** Whether she has a sprinkler in her arms. */
+		get carrying() {
+			return carry.on;
 		},
 		/** How many sprinklers she has, set up or in her bag (there's room for MAX_SPRINKLERS). */
 		sprinklers: () => state.sprinklers.length + inventory.count(SPRINKLER),

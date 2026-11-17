@@ -17,7 +17,7 @@ import type { Offer } from './interact';
 import type { Toon } from './look';
 import { loadJSON, saveJSON } from './save';
 import { thumbnail } from './thumbnail';
-import { clamp, damp } from './util';
+import { clamp, closeOnBackdrop, damp } from './util';
 
 export interface Crop {
 	id: string;
@@ -876,9 +876,7 @@ export function createFarm(ctx: FarmContext) {
 		ui.close?.blur();
 	};
 	ui.close?.addEventListener('click', closeShop);
-	ui.shop?.addEventListener('click', (e) => {
-		if (e.target === ui.shop) closeShop();
-	});
+	closeOnBackdrop(ui.shop, closeShop);
 
 	// ---------- every frame ----------
 

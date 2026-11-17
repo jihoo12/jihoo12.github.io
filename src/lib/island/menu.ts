@@ -1,6 +1,7 @@
 // The menu over the game: her bag, the map, the fish book and help, a tab each. Help opens by
 // itself the first time she arrives.
 import { loadText, saveText } from './save';
+import { closeOnBackdrop } from './util';
 
 export type Tab = 'bag' | 'map' | 'fish' | 'help';
 
@@ -53,9 +54,7 @@ export function createMenu({
 			if (!open) button.blur();
 		});
 	close?.addEventListener('click', closeMenu);
-	root?.addEventListener('click', (e) => {
-		if (e.target === root) closeMenu();
-	});
+	closeOnBackdrop(root, closeMenu);
 
 	const firstVisit = (() => {
 		if (loadText('helpSeen')) return false;

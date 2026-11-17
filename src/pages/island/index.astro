@@ -209,6 +209,9 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 	:global(html:has(body.isle)), :global(body.isle) { overflow: hidden; height: 100%; }
 	:global(body.isle::before), :global(body.isle::after) { display: none; }
 	:global(body.isle) { background: var(--bg); }
+	/* It's a game, not a page to read: holding a finger on a button (or anywhere) mustn't start a
+	   text selection or pop up the long-press menu. */
+	:global(body.isle) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 	.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 	.stage:active { cursor: grabbing; }

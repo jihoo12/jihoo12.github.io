@@ -10,6 +10,18 @@ export const smoothstep = (e0: number, e1: number, x: number) => {
 /** Eases `from` towards `to` at `rate`, the same whatever the frame rate. */
 export const damp = (from: number, to: number, rate: number, dt: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
 
+/** Closes a dialog when its backdrop is clicked, but only a click that began there too. On a phone,
+ * the tap on Use that opens a dialog ends with a click wherever the finger lifts, which is by then
+ * the backdrop of the dialog it just opened: that click alone mustn't close it again. */
+export function closeOnBackdrop(backdrop: HTMLElement | null, close: () => void) {
+	let began = false;
+	backdrop?.addEventListener('pointerdown', (e) => (began = e.target === backdrop));
+	backdrop?.addEventListener('click', (e) => {
+		if (began && e.target === backdrop) close();
+		began = false;
+	});
+}
+
 /** A seeded random number generator, 0 … 1. */
 export function rng(seed: number) {
 	return () => {

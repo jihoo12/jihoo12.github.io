@@ -28,6 +28,8 @@ export function createInteractions() {
 		e.preventDefault();
 		press();
 	});
+	// A long press on a phone mustn't bring up the menu for copying the button's text.
+	ui.button?.addEventListener('contextmenu', (e) => e.preventDefault());
 
 	return {
 		/** Adds a source of things to do. Earlier sources come first. */

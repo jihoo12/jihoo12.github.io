@@ -21,7 +21,7 @@ import { loadJSON, saveJSON } from './save';
 import { slopeUp, terrainAt } from './terrain';
 import type { Theme } from './theme';
 import { thumbnail } from './thumbnail';
-import { TAU, damp, rng } from './util';
+import { TAU, closeOnBackdrop, damp, rng } from './util';
 
 export interface ForgeContext {
 	renderer: THREE.WebGLRenderer;
@@ -446,9 +446,7 @@ export function createForge(ctx: ForgeContext) {
 		ui.close?.blur();
 	};
 	ui.close?.addEventListener('click', closeDialog);
-	ui.dialog?.addEventListener('click', (e) => {
-		if (e.target === ui.dialog) closeDialog();
-	});
+	closeOnBackdrop(ui.dialog, closeDialog);
 
 	// ---------- smithing ----------
 

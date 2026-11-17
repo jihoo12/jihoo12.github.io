@@ -42,6 +42,8 @@ export interface PlayerContext {
 	hold: (tryingToMove: boolean) => number | null;
 	/** A clip something wants her playing instead of her own, if any. */
 	clip: () => NixClip | null;
+	/** Whether she has something in her arms (a sprinkler, to set up): she walks with it held out. */
+	carrying?: () => boolean;
 	/** How her glider flies: its speed and how fast it sinks (better once upgraded at the forge). */
 	glider?: () => { speed: number; sink: number };
 }
@@ -306,10 +308,11 @@ export function createPlayer(ctx: PlayerContext) {
 		waving = Math.max(0, waving - dt);
 		let clip: NixClip = swimming ? (planar > 0.3 ? 'Swim' : 'Tread') : planar > 3 ? 'Run' : planar > 0.25 ? 'Walk' : 'Idle';
 		if (waving > 0) clip = 'Wave';
+		if (!swimming && ctx.carrying?.()) clip = planar > 0.25 ? 'CarryWalk' : 'Carry';
 		clip = ctx.clip() ?? clip;
 		// The clips are cut for about 1.5 (walk), 4.2 (run) and 2.4 (swim) a second.
 		const pace =
-			clip === 'Run' ? clamp(planar / 4.2, 0.8, 2.4) : clip === 'Walk' ? clamp(planar / 1.5, 0.6, 1.8) : clip === 'Swim' ? clamp(planar / 2.4, 0.7, 1.6) : 1;
+			clip === 'Run' ? clamp(planar / 4.2, 0.8, 2.4) : clip === 'Walk' || clip === 'CarryWalk' ? clamp(planar / 1.5, 0.6, 2.6) : clip === 'Swim' ? clamp(planar / 2.4, 0.7, 1.6) : 1;
 		figure.play(clip, pace);
 
 		// Rings on the water: steadily as she swims, now and then as she treads water or wades.
