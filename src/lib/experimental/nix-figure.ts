@@ -190,7 +190,7 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 }
 
 /** The looping clips baked into the model. */
-export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread';
+export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show';
 /** The jumps, which the page scrubs along her flight, by where she leaps from and lands: a seat or her feet. */
 export type NixJump = 'Jump' | 'JumpUp' | 'JumpDown' | 'JumpStand';
 /** The jumps that land her on her feet, which a Land clip follows. */
@@ -205,6 +205,10 @@ export interface NixFigure {
 	/** Resolves once the model is in, or rejects if it could not be loaded. */
 	ready: Promise<void>;
 	setBlink(closed: boolean): void;
+	/** Show or hide the fishing rod in her right hand (hidden unless she's fishing). */
+	setRod(shown: boolean): void;
+	/** A named node of the model once it's in: a bone like "HandL", or the "RodTip" the line hangs from. */
+	node(name: string): THREE.Object3D | null;
 	/** Blend into a looping clip, played at `speed` times its natural pace. */
 	play(clip: NixClip, speed?: number): void;
 	/** `jump` is the jump she's in and how far through it she is (0 → 1), or null on the ground.
@@ -238,6 +242,8 @@ export function buildNixFigure(url: string): NixFigure {
 		Skin: toon(SKIN),
 		Ink: toon(INK),
 		Cord: toon('#f4f3ff'),
+		Rod: toon('#c58b57'),
+		Reel: toon('#f25f6b'),
 	};
 	const snowMat = toon('#ffffff', { map: snowflakeTexture(), transparent: true, alphaTest: 0.3, polygonOffset: true, polygonOffsetFactor: -2 });
 
@@ -253,7 +259,7 @@ export function buildNixFigure(url: string): NixFigure {
 	const outline = inkLine(INK, 0.012);
 	const hairLine = inkLine('#8a85c4', 0.006);
 	// Too fine to carry a line of their own.
-	const uninked = /^(Cords|Pin)$|Laces$/;
+	const uninked = /^(Cords|Pin)$|Laces$|^Rod/;
 
 	const group = new THREE.Group();
 	let head: THREE.Object3D | null = null;
@@ -262,6 +268,14 @@ export function buildNixFigure(url: string): NixFigure {
 	const actions = new Map<string, THREE.AnimationAction>();
 	const weights = new Map<THREE.AnimationAction, number>();
 	let clip: NixClip = 'Sit';
+	let loaded: THREE.Object3D | null = null;
+	let rodShown = false;
+	const showRod = () => {
+		for (const name of ['Rod', 'Reel']) {
+			const part = loaded?.getObjectByName(name);
+			if (part) part.visible = rodShown;
+		}
+	};
 	const rest = { head: new THREE.Quaternion(), hair: new THREE.Quaternion() };
 
 	const ready = new GLTFLoader().loadAsync(url).then((gltf) => {
@@ -325,6 +339,8 @@ export function buildNixFigure(url: string): NixFigure {
 			sit.setEffectiveWeight(1);
 			weights.set(sit, 1);
 		}
+		loaded = model;
+		showRod();
 		group.add(model);
 	});
 
@@ -346,6 +362,13 @@ export function buildNixFigure(url: string): NixFigure {
 		ready,
 		setBlink(closed) {
 			faceMat.map = closed ? closedFace : openFace;
+		},
+		setRod(shown) {
+			rodShown = shown;
+			showRod();
+		},
+		node(name) {
+			return loaded?.getObjectByName(name) ?? null;
 		},
 		play(next, speed = 1) {
 			const playing = actions.get(next);

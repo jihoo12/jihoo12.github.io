@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildNixFigure, type NixClip } from '../experimental/nix-figure';
+import { createFishing } from './fishing';
 
 const TAU = Math.PI * 2;
 const clamp = THREE.MathUtils.clamp;
@@ -1224,14 +1225,23 @@ export async function startIsland() {
 			jumpQueued = true;
 		} else if (key === 'e' && !e.repeat) {
 			waveQueued = true;
+		} else if (key === 'f') {
+			if (!e.repeat) fishing.press();
 		} else if (key === 'm' && !e.repeat) {
 			toggleAtlas();
 		} else if (key === 'escape') {
 			toggleAtlas(false);
 		}
 	});
-	addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-	addEventListener('blur', () => keys.clear());
+	addEventListener('keyup', (e) => {
+		const key = e.key.toLowerCase();
+		keys.delete(key);
+		if (key === 'f') fishing.release();
+	});
+	addEventListener('blur', () => {
+		keys.clear();
+		fishing.release();
+	});
 
 	// She starts with her back to the sea, looking inland, with the pier off to one side.
 	let orbitYaw = Math.atan2(PIER_DIR.x, PIER_DIR.z) + 0.55;
@@ -1350,6 +1360,26 @@ export async function startIsland() {
 		}
 	};
 
+	const fishing = createFishing({
+		scene,
+		camera,
+		figure,
+		root,
+		modelUrl: canvas.dataset.fishModel ?? '',
+		toon,
+		groundAt,
+		ripple,
+		pos,
+		canStand: () => ready && grounded && !swimming && Math.hypot(vel.x, vel.z) < 0.6,
+		heading: () => heading,
+		towardCamera: () => Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z),
+		waters: (x, z) => ({
+			deep: groundAt(x, z) < -3.5,
+			islet: Math.hypot(x - ISLET.x, z - ISLET.z) < 48,
+			pier: deckAt(pos.x, pos.z) > -Infinity,
+		}),
+	});
+
 	const steer = new THREE.Vector3();
 	const zero = new THREE.Vector2();
 	const step = (dt: number) => {
@@ -1364,7 +1394,19 @@ export async function startIsland() {
 		}
 		steer.set(-Math.sin(orbitYaw) * forward + Math.cos(orbitYaw) * right, 0, -Math.cos(orbitYaw) * forward - Math.sin(orbitYaw) * right);
 		if (steer.lengthSq() > 1) steer.normalize();
-		const moving = steer.lengthSq() > 0.01;
+		let moving = steer.lengthSq() > 0.01;
+		// Fishing keeps her on the spot, facing the water: walking off (or jumping) puts the rod
+		// away, except with a fish on the line.
+		if (fishing.active) {
+			if ((moving || jumpQueued) && !fishing.hooked) fishing.interrupt();
+			if (fishing.active) {
+				steer.set(0, 0, 0);
+				moving = false;
+				jumpQueued = false;
+				waveQueued = false;
+				heading = fishing.facing;
+			}
+		}
 		// Gliding, she keeps sailing on the way she's facing even with nothing held.
 		if (gliding && !moving) steer.set(Math.sin(heading) * 0.6, 0, Math.cos(heading) * 0.6);
 
@@ -1476,6 +1518,7 @@ export async function startIsland() {
 		waving = Math.max(0, waving - dt);
 		let clip: NixClip = swimming ? (planar > 0.3 ? 'Swim' : 'Tread') : planar > 3 ? 'Run' : planar > 0.25 ? 'Walk' : 'Idle';
 		if (waving > 0) clip = 'Wave';
+		if (fishing.clip) clip = fishing.clip;
 		// The clips are cut for about 1.5 (walk), 4.2 (run) and 2.4 (swim) a second.
 		const pace =
 			clip === 'Run' ? clamp(planar / 4.2, 0.8, 2.4) : clip === 'Walk' ? clamp(planar / 1.5, 0.6, 1.8) : clip === 'Swim' ? clamp(planar / 2.4, 0.7, 1.6) : 1;
@@ -1781,6 +1824,7 @@ export async function startIsland() {
 			const { flight, airborne, swimming } = step(dt);
 			// Dropping into the water isn't a landing, so no bending of the knees.
 			figure.tick(dt, time, { airborne, look: zero, still: false, jump: flight, landed: !swimming });
+			fishing.update(dt, time);
 			nextBlink -= dt;
 			if (nextBlink < 0) {
 				const closed = nextBlink > -0.13;

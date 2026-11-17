@@ -6,8 +6,10 @@
 # z = 0 the front edge of whatever she sits on) and exported without the y-up conversion.
 # Materials are only placeholders: the page swaps them for toon materials by name and paints the
 # face onto the "Face" mesh. She is rigged, standing in rest, with clips Sit, Idle, Walk, Run, Wave,
-# Swim and Tread and the jumps and landing baked in; the page plays those, and turns the "Head" and
-# "Hair" bones itself. The swimming clips put the water line at y = 0 rather than her feet.
+# Swim and Tread, the fishing clips Cast, Fish, Reel and Show, and the jumps and landing baked in; the
+# page plays those, and turns the "Head" and "Hair" bones itself. The swimming clips put the water
+# line at y = 0 rather than her feet. Her fishing rod ("Rod" and "Reel", with a "RodTip" empty for
+# the line to hang from) is in her right hand in every clip, and the page shows it only to fish.
 import math
 import os
 import sys
@@ -41,6 +43,8 @@ COLORS = {
     'Skin': '#fde9df',
     'Ink': '#1d1b3a',
     'Cord': '#f4f3ff',
+    'Rod': '#c58b57',
+    'Reel': '#f25f6b',
 }
 
 
@@ -361,6 +365,26 @@ for side in (-1, 1):
 cords = mesh_object('Cords', bm, ['Cord'])
 smooth(cords)
 
+# Her fishing rod, through her right fist: in rest it points straight forwards (+z) from the palm,
+# and the fishing clips turn her hand to aim it. A short grip runs back from her fist, with the reel
+# hanging under it.
+GRIP = JOINT['HandR'] + ARM_DIR['R'] * 0.11
+ROD_LEN = 1.45
+bm = bmesh.new()
+for r0, r1, z0, z1, mat in ((0.024, 0.021, -0.2, 0.06, 1), (0.014, 0.005, 0.06, ROD_LEN, 0)):
+    verts = bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=r0, radius2=r1, depth=z1 - z0)['verts']
+    bmesh.ops.translate(bm, vec=GRIP + Vector((0, 0, (z0 + z1) / 2)), verts=verts)
+    set_mat(verts, mat)
+rod = mesh_object('Rod', bm, ['Rod', 'NavyDeep'])
+bm = bmesh.new()
+verts = bmesh.ops.create_cone(bm, cap_ends=True, segments=14, radius1=0.04, radius2=0.04, depth=0.035)['verts']
+bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP + Vector((0, -0.05, -0.1))) @ Matrix.Rotation(math.pi / 2, 4, 'Y'), verts=verts)
+# The reel's handle, a knob sticking out on her left of it.
+verts = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.01, radius2=0.01, depth=0.05)['verts']
+bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP + Vector((0.035, -0.07, -0.1))) @ Matrix.Rotation(math.pi / 2, 4, 'Y'), verts=verts)
+reel = mesh_object('Reel', bm, ['Reel'])
+rod_tip = empty('RodTip', GRIP + Vector((0, 0, ROD_LEN)))
+
 flake_chest = empty('FlakeChest', matrix=facing((0, 0.2, 1), Vector((0, 0.47, BODY_Z + 0.352))))
 
 # ---------- legs: thighs from the hips, shins and sneakers from the knees ----------
@@ -658,6 +682,8 @@ def attach(obj, bone):
 
 for obj in (hood, cords, flake_chest):
     attach(obj, 'Chest')
+for obj in (rod, reel, rod_tip):
+    attach(obj, 'HandR')
 attach(head, 'Head')
 attach(long_hair, 'Hair')
 for _, s in SIDES:
@@ -967,9 +993,92 @@ jump = keyed(JUMPS['Jump'])
 land = keyed([(0.0, STAND_REACH), (0.3, STAND_SQUASH), (1.0, idle(0))])
 
 
+# ---------- fishing ----------
+# She holds the rod in her right fist with her left hand lower down on the grip, and the clips aim it
+# by turning her right hand so the rod (+z in rest) points along `aim`, given in the chest's frame.
+
+
+def rod_hold(p, aim, wrist, crank=None):
+    aim = Vector(aim).normalized()
+    reach(p, 'R', wrist, (-1, -1, -0.4))
+    world = fk(p)
+    chest = world['Chest'].to_3x3()
+    fore = world['LowerArmR'].to_3x3()
+    local = (fore.inverted() @ chest @ aim).normalized()
+    p['HandR'][1] = Vector((0, 0, 1)).rotation_difference(local)
+    world = fk(p)
+    # Where her right fist ended up, back in the chest's frame, and her left hand lower on the grip
+    # (or turning the reel's handle, when she's reeling in).
+    to_chest = world['Chest'].inverted()
+    fist = to_chest @ world['HandR'] @ (GRIP - JOINT['HandR'])
+    side = (to_chest.to_3x3() @ world['HandR'].to_3x3() @ Vector((1, 0, 0))).normalized()
+    held = fist - aim * 0.17 + Vector((0.02, -0.04, -0.02))
+    if crank is not None:
+        held = fist - aim * 0.1 + side * 0.06 + (Vector((0, math.cos(crank), math.sin(crank))) * 0.045)
+    # The wrist sits about a palm's length back from what the hand holds.
+    reach(p, 'L', held - Vector((0.05, -0.06, 0.05)), (1, -1, -0.3))
+
+
+def stance(p, wide=0.06, bend=0.08):
+    p['Hips'][0].z = STAND_Z
+    for side, s in SIDES:
+        legs(p, s, -bend, bend * 2, -bend, roll=side * wide)
+
+
+def fish_pose(aim, wrist, lean=0.0, crank=None, bob=0.0):
+    p = new_pose()
+    stance(p, bend=0.08 + bob)
+    p['Hips'][1] = euler(-lean * 0.4, 0.06, 0)
+    p['Chest'][1] = euler(-lean, 0.03, 0)
+    rod_hold(p, aim, wrist, crank)
+    ground(p)
+    return p
+
+
+# Waiting for a bite: rod held out over the water, breathing, the tip nodding a little.
+FISH_WRIST = Vector((-0.17, 0.5, BODY_Z + 0.34))
+FISH_AIM = Vector((-0.12, 0.5, 1))
+
+
+def fish(t):
+    b = math.sin(TAU * t)
+    return fish_pose(FISH_AIM + Vector((0, 0.04 * b, 0)), FISH_WRIST + Vector((0, 0.01 * b, 0)), lean=0.02 * b, bob=0.01 * b)
+
+
+# The cast: rod swung up and back over her shoulder, then flicked out forwards and lowered to wait.
+CAST_KEYS = [
+    (0.0, fish_pose(FISH_AIM, FISH_WRIST)),
+    (0.38, fish_pose((0, 1, -0.55), FISH_WRIST + Vector((0, 0.22, -0.12)), lean=0.18)),
+    (0.6, fish_pose((0.05, 0.25, 1), FISH_WRIST + Vector((0, 0.02, 0.08)), lean=-0.16)),
+    (1.0, fish_pose(FISH_AIM, FISH_WRIST)),
+]
+cast = keyed(CAST_KEYS)
+
+
+# Reeling in: leaning back with the rod high, cranking the reel.
+def reel_in(t):
+    ph = TAU * t
+    tug = math.sin(ph * 2)
+    return fish_pose((-0.1 + 0.03 * tug, 0.9, 1), Vector((-0.16, 0.56 + 0.015 * tug, BODY_Z + 0.3)), lean=0.12 + 0.03 * tug, crank=ph, bob=0.04)
+
+
+# Showing off a catch, held out in front in both hands, with a little bounce. The page puts the fish
+# between her hands.
+def show(t):
+    ph = TAU * t
+    p = new_pose()
+    stance(p, bend=0.06 + 0.05 * max(0.0, math.sin(ph)))
+    p['Chest'][1] = euler(-0.08, 0, 0.03 * math.sin(ph))
+    for side, s in SIDES:
+        reach(p, s, Vector((side * 0.19, 0.6 + 0.03 * math.sin(ph), BODY_Z + 0.4)), (side, -1, -0.2))
+    ground(p, lift=0.03 * max(0.0, math.sin(ph)))
+    return p
+
+
 # Looping clips end where they start; the jumps and Land play once.
 FPS = 30
 CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land), 'Swim': (30, swim), 'Tread': (60, tread)}
+CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show)})
 CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
 UNKEYED = {'Head', 'Hair'}
@@ -1070,7 +1179,7 @@ if PREVIEW:
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
     only_clips = os.environ.get('NIX_PREVIEW_CLIPS')
-    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25)):
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0)):
         if only_clips and clip not in only_clips.split(','):
             continue
         apply_pose(CLIPS[clip][1](t))
