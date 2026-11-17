@@ -4,7 +4,7 @@
 // shards from Cloudrest makes her tools better: a sturdier watering can, a sky rod that's kinder on
 // the line, and a sky glider that flies further. It makes the garden's machines too (machines.ts):
 // sprinklers, and Sprocket, the clockwork helper; stone blocks to build with (blocks.ts); and windmills,
-// and drills that mine the veins by themselves (power.ts). And from the ashen ore she brings back from the
+// drills that mine the veins by themselves, and belts to bring their ore here (power.ts). And from the ashen ore she brings back from the
 // grey place through the rift (/monochrome), it makes a compass that knows the way there, a lantern
 // that lights her way at night, and (once she's found all three colour shards) a prism glider.
 //
@@ -93,6 +93,7 @@ const RECIPES: Recipe[] = [
 	{ id: 'sprinkler', kind: 'item', item: 'sprinkler', name: 'Sprinkler', about: 'Set where four plots meet, it keeps them watered. There is room in the garden for four.', needs: [[INGOT, 2]], color: '#c97b4a' },
 	{ id: 'blocks', kind: 'item', item: 'stone-block', name: 'Stone Blocks', about: 'Six blocks of dressed stone from one ore (eight if it goes perfectly), to build with out on the island.', needs: [[ORE, 1]], color: '#d8c9a8', makes: 6 },
 	{ id: 'windmill', kind: 'item', item: 'windmill', name: 'Windmill', about: 'Set up on high ground, where the wind blows, it powers the machines round it.', needs: [[INGOT, 3]], color: '#b07a4f' },
+	{ id: 'belts', kind: 'item', item: 'belt', name: 'Belts', about: 'Eight lengths of belt from one ingot (ten if it goes perfectly). Laid from a drill to the hopper beside the forge, they carry its ore, and power, along them.', needs: [[INGOT, 1]], color: '#3a3550', makes: 8 },
 	{ id: 'drill', kind: 'item', item: 'drill', name: 'Drill', about: 'Set over an ore vein near a windmill, it mines the ore each time it grows back, and keeps it for you.', needs: [[INGOT, 4], [SHARD, 2]], color: '#4f5675' },
 	{ id: 'helper', kind: 'upgrade', name: 'Sprocket, a clockwork helper', about: 'Picks ripe crops into a crate by the garden, and plants the same again from your seeds.', needs: [[INGOT, 4], [SHARD, 4]], color: '#e8b84a' },
 	{ id: 'ashen-ingot', kind: 'item', item: ASHEN_INGOT, name: 'Ashen Ingot', about: 'Smelted from the ashen ore she brings back from the grey place.', needs: [[ASHEN_ORE, 2]], color: '#8e8e94' },
@@ -705,6 +706,12 @@ export function createForge(ctx: ForgeContext) {
 		},
 		/** Where the ore is, for Pebble's tips. */
 		veinsLeft: () => veins.filter(ripe).length,
+		/** Where the hopper that belts bring ore to stands: outside the smithy, on its right, facing
+		 * the way it does. */
+		hopperSpot: (() => {
+			const p = world(FLOOR.w / 2 + 1.3, 1.2);
+			return { x: p.x, z: p.z, yaw: site.yaw };
+		})(),
 		/** The veins, for the drills that can be set over them (power.ts). */
 		veinSource: {
 			veins: () => veins.map(({ id, x, y, z }) => ({ id, x, y, z })),

@@ -20,7 +20,8 @@
 //   rift               the grey rift at the standing stones, through to /monochrome
 //   lantern            the Grey Lantern, made at the forge, at her shoulder after dark
 //   blocks             stone blocks, made at the forge, that she builds with out on the island
-//   power              windmills, made at the forge, and the drills they power on the ore veins
+//   power              windmills, made at the forge, the drills they power on the ore veins, and
+//                      belts that carry the ore (and the power) to a hopper by the forge
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
 import { blockGround, createBlocks } from './blocks';
@@ -40,7 +41,7 @@ import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
-import { MAX_WINDMILLS, createPower } from './power';
+import { MAX_BELTS, MAX_WINDMILLS, createPower } from './power';
 import { createLantern } from './lantern';
 import { createIslandRift, riftArrival } from './rift';
 import { loadJSON, saveJSON } from './save';
@@ -138,7 +139,10 @@ export async function startIsland() {
 				if (!interactions.press()) controls.state.waveQueued = true;
 			} else if (key === 'f') fishing.press();
 			else if (key === 'b') blocks.toggle();
-			else if (key === 'q') blocks.take();
+			else if (key === 'q') {
+				if (power.laying) power.takeBelt();
+				else blocks.take();
+			}
 			else if (key === 'm') menu.toggle('map');
 			else if (key === 'i') menu.toggle('bag');
 			else if (key === 'h' || key === '?') menu.toggle('help');
@@ -292,7 +296,15 @@ export async function startIsland() {
 		toast: (text) => fishing.toast(text),
 		onUpgrade: (id) => showUpgrade(id),
 		more: (item) =>
-			item === 'sprinkler' ? machines.sprinklers() < MAX_SPRINKLERS : item === 'windmill' ? power.windmills() < MAX_WINDMILLS : item === 'drill' ? power.drills() < power.veinCount : true,
+			item === 'sprinkler'
+				? machines.sprinklers() < MAX_SPRINKLERS
+				: item === 'windmill'
+					? power.windmills() < MAX_WINDMILLS
+					: item === 'drill'
+						? power.drills() < power.veinCount
+						: item === 'belt'
+							? power.belts() < MAX_BELTS
+							: true,
 		drilled: (vein) => power.drilled(vein),
 	});
 	/** What an upgrade looks like on her: a steel can, a sky-blue reel, a sky-blue (or rainbow)
@@ -332,7 +344,7 @@ export async function startIsland() {
 		pos,
 		canAct: () =>
 			ready && player.grounded && !player.swimming && !skyIsle.aboard && !machines.carrying && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
-		open: (x, z) => roomy(x, z, 0.7) && keptClear.every((p) => Math.hypot(p.x - x, p.z - z) > p.r + 1),
+		open: (x, z) => roomy(x, z, 0.7) && !power.beltAt(x, z) && keptClear.every((p) => Math.hypot(p.x - x, p.z - z) > p.r + 1),
 		toast: (text) => fishing.toast(text),
 		closeMenu: () => menu.close(),
 	});
@@ -346,6 +358,7 @@ export async function startIsland() {
 		modelUrl: canvas.dataset.powerModel ?? '',
 		ore: { id: ORE, color: '#c0703f' },
 		veins: forge.veinSource,
+		hopper: forge.hopperSpot,
 		groundAt,
 		addFeature,
 		removeFeature,
@@ -358,6 +371,9 @@ export async function startIsland() {
 			roomy(x, z, 1) &&
 			[[0, 0], [0.9, 0], [-0.9, 0], [0, 0.9], [0, -0.9]].every(([dx, dz]) => blockGround(x + dx, z + dz) === -Infinity) &&
 			keptClear.every((p) => Math.hypot(p.x - x, p.z - z) > p.r + 2),
+		// Belts may run up to the forge (its hopper is there), but not through the other kept places.
+		openForBelt: (x, z) =>
+			roomy(x, z, 0.25) && blockGround(x, z) === -Infinity && keptClear.every((p) => p.id === 'forge' || Math.hypot(p.x - x, p.z - z) > p.r + 0.5),
 		toast: (text) => fishing.toast(text),
 		closeMenu: () => menu.close(),
 	});

@@ -15,6 +15,10 @@
 #                  and a little bin on one side for the ore it brings up
 #   DrillBit       the bit, hanging from the motor, turning about y, its top at the origin (put it
 #                  at BIT_TOP)
+#   Hopper         the bin beside the forge that belts bring ore to: a timber box on iron feet,
+#                  open at the top, with a lamp on its front, its floor at HOPPER_FLOOR
+#
+# The belts themselves are simple enough to be drawn by the page.
 #
 # The page knows these sizes (to put the rotor and the bit in place, and to walk round the legs),
 # so if they change here change them in src/lib/island/power.ts too.
@@ -249,7 +253,33 @@ def drill_bit():
     return p.done()
 
 
-OBJECTS = [windmill(), rotor(), drill(), drill_bit()]
+# ---------- the hopper ----------
+
+HOPPER_FLOOR = 0.35
+HOPPER_TOP = 0.85
+
+
+def hopper():
+    p = Part('Hopper')
+    w, d = 0.9, 0.9
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            box(p, (sx * (w / 2 - 0.06), 0.14, sz * (d / 2 - 0.06)), (0.12, 0.28, 0.12), 'IronDark')
+    box(p, (0, HOPPER_FLOOR - 0.04, 0), (w, 0.08, d), 'Timber')
+    for sx in (-1, 1):
+        box(p, (sx * (w / 2 - 0.03), (HOPPER_FLOOR + HOPPER_TOP) / 2, 0), (0.06, HOPPER_TOP - HOPPER_FLOOR, d), 'TimberLight')
+        box(p, (0, (HOPPER_FLOOR + HOPPER_TOP) / 2, sx * (d / 2 - 0.03)), (w, HOPPER_TOP - HOPPER_FLOOR, 0.06), 'TimberLight')
+    # Iron bands round it, and a lamp on the front.
+    for y in (HOPPER_FLOOR + 0.08, HOPPER_TOP - 0.06):
+        for sx in (-1, 1):
+            box(p, (sx * (w / 2 + 0.005), y, 0), (0.02, 0.05, d + 0.02), 'Iron')
+            box(p, (0, y, sx * (d / 2 + 0.005)), (w + 0.02, 0.05, 0.02), 'Iron')
+    box(p, (0, HOPPER_TOP - 0.2, d / 2 + 0.03), (0.16, 0.16, 0.04), 'Brass')
+    box(p, (0, HOPPER_TOP - 0.2, d / 2 + 0.055), (0.1, 0.1, 0.02), 'Lamp')
+    return p.done()
+
+
+OBJECTS = [windmill(), rotor(), drill(), drill_bit(), hopper()]
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(
@@ -283,7 +313,7 @@ if PREVIEW:
     sun.data.energy = 3
     scene.collection.objects.link(sun)
     sun.rotation_euler = (0.7, 0.3, 0.5)
-    layout = {'Windmill': (-2.5, 0, 0), 'WindmillRotor': (-2.5 + HUB[0], HUB[2], HUB[1]), 'Drill': (2.5, 0, 0), 'DrillBit': (2.5, 0, BIT_TOP)}
+    layout = {'Windmill': (-2.5, 0, 0), 'WindmillRotor': (-2.5 + HUB[0], HUB[2], HUB[1]), 'Drill': (2.5, 0, 0), 'DrillBit': (2.5, 0, BIT_TOP), 'Hopper': (0.3, 2.5, 0)}
     for o in OBJECTS:
         x, y, z = layout[o.name]
         # Blender's y is the page's -z.
