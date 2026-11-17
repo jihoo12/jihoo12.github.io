@@ -9,7 +9,9 @@
 # Swim and Tread, the fishing clips Cast, Fish, Reel and Show, and the jumps and landing baked in; the
 # page plays those, and turns the "Head" and "Hair" bones itself. The swimming clips put the water
 # line at y = 0 rather than her feet. Her fishing rod ("Rod" and "Reel", with a "RodTip" empty for
-# the line to hang from) is in her right hand in every clip, and the page shows it only to fish.
+# the line to hang from) and her watering can ("Can", with a "CanSpout" empty where the water comes
+# out) are in her right hand in every clip, and the page shows each only when she's using it. The
+# garden clips are Tend (crouched, patting the soil) and Water.
 import math
 import os
 import sys
@@ -45,6 +47,8 @@ COLORS = {
     'Cord': '#f4f3ff',
     'Rod': '#c58b57',
     'Reel': '#f25f6b',
+    'Can': '#5fb0e8',
+    'Metal': '#9aa3c4',
 }
 
 
@@ -385,6 +389,40 @@ bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP + Vector((0.035, -0.07, -
 reel = mesh_object('Reel', bm, ['Reel'])
 rod_tip = empty('RodTip', GRIP + Vector((0, 0, ROD_LEN)))
 
+# Her watering can, held by the handle over its top. In rest it hangs from her fist the right way up
+# with its spout forwards (+z); the Water clip turns her hand to tip it.
+bm = bmesh.new()
+
+
+def can_part(verts, mat):
+    set_mat(verts, mat)
+
+
+CAN_Y = -0.15
+for r0, r1, y0, y1 in ((0.1, 0.09, CAN_Y - 0.08, CAN_Y + 0.08),):
+    verts = bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=r0, radius2=r1, depth=y1 - y0)['verts']
+    bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP + Vector((0, (y0 + y1) / 2, 0))) @ Matrix.Rotation(-math.pi / 2, 4, 'X'), verts=verts)
+    can_part(verts, 0)
+handle = [GRIP + Vector((0, CAN_Y + 0.08 + math.sin(t) * 0.1 - 0.02, -math.cos(t) * 0.07)) for t in [i * math.pi / 8 for i in range(9)]]
+for a, b in zip(handle, handle[1:]):
+    axis = b - a
+    verts = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.014, radius2=0.014, depth=axis.length)['verts']
+    bmesh.ops.transform(bm, matrix=Matrix.Translation((a + b) / 2) @ Vector((0, 0, 1)).rotation_difference(axis.normalized()).to_matrix().to_4x4(), verts=verts)
+    can_part(verts, 1)
+for a, b, r0, r1, mat in (
+    (Vector((0, CAN_Y - 0.03, 0.08)), Vector((0, CAN_Y + 0.1, 0.27)), 0.022, 0.012, 0),
+    (Vector((0, CAN_Y + 0.095, 0.26)), Vector((0, CAN_Y + 0.115, 0.29)), 0.028, 0.032, 1),
+):
+    axis = b - a
+    verts = bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=r0, radius2=r1, depth=axis.length)['verts']
+    bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP + (a + b) / 2) @ Vector((0, 0, 1)).rotation_difference(axis.normalized()).to_matrix().to_4x4(), verts=verts)
+    can_part(verts, mat)
+# Modelled small, then grown about her fist to a size that reads at a distance.
+CAN_SCALE = 1.5
+bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP) @ Matrix.Scale(CAN_SCALE, 4) @ Matrix.Translation(-GRIP), verts=bm.verts[:])
+watering_can = mesh_object('Can', bm, ['Can', 'Metal'])
+can_spout = empty('CanSpout', GRIP + Vector((0, CAN_Y + 0.115, 0.3)) * CAN_SCALE)
+
 flake_chest = empty('FlakeChest', matrix=facing((0, 0.2, 1), Vector((0, 0.47, BODY_Z + 0.352))))
 
 # ---------- legs: thighs from the hips, shins and sneakers from the knees ----------
@@ -682,7 +720,7 @@ def attach(obj, bone):
 
 for obj in (hood, cords, flake_chest):
     attach(obj, 'Chest')
-for obj in (rod, reel, rod_tip):
+for obj in (rod, reel, rod_tip, watering_can, can_spout):
     attach(obj, 'HandR')
 attach(head, 'Head')
 attach(long_hair, 'Hair')
@@ -1075,10 +1113,110 @@ def show(t):
     return p
 
 
+# ---------- the garden ----------
+
+
+def hand_frame(p, s, forward, up):
+    """Turn a hand so what it holds (modelled facing +z, the right way up, in rest) faces `forward`
+    with its top towards `up`, both in the chest's frame."""
+    world = fk(p)
+    z = Vector(forward).normalized()
+    x = Vector(up).cross(z).normalized()
+    want = Matrix((x, z.cross(x), z)).transposed()
+    have = world['Chest'].to_3x3().inverted() @ world['LowerArm' + s].to_3x3()
+    p['Hand' + s][1] = (have.inverted() @ want).to_quaternion()
+
+
+# Watering, played once: she lifts the can out in front, tips it right over and sweeps the water
+# from one side of the plot to the other and back, her left hand steadying it underneath, then
+# brings it level again. `lift` raises the can, `tip` pours, `sweep` turns her (+1 to her left).
+def water_pose(lift, tip, sweep):
+    p = new_pose()
+    stance(p, bend=0.06 + 0.05 * tip)
+    p['Hips'][1] = euler(0.04 * tip, 0.14 * sweep, 0)
+    p['Chest'][1] = euler(0.08 + 0.14 * tip, 0.16 * sweep, 0)
+    reach(p, 'R', Vector((-0.19, 0.4 + 0.12 * lift, BODY_Z + 0.38 + 0.06 * lift)), (-1, -1, -0.4))
+    hand_frame(p, 'R', (0.05, -0.1 - 0.8 * tip, 1), (0, 1, 0.15 + 0.85 * tip))
+    # Her left hand under the can's body, in the chest's frame.
+    world = fk(p)
+    to_chest = world['Chest'].inverted()
+    body = to_chest @ world['HandR'] @ (GRIP + Vector((0, CAN_Y * CAN_SCALE - 0.12, 0.03)) - JOINT['HandR'])
+    if lift > 0.3:
+        reach(p, 'L', body + Vector((0.04, -0.02, -0.08)), (1, -1, -0.3))
+    else:
+        hang(p, 'L', 1, forward=0.1)
+    ground(p)
+    return p
+
+
+WATER_KEYS = [
+    (0.0, water_pose(0, 0, 0)),
+    (0.16, water_pose(1, 0.1, 0)),
+    (0.3, water_pose(1, 1, -1)),
+    (0.55, water_pose(1, 1, 1)),
+    (0.74, water_pose(1, 1, -0.5)),
+    (0.86, water_pose(1, 0.1, 0)),
+    (1.0, water_pose(0, 0, 0)),
+]
+water = keyed(WATER_KEYS)
+
+
+# Tending: crouched down low, patting the soil in front of her with both hands, out of step.
+def tend(t):
+    ph = TAU * t
+    p = new_pose()
+    p['Hips'][0].z = STAND_Z
+    p['Chest'][1] = euler(0.45, 0, 0.03 * math.sin(ph))
+    for side, s in SIDES:
+        legs(p, s, -1.05, 1.75, -0.7, yaw=side * 0.12, roll=side * 0.08)
+        pat = max(0.0, math.sin(ph + (0 if side > 0 else math.pi)))
+        reach(p, s, Vector((side * 0.14, 0.24 + 0.07 * pat, BODY_Z + 0.42)), (side, -1, -0.2))
+    ground(p)
+    return p
+
+
+# Planting, played once: she crouches at the edge of the plot, scoops out a little hole with her
+# right hand (twice), drops a seed in, pats the soil down with both hands, and stands back up.
+# The page throws the dirt, drops the seed and raises the mound in time with it.
+def crouch_pose(right, left, chest=0.45):
+    p = new_pose()
+    p['Hips'][0].z = STAND_Z
+    p['Chest'][1] = euler(chest, 0, 0)
+    for side, s in SIDES:
+        legs(p, s, -1.05, 1.75, -0.7, yaw=side * 0.12, roll=side * 0.08)
+    reach(p, 'R', Vector(right), (-1, -1, -0.2))
+    reach(p, 'L', Vector(left), (1, -1, -0.2))
+    ground(p)
+    return p
+
+
+KNEE_L = (0.2, 0.3, BODY_Z + 0.3)
+DIG_IN = (-0.1, 0.19, BODY_Z + 0.47)
+DIG_OUT = (-0.24, 0.36, BODY_Z + 0.34)
+PLANT_KEYS = [
+    (0.0, idle(0)),
+    (0.14, crouch_pose((-0.2, 0.3, BODY_Z + 0.32), KNEE_L, chest=0.35)),
+    (0.22, crouch_pose(DIG_IN, KNEE_L)),
+    (0.3, crouch_pose(DIG_OUT, KNEE_L)),
+    (0.38, crouch_pose(DIG_IN, KNEE_L)),
+    (0.46, crouch_pose(DIG_OUT, KNEE_L)),
+    # Over the hole, and the seed's let go.
+    (0.54, crouch_pose((-0.06, 0.32, BODY_Z + 0.46), KNEE_L, chest=0.5)),
+    (0.6, crouch_pose((-0.06, 0.27, BODY_Z + 0.46), KNEE_L, chest=0.5)),
+    # Both hands patting it down.
+    (0.68, crouch_pose((-0.1, 0.31, BODY_Z + 0.44), (0.1, 0.31, BODY_Z + 0.44))),
+    (0.74, crouch_pose((-0.1, 0.2, BODY_Z + 0.46), (0.1, 0.2, BODY_Z + 0.46))),
+    (0.8, crouch_pose((-0.1, 0.3, BODY_Z + 0.44), (0.1, 0.3, BODY_Z + 0.44))),
+    (0.86, crouch_pose((-0.1, 0.2, BODY_Z + 0.46), (0.1, 0.2, BODY_Z + 0.46))),
+    (1.0, idle(0)),
+]
+plant = keyed(PLANT_KEYS)
+
+
 # Looping clips end where they start; the jumps and Land play once.
 FPS = 30
 CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land), 'Swim': (30, swim), 'Tread': (60, tread)}
-CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show)})
+CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show), 'Water': (54, water), 'Tend': (30, tend), 'Plant': (72, plant)})
 CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
 UNKEYED = {'Head', 'Hair'}
@@ -1179,10 +1317,13 @@ if PREVIEW:
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
     only_clips = os.environ.get('NIX_PREVIEW_CLIPS')
-    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0)):
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74)):
         if only_clips and clip not in only_clips.split(','):
             continue
         apply_pose(CLIPS[clip][1](t))
+        # Only what she's holding for this clip, as on the page.
+        rod.hide_render = reel.hide_render = clip not in ('Cast', 'Fish', 'Reel')
+        watering_can.hide_render = clip != 'Water'
         # The swimming clips float her at the water line, lower down and stretched out.
         afloat_clip = clip in ('Swim', 'Tread')
         look = Vector((0, -0.3, BODY_Z + 0.2)) if afloat_clip else standing

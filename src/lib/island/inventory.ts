@@ -23,6 +23,8 @@ export interface ItemDef {
 	/** A picture of it, as an image URL, once there is one. */
 	icon?: () => string | null;
 	actions?: ItemAction[];
+	/** What the market stand pays for one, if it buys them at all. */
+	sell?: number;
 }
 
 export interface Inventory {
@@ -32,11 +34,31 @@ export interface Inventory {
 	remove(id: string, n?: number): boolean;
 	count(id: string): number;
 	has(id: string): boolean;
+	/** Whether there's a slot for something new (or a stack it joins). */
+	fits(id: string): boolean;
+	def(id: string): ItemDef | undefined;
+	/** What's in the bag, in the order it sits there. */
+	entries(): [string, number][];
 	/** Draws the bag again, as when a picture comes in. */
 	render(): void;
 }
 
-export function createInventory({ slots, storageKey, grid, detail, summary }: { slots: number; storageKey: string; grid: HTMLElement | null; detail: HTMLElement | null; summary: HTMLElement | null }): Inventory {
+export function createInventory({
+	slots,
+	storageKey,
+	grid,
+	detail,
+	summary,
+	note,
+}: {
+	slots: number;
+	storageKey: string;
+	grid: HTMLElement | null;
+	detail: HTMLElement | null;
+	summary: HTMLElement | null;
+	/** Anything more to say under the bag, like how many coins she has. */
+	note?: () => string;
+}): Inventory {
 	const defs = new Map<string, ItemDef>();
 	/** In the order they went in, which is the order they sit in the bag. */
 	const stacks = new Map<string, number>();
@@ -82,7 +104,7 @@ export function createInventory({ slots, storageKey, grid, detail, summary }: { 
 		name.textContent = def.name;
 		const tag = document.createElement('span');
 		tag.className = `bag-tag kind-${def.kind}`;
-		tag.textContent = `${KIND_LABEL[def.kind]} · ×${n}`;
+		tag.textContent = `${KIND_LABEL[def.kind]} · ×${n}${def.sell ? ` · sells for ${def.sell}` : ''}`;
 		const about = document.createElement('p');
 		about.textContent = def.description;
 		const actions = document.createElement('div');
@@ -103,7 +125,8 @@ export function createInventory({ slots, storageKey, grid, detail, summary }: { 
 	const render = () => {
 		if (summary) {
 			const total = [...stacks.values()].reduce((a, b) => a + b, 0);
-			summary.textContent = `${stacks.size} of ${slots} slots used · ${total} ${total === 1 ? 'thing' : 'things'} in all`;
+			const more = note?.();
+			summary.textContent = `${stacks.size} of ${slots} slots used · ${total} ${total === 1 ? 'thing' : 'things'} in all${more ? ` · ${more}` : ''}`;
 		}
 		if (grid) {
 			const cells: HTMLElement[] = [];
@@ -164,6 +187,9 @@ export function createInventory({ slots, storageKey, grid, detail, summary }: { 
 		},
 		count: (id) => stacks.get(id) ?? 0,
 		has: (id) => stacks.has(id),
+		fits: (id) => stacks.has(id) || stacks.size < slots,
+		def: (id) => defs.get(id),
+		entries: () => [...stacks],
 		render,
 	};
 }

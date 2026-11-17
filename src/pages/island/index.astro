@@ -3,9 +3,10 @@
 import BaseHead from '../../components/BaseHead.astro';
 import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
 import fishModel from '../../assets/island/fish.glb?url';
+import farmModel from '../../assets/island/farm.glb?url';
 
 const title = "Nixchan's island (experimental)";
-const description = "Roam a little toon island with Nixchan: climb, swim, glide, fish and find what's out there.";
+const description = "Roam a little toon island with Nixchan: climb, swim, glide, fish, grow a garden and find what's out there.";
 ---
 <!doctype html>
 <html lang="en">
@@ -14,7 +15,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<meta name="robots" content="noindex" />
 	</head>
 	<body class="isle">
-		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} aria-label="Nixchan on her island"></canvas>
+		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} aria-label="Nixchan on her island"></canvas>
 
 		<header class="bar">
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
@@ -33,6 +34,8 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<canvas class="map" data-map width="150" height="150" role="button" aria-label="Open the map"></canvas>
 
 		<p class="fish-prompt" data-fish-prompt hidden><kbd>F</kbd> Cast a line</p>
+		<p class="fish-prompt act-prompt" data-act-prompt hidden><kbd>E</kbd><span data-act-text></span></p>
+		<button class="act" type="button" data-act hidden>Do</button>
 		<button class="fish" type="button" data-fish aria-label="Fish">Fish</button>
 		<p class="bite" data-bite hidden aria-hidden="true">!</p>
 		<div class="reel" data-reel hidden role="status">
@@ -82,7 +85,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 							<dt><kbd>Space</kbd></dt><dd>Jump, or spring up out of the water</dd>
 							<dt><kbd>Space</kbd> again</dt><dd>Open the glider in mid-air, and once more to fold it</dd>
 							<dt>Drag</dt><dd>Look around; the scroll wheel zooms</dd>
-							<dt><kbd>E</kbd></dt><dd>Wave</dd>
+							<dt><kbd>E</kbd></dt><dd>Plant, water, harvest or use what's in front of you; otherwise wave</dd>
 						</dl>
 						<dl class="touch">
 							<dt>Left thumb</dt><dd>Walk; push far to run</dd>
@@ -101,6 +104,16 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 						<p>Different fish bite at different times and places. The fish book has a hint for each one you're still missing.</p>
 					</section>
 					<section>
+						<h3>Gardening</h3>
+						<ol>
+							<li>Nixchan's garden is a short walk inland from the beach where you start. The first time you get there, a watering can and some turnip seeds are waiting.</li>
+							<li>Stand on a plot of soil and press <kbd class="keys">E</kbd><span class="touch">the action button</span> to plant a seed, water it, and harvest it when it's ripe.</li>
+							<li>A crop grows one stage at a time (sprout, leaves, ripe), and only while the soil is wet, so water it again after each stage. Fill the can at the barrel.</li>
+							<li>Sell fish and crops at the market stand for coins, and buy more seeds there. Pumpkins take longest and fetch the most; strawberries keep fruiting.</li>
+						</ol>
+						<p>The garden keeps growing while you're away.</p>
+					</section>
+					<section>
 						<h3>Menus</h3>
 						<dl class="keys">
 							<dt><kbd>I</kbd></dt><dd>Bag: everything you're carrying</dd>
@@ -113,6 +126,23 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 					</section>
 				</div>
 				<button class="button primary" type="button" data-atlas-close>Back to the island</button>
+			</div>
+		</div>
+		<div class="atlas shop" data-shop hidden role="dialog" aria-modal="true" aria-labelledby="shop-title">
+			<div class="atlas-card">
+				<h2 id="shop-title" class="shop-title">Market stand</h2>
+				<p class="coins" data-coins>0 coins</p>
+				<div class="shop-columns">
+					<section>
+						<h3>Seeds</h3>
+						<ul class="shop-list" data-shop-buy></ul>
+					</section>
+					<section>
+						<h3>Sell</h3>
+						<ul class="shop-list" data-shop-sell></ul>
+					</section>
+				</div>
+				<button class="button primary" type="button" data-shop-close>Back to the garden</button>
 			</div>
 		</div>
 		<p class="loading" data-loading>Nixchan is on her way…</p>
@@ -235,6 +265,40 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		background: var(--surface); color: var(--ink); font-size: 15px; font-weight: 900; box-shadow: 0 4px 0 var(--edge);
 	}
 	.fish-prompt[hidden] { display: none; }
+	.act-prompt.inactive kbd { display: none; }
+	.act-prompt.inactive { color: var(--muted); }
+	.act {
+		display: none; position: fixed; z-index: 25; right: 24px; bottom: 280px; min-width: 72px; height: 52px; padding: 0 16px;
+		border: 0; border-radius: 999px; background: var(--star); color: #1c1a3e; font: 900 16px var(--sans);
+		box-shadow: 0 5px 0 #c99a2e; touch-action: none;
+	}
+	.act[hidden] { display: none !important; }
+	.act:active { transform: translateY(3px); box-shadow: 0 2px 0 #c99a2e; }
+
+	/* The market stand: seeds to buy on one side, what she has to sell on the other. */
+	.shop .atlas-card { width: min(720px, 100%); }
+	.shop-title { margin: 0; font-family: var(--display); font-size: 28px; color: var(--ink); }
+	.coins { display: inline-block; margin: 6px 0 12px; padding: 3px 14px; border-radius: 999px; background: var(--star); color: #1c1a3e; font-weight: 900; }
+	.shop-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: left; max-height: min(460px, calc(100dvh - 240px)); overflow: auto; }
+	.shop-columns h3 { margin: 0 0 8px; font-family: var(--display); font-size: 18px; color: var(--ink); }
+	.shop-list { list-style: none; margin: 0; padding: 0 0 4px; display: grid; gap: 8px; }
+	.shop-list :global(li) {
+		display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px;
+		background: var(--surface); box-shadow: 0 3px 0 var(--edge);
+	}
+	.shop-list :global(.shop-picture) { flex: none; width: 44px; height: 44px; border-radius: 8px; background: center / contain no-repeat; }
+	.shop-list :global(.shop-text) { flex: 1; min-width: 0; display: grid; }
+	.shop-list :global(strong) { color: var(--ink); font-size: 14px; }
+	.shop-list :global(small) { color: var(--muted); font-size: 12px; font-weight: 700; }
+	.shop-list :global(button) {
+		flex: none; border: 0; border-radius: 9px; padding: 6px 10px; background: var(--bg); color: var(--ink);
+		font: 800 13px var(--sans); box-shadow: 0 3px 0 var(--edge); cursor: pointer;
+	}
+	.shop-list :global(button:disabled) { opacity: 0.45; cursor: default; }
+	.shop-list :global(.shop-empty) { color: var(--muted); font-size: 13px; font-weight: 700; }
+	@media (max-width: 640px) {
+		.shop-columns { grid-template-columns: 1fr; }
+	}
 	.fish-prompt kbd, .reel-hint kbd {
 		display: inline-block; min-width: 1.6em; margin-right: 4px; padding: 1px 5px; border-radius: 5px;
 		background: var(--star); color: #1c1a3e; font: 900 12px var(--sans); text-align: center;
@@ -384,6 +448,9 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		.help p.touch { display: block; }
 		.help span.touch { display: inline; }
 		.fish { display: block; }
+		.act { display: block; }
+		.act-prompt:not([hidden]) { display: block !important; bottom: 18px; }
+		.act-prompt kbd { display: none; }
 		.fish-prompt { display: none !important; }
 		.reel-hint .keys { display: none; }
 		.reel-hint .touch { display: inline; }

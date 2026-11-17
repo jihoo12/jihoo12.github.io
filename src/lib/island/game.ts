@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { buildNixFigure, type NixClip } from '../experimental/nix-figure';
 import { createFishing, SPECIES } from './fishing';
 import { createInventory } from './inventory';
+import { createFarm } from './farm';
 
 const TAU = Math.PI * 2;
 const clamp = THREE.MathUtils.clamp;
@@ -700,6 +701,16 @@ export async function startIsland() {
 	places.push({ id: 'stones', name: 'The Standing Stones', ...STONES, r: 8, clear: 7 });
 	places.push({ id: 'islet', name: 'Lonely Islet', x: ISLET.x, z: ISLET.z, r: ISLET.r * 0.75, clear: 0 });
 	places.push({ id: 'buoy', name: 'The Far Buoy', x: BUOY.x, z: BUOY.z, r: 5, clear: 0 });
+	// Her garden, on flat grass a short walk inland from where she starts, its plots facing the beach.
+	const GARDEN = findSpot(
+		(x, z, g) => {
+			const d = Math.hypot(x - START.x, z - START.z);
+			return d > 14 && d < 40 && g > 1.6 && g < 5.5 && slopeUp(x, z) > 0.9 && flatAround(x, z, 6.5, 0.9) && farFromPlaces(x, z, 18);
+		},
+		{ x: START.x * 0.7, z: START.z * 0.7 },
+	);
+	const GARDEN_ANGLE = Math.atan2(START.x - GARDEN.x, START.z - GARDEN.z);
+	places.push({ id: 'garden', name: "Nixchan's Garden", ...GARDEN, r: 8, clear: 8.5 });
 	const clearOfPlaces = (x: number, z: number, gap: number) => places.every((p) => Math.hypot(p.x - x, p.z - z) > p.clear + gap);
 
 	// Scatter rocks first, since she can climb them; then the trees round them.
@@ -1222,6 +1233,7 @@ export async function startIsland() {
 		const key = e.key.toLowerCase();
 		// With the menu open, only the keys that work the menu do anything.
 		if (atlasOpen && !['m', 'i', 'h', '?', 'escape'].includes(key)) return;
+		if (farm.shopOpen && key !== 'escape') return;
 		if (MOVE_KEYS.includes(key)) {
 			keys.add(key);
 			if (key.startsWith('arrow')) e.preventDefault();
@@ -1230,7 +1242,8 @@ export async function startIsland() {
 			e.preventDefault();
 			jumpQueued = true;
 		} else if (key === 'e' && !e.repeat) {
-			waveQueued = true;
+			// E does whatever there is to do in the garden, and otherwise she waves.
+			if (!farm.press()) waveQueued = true;
 		} else if (key === 'f') {
 			if (!e.repeat) fishing.press();
 		} else if (key === 'm' && !e.repeat) {
@@ -1241,6 +1254,7 @@ export async function startIsland() {
 			toggleMenu('help');
 		} else if (key === 'escape') {
 			closeMenu();
+			farm.closeShop();
 		}
 	});
 	addEventListener('keyup', (e) => {
@@ -1371,7 +1385,14 @@ export async function startIsland() {
 	};
 
 	// Her bag. Only fish go in it so far; farming will bring seeds and crops.
-	const inventory = createInventory({ slots: 24, storageKey: 'island-bag', grid: ui.bag, detail: ui.bagDetail, summary: ui.bagSummary });
+	const inventory = createInventory({
+		slots: 24,
+		storageKey: 'island-bag',
+		grid: ui.bag,
+		detail: ui.bagDetail,
+		summary: ui.bagSummary,
+		note: () => `${farm.coins} coins`,
+	});
 	for (const s of SPECIES)
 		inventory.register({
 			id: `fish-${s.id}`,
@@ -1379,6 +1400,7 @@ export async function startIsland() {
 			kind: 'fish',
 			description: s.blurb,
 			color: s.body,
+			sell: s.price,
 			icon: () => fishing.iconFor(s.id),
 			actions: [
 				{
@@ -1401,7 +1423,7 @@ export async function startIsland() {
 		groundAt,
 		ripple,
 		pos,
-		canStand: () => ready && grounded && !swimming && Math.hypot(vel.x, vel.z) < 0.6,
+		canStand: () => ready && grounded && !swimming && !farm.busy && !farm.shopOpen && Math.hypot(vel.x, vel.z) < 0.6,
 		heading: () => heading,
 		towardCamera: () => Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z),
 		waters: (x, z) => ({
@@ -1411,6 +1433,23 @@ export async function startIsland() {
 		}),
 		onCatch: (s) => inventory.add(`fish-${s.id}`),
 		onIcons: () => inventory.render(),
+	});
+
+	const farm = createFarm({
+		renderer,
+		scene,
+		figure,
+		toon,
+		inventory,
+		modelUrl: canvas.dataset.farmModel ?? '',
+		centre: GARDEN,
+		angle: GARDEN_ANGLE,
+		groundAt,
+		addFeature,
+		pos,
+		towardCamera: () => Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z),
+		canAct: () => ready && grounded && !swimming && !fishing.active && !atlasOpen,
+		toast: (text) => fishing.toast(text),
 	});
 	inventory.render();
 
@@ -1431,6 +1470,14 @@ export async function startIsland() {
 		let moving = steer.lengthSq() > 0.01;
 		// Fishing keeps her on the spot, facing the water: walking off (or jumping) puts the rod
 		// away, except with a fish on the line.
+		// So does tending the garden, until she's done.
+		if (farm.busy) {
+			steer.set(0, 0, 0);
+			moving = false;
+			jumpQueued = false;
+			waveQueued = false;
+			heading = farm.facing;
+		}
 		if (fishing.active) {
 			if ((moving || jumpQueued) && !fishing.hooked) fishing.interrupt();
 			if (fishing.active) {
@@ -1553,6 +1600,7 @@ export async function startIsland() {
 		let clip: NixClip = swimming ? (planar > 0.3 ? 'Swim' : 'Tread') : planar > 3 ? 'Run' : planar > 0.25 ? 'Walk' : 'Idle';
 		if (waving > 0) clip = 'Wave';
 		if (fishing.clip) clip = fishing.clip;
+		if (farm.clip) clip = farm.clip;
 		// The clips are cut for about 1.5 (walk), 4.2 (run) and 2.4 (swim) a second.
 		const pace =
 			clip === 'Run' ? clamp(planar / 4.2, 0.8, 2.4) : clip === 'Walk' ? clamp(planar / 1.5, 0.6, 1.8) : clip === 'Swim' ? clamp(planar / 2.4, 0.7, 1.6) : 1;
@@ -1899,6 +1947,7 @@ export async function startIsland() {
 			// Dropping into the water isn't a landing, so no bending of the knees.
 			figure.tick(dt, time, { airborne, look: zero, still: false, jump: flight, landed: !swimming });
 			fishing.update(dt, time);
+			farm.update(dt);
 			nextBlink -= dt;
 			if (nextBlink < 0) {
 				const closed = nextBlink > -0.13;

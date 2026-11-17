@@ -190,7 +190,12 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 }
 
 /** The looping clips baked into the model. */
-export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show';
+export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show' | 'Water' | 'Tend' | 'Plant';
+/** Clips that play once through from the top each time they're played, and hold their last pose. */
+const ONCE: NixClip[] = ['Water', 'Plant'];
+/** The things she can hold, each hidden until she's using it. */
+export type NixProp = 'Rod' | 'Can';
+const PROP_PARTS: Record<NixProp, string[]> = { Rod: ['Rod', 'Reel'], Can: ['Can'] };
 /** The jumps, which the page scrubs along her flight, by where she leaps from and lands: a seat or her feet. */
 export type NixJump = 'Jump' | 'JumpUp' | 'JumpDown' | 'JumpStand';
 /** The jumps that land her on her feet, which a Land clip follows. */
@@ -205,8 +210,8 @@ export interface NixFigure {
 	/** Resolves once the model is in, or rejects if it could not be loaded. */
 	ready: Promise<void>;
 	setBlink(closed: boolean): void;
-	/** Show or hide the fishing rod in her right hand (hidden unless she's fishing). */
-	setRod(shown: boolean): void;
+	/** Show or hide something in her right hand: the fishing rod or the watering can. */
+	setProp(prop: NixProp, shown: boolean): void;
 	/** A named node of the model once it's in: a bone like "HandL", or the "RodTip" the line hangs from. */
 	node(name: string): THREE.Object3D | null;
 	/** Blend into a looping clip, played at `speed` times its natural pace. */
@@ -244,6 +249,8 @@ export function buildNixFigure(url: string): NixFigure {
 		Cord: toon('#f4f3ff'),
 		Rod: toon('#c58b57'),
 		Reel: toon('#f25f6b'),
+		Can: toon('#5fb0e8'),
+		Metal: toon('#9aa3c4'),
 	};
 	const snowMat = toon('#ffffff', { map: snowflakeTexture(), transparent: true, alphaTest: 0.3, polygonOffset: true, polygonOffsetFactor: -2 });
 
@@ -269,12 +276,13 @@ export function buildNixFigure(url: string): NixFigure {
 	const weights = new Map<THREE.AnimationAction, number>();
 	let clip: NixClip = 'Sit';
 	let loaded: THREE.Object3D | null = null;
-	let rodShown = false;
-	const showRod = () => {
-		for (const name of ['Rod', 'Reel']) {
-			const part = loaded?.getObjectByName(name);
-			if (part) part.visible = rodShown;
-		}
+	const propShown: Record<NixProp, boolean> = { Rod: false, Can: false };
+	const showProps = () => {
+		for (const prop of Object.keys(PROP_PARTS) as NixProp[])
+			for (const name of PROP_PARTS[prop]) {
+				const part = loaded?.getObjectByName(name);
+				if (part) part.visible = propShown[prop];
+			}
 	};
 	const rest = { head: new THREE.Quaternion(), hair: new THREE.Quaternion() };
 
@@ -324,7 +332,10 @@ export function buildNixFigure(url: string): NixFigure {
 		for (const animation of gltf.animations) {
 			const action = mixer.clipAction(animation);
 			// The jumps and the landing play once, and the page moves them along itself.
-			if (animation.name.startsWith('Jump') || animation.name === 'Land') {
+			if (ONCE.includes(animation.name as NixClip)) {
+				action.setLoop(THREE.LoopOnce, 1);
+				action.clampWhenFinished = true;
+			} else if (animation.name.startsWith('Jump') || animation.name === 'Land') {
 				action.setLoop(THREE.LoopOnce, 1);
 				action.clampWhenFinished = true;
 				action.paused = true;
@@ -340,7 +351,7 @@ export function buildNixFigure(url: string): NixFigure {
 			weights.set(sit, 1);
 		}
 		loaded = model;
-		showRod();
+		showProps();
 		group.add(model);
 	});
 
@@ -363,9 +374,10 @@ export function buildNixFigure(url: string): NixFigure {
 		setBlink(closed) {
 			faceMat.map = closed ? closedFace : openFace;
 		},
-		setRod(shown) {
-			rodShown = shown;
-			showRod();
+		setProp(prop, shown) {
+			if (propShown[prop] === shown) return;
+			propShown[prop] = shown;
+			showProps();
 		},
 		node(name) {
 			return loaded?.getObjectByName(name) ?? null;
@@ -375,9 +387,11 @@ export function buildNixFigure(url: string): NixFigure {
 			if (playing) playing.timeScale = speed;
 			if (next === clip) return;
 			clip = next;
-			// A clip that has faded right out starts again from the top, so a wave begins with the hand coming up.
+			// A clip that has faded right out starts again from the top, so a wave begins with the hand
+			// coming up; one that plays once always does.
 			const action = actions.get(next);
-			if (action && (weights.get(action) ?? 0) < 0.05) action.time = 0;
+			if (action && ONCE.includes(next)) action.reset().play();
+			else if (action && (weights.get(action) ?? 0) < 0.05) action.time = 0;
 		},
 		tick(dt, time, { airborne, look: pointer, still, jump, landed = true }) {
 			if (!head || !longHair || !mixer) return;
@@ -411,7 +425,9 @@ export function buildNixFigure(url: string): NixFigure {
 					action.time = Math.min(landing ?? action.getClip().duration, action.getClip().duration);
 					action.setEffectiveWeight(landWeight * (1 - jumpWeight));
 				} else {
-					const w = damp(weights.get(action) ?? 0, name === clip ? 1 : 0, 5);
+					// Into and out of a clip that plays once, quickly, so its start and end aren't lost in the blend.
+					const quick = ONCE.includes(name as NixClip) || ONCE.includes(clip);
+					const w = damp(weights.get(action) ?? 0, name === clip ? 1 : 0, quick ? 12 : 5);
 					weights.set(action, w);
 					action.setEffectiveWeight(w * under);
 				}
