@@ -26,7 +26,7 @@ npm run build
 
 ## Nixchan's Island
 
-A toon island for Nixchan to roam: places to find, a map that fills in as she explores, a glider, fishing, a garden, and Pebble the otter at the market stand. It is TypeScript and three.js, with no physics engine: the island is a heightfield, so all movement asks is how high the ground is.
+A toon island for Nixchan to roam: places to find, a map that fills in as she explores, a glider, fishing, a garden, Pebble the otter at the market stand, and Cloudrest, an island floating in the sky that the Windspout's wind carries her glider up to. It is TypeScript and three.js, with no physics engine: the island is a heightfield, so all movement asks is how high the ground is (and, under the sky island, how high she is).
 
 The page is `src/pages/island/index.astro` (HTML/CSS for the menus and prompts), and the game is in `src/lib/island/`:
 
@@ -37,6 +37,7 @@ The page is `src/pages/island/index.astro` (HTML/CSS for the menus and prompts),
 | `layout.ts`, `scatter.ts` | Where the places go; rocks, trees and flowers |
 | `sky.ts`, `water.ts`, `theme.ts` | Light, sky, sea, and day/night (parts register with `theme.on`) |
 | `landmarks.ts` | Lighthouse, campfire, standing stones, chest, buoy |
+| `skyisle.ts` | Cloudrest, the island in the sky, and the Windspout that lifts her up to it |
 | `player.ts`, `camera.ts`, `controls.ts` | Nixchan's movement, the follow camera, keys and touch |
 | `interact.ts` | What E does: sources register offers |
 | `explore.ts`, `menu.ts` | Places found, the maps, the menu |

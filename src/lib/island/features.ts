@@ -1,6 +1,8 @@
 // Things standing on the island that she walks round, climbs onto or glides past, kept in a grid
-// of cells so each frame only looks at the few nearby. With the terrain and the pier they answer
-// the one question movement asks: how high is what she'd stand on here?
+// of cells so each frame only looks at the few nearby. With the terrain, the pier and the sky island
+// they answer the one question movement asks: how high is what she'd stand on here? Under the sky
+// island that depends on how high she is, so movement asks it with her height.
+import { STAND, skyCeiling, skyGround } from './skyisle';
 import { deckAt, terrainAt } from './terrain';
 
 /** A trunk she walks round, a rock she can climb onto (a dome in the heightfield), or a flat-topped
@@ -14,7 +16,13 @@ export interface Feature {
 	pad?: number;
 	top?: number;
 	crown?: { x: number; y: number; z: number; r: number };
+	/** For something up on the sky island: the height it stands at. It's only there for her when
+	 * she's up there too, and not for anything on the ground far below it. */
+	floor?: number;
 }
+
+/** Whether a feature is there at all for someone at height `y` (unknown: down on the ground). */
+export const within = (f: Feature, y: number | undefined) => f.floor === undefined || (y !== undefined && y >= f.floor - STAND);
 
 const CELL = 4;
 const cells = new Map<number, Feature[]>();
@@ -44,10 +52,13 @@ export function roomy(x: number, z: number, gap: number) {
 	return true;
 }
 
-/** The height of whatever she'd stand on at (x, z): the ground, the pier, or the top of a rock. */
-export function groundAt(x: number, z: number) {
+/** The height of whatever she'd stand on at (x, z): the ground, the pier, the top of a rock, or
+ * the sky island. Without `y` (how high she is) it's what's down on the ground, ignoring the sky. */
+export function groundAt(x: number, z: number, y?: number) {
 	let g = Math.max(terrainAt(x, z), deckAt(x, z));
+	if (y !== undefined) g = Math.max(g, skyGround(x, z, y));
 	for (const f of nearby(x, z)) {
+		if (!within(f, y)) continue;
 		if (f.pad !== undefined) {
 			if ((x - f.x) ** 2 + (z - f.z) ** 2 < f.r * f.r) g = Math.max(g, f.pad);
 			continue;
@@ -58,3 +69,7 @@ export function groundAt(x: number, z: number) {
 	}
 	return g;
 }
+
+/** How high she can be at (x, z) before her head meets something over it: the sky island's rock,
+ * for anyone under it, and otherwise nothing. */
+export const ceilingAt = (x: number, z: number, y: number) => skyCeiling(x, z, y);

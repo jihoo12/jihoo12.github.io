@@ -50,7 +50,9 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, orbit: Orbit
 			}
 			camReach = clear < camReach ? damp(camReach, clear, 7, dt) : damp(camReach, clear, 1.8, dt);
 			camPos.copy(camLook).addScaledVector(orbitDir, Math.max(Math.min(camReach, wantDistance), 1.5));
-			camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z) + 0.7, 0.6);
+			// Up on the sky island it keeps above the island's grass too (asked from her height, since
+			// the camera may have dipped below the grass it's being kept above).
+			camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z, Math.max(camPos.y, camLook.y)) + 0.7, 0.6);
 			camera.position.copy(camPos);
 			camera.lookAt(camLook);
 		},

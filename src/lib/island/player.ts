@@ -1,12 +1,14 @@
 // Nixchan herself: her figure and glider, and how she moves. She walks, runs and wades on the
-// ground, swims where it gets deep, jumps, and opens her glider in mid-air. Everything she might be
+// ground, swims where it gets deep, jumps, and opens her glider in mid-air, which the Windspout's
+// wind carries up towards the sky island. Everything she might be
 // busy at (fishing, gardening, chatting) is outside; `hold` says whether one of them is keeping her
 // on the spot, and `clip` whether one wants her doing something in particular.
 import * as THREE from 'three';
 import { buildNixFigure, type NixClip } from '../experimental/nix-figure';
 import type { Controls, Orbit } from './controls';
-import { groundAt, nearby } from './features';
+import { ceilingAt, groundAt, nearby, within } from './features';
 import type { Toon } from './look';
+import { windLift } from './skyisle';
 import { SWIM_IN, SWIM_OUT, WORLD_EDGE } from './terrain';
 import { clamp, damp } from './util';
 
@@ -18,10 +20,13 @@ const GLIDE = 8.5;
 const GLIDE_SINK = 2.3;
 const GRAVITY = 26;
 const JUMP_SPEED = 8.6;
+/** The fastest she falls: quick, but never so quick she drops through the sky island in one frame. */
+const FALL_MAX = 24;
 const FLIGHT = (2 * JUMP_SPEED) / GRAVITY;
 const BODY_R = 0.45;
-/** How far above her feet her middle is. */
+/** How far above her feet her middle is, and the top of her head. */
 const BODY_MID = 0.8;
+const HEAD = 1.7;
 
 export interface PlayerContext {
 	scene: THREE.Scene;
@@ -109,8 +114,10 @@ export function createPlayer(ctx: PlayerContext) {
 
 	/** Whether she can move her feet from where she is to (x, z). */
 	const canGo = (x: number, z: number) => {
-		const g = groundAt(x, z);
+		const g = groundAt(x, z, pos.y);
 		if (Math.hypot(x, z) > WORLD_EDGE) return false;
+		// Nor into the side of the sky island, flying at it from below its grass.
+		if (ceilingAt(x, z, pos.y) < pos.y + HEAD) return false;
 		// Swimming, she goes round the pier and anything else standing up out of the water.
 		if (swimming) return g < 0.05;
 		const step = Math.hypot(x - pos.x, z - pos.z);
@@ -136,7 +143,7 @@ export function createPlayer(ctx: PlayerContext) {
 			}
 		};
 		for (const f of nearby(p.x, p.z)) {
-			if (f.dome || f.pad !== undefined) continue;
+			if (f.dome || f.pad !== undefined || !within(f, p.y)) continue;
 			if (f.top === undefined || p.y < f.top) out(f.x, f.z, f.r + BODY_R);
 			// On her feet she only meets trunks, as she always has; the leaves are for the air.
 			const c = f.crown;
@@ -165,8 +172,10 @@ export function createPlayer(ctx: PlayerContext) {
 			input.waveQueued = false;
 			heading = held;
 		}
-		// Gliding, she keeps sailing on the way she's facing even with nothing held.
-		if (gliding && !moving) steer.set(Math.sin(heading) * 0.6, 0, Math.cos(heading) * 0.6);
+		// Gliding, she keeps sailing on the way she's facing even with nothing held, unless the wind
+		// is carrying her up, when she hangs in it.
+		const lift = windLift(pos.x, pos.z, pos.y);
+		if (gliding && !moving && lift === 0) steer.set(Math.sin(heading) * 0.6, 0, Math.cos(heading) * 0.6);
 
 		const wading = grounded && pos.y < 0.05;
 		const speed = gliding ? GLIDE : swimming ? (running ? SWIM_FAST : SWIM) : (running ? RUN : WALK) * (wading ? 0.6 : 1);
@@ -192,7 +201,7 @@ export function createPlayer(ctx: PlayerContext) {
 		}
 		pushOut(pos);
 
-		const ground = groundAt(pos.x, pos.z);
+		const ground = groundAt(pos.x, pos.z, pos.y);
 		// She can jump from her feet, or spring up out of the water: high enough to reach the pier.
 		// Jumping again in mid-air opens the glider, and once more folds it away.
 		if (input.jumpQueued && (grounded || swimming)) {
@@ -242,9 +251,16 @@ export function createPlayer(ctx: PlayerContext) {
 		}
 		if (!grounded && !swimming) {
 			airTime += dt;
-			if (gliding) vy = damp(vy, -GLIDE_SINK, 3, dt);
-			else vy -= GRAVITY * dt;
+			// Under the glider the wind lifts her; without it, it only slows her fall a little.
+			if (gliding) vy = damp(vy, lift > 0 ? lift : -GLIDE_SINK, lift > 0 ? 2 : 3, dt);
+			else vy = Math.max(vy - GRAVITY * (lift > 0 ? 0.6 : 1) * dt, -FALL_MAX);
 			pos.y += vy * dt;
+			// She bumps her head on the underside of the sky island rather than rising into it.
+			const ceiling = ceilingAt(pos.x, pos.z, pos.y);
+			if (pos.y + HEAD > ceiling) {
+				pos.y = ceiling - HEAD;
+				vy = Math.min(vy, 0);
+			}
 			if (pos.y <= 0 && ground < SWIM_IN && vy <= 0) {
 				pos.y = 0;
 				intoWater();

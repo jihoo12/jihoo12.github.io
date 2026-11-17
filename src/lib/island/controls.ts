@@ -77,7 +77,7 @@ export function createControls(
 		if (!p) return;
 		if (p.kind === 'look') {
 			orbit.yaw -= (e.clientX - p.x) * 0.006;
-			orbit.pitch = clamp(orbit.pitch + (e.clientY - p.y) * 0.004, -0.05, 1.2);
+			orbit.pitch = clamp(orbit.pitch + (e.clientY - p.y) * 0.004, -0.3, 1.2);
 		} else {
 			stick.set(e.clientX - p.ox, e.clientY - p.oy);
 			if (stick.length() > 60) stick.setLength(60);

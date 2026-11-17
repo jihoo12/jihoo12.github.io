@@ -12,6 +12,7 @@ export const SAVE_KEYS = {
 	// v2: the island grew, so maps drawn of the old one no longer line up.
 	map: 'island-map-v2',
 	helpSeen: 'island-help-seen',
+	skyChest: 'island-sky-chest',
 } as const;
 
 export type SaveKey = keyof typeof SAVE_KEYS;

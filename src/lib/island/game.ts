@@ -1,13 +1,15 @@
 // Nixchan's island: a little toon island in the sea for the 3D Nixchan to roam freely. There's no
 // goal and no clock: just places to come across (a lighthouse, a campfire, standing stones, a flag on
-// the summit, an islet out at sea), a map that fills in as she explores, a glider for jumping off
-// high ground, fish to catch, a garden to grow, and Pebble at the market stand.
+// the summit, an islet out at sea, an island floating in the sky), a map that fills in as she
+// explores, a glider for jumping off high ground, fish to catch, a garden to grow, and Pebble at the
+// market stand.
 //
 // This file only puts the island together and runs the frame. Each part lives in its own module:
 //   terrain, features  the ground and what stands on it (all movement asks is "how high is it here?")
 //   layout, scatter    where the places, rocks and trees go
 //   sky, water, theme  light, sea and day/night (parts that change colour register with the theme)
 //   landmarks          the pier, lighthouse, campfire and the rest
+//   skyisle            the island in the sky, and the Windspout's wind up to it
 //   player, camera     Nixchan and the camera that follows her
 //   controls           keys, mouse and touch
 //   interact           what E does here (sources register offers)
@@ -30,6 +32,7 @@ import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
 import { scatter } from './scatter';
+import { createSkyIsle } from './skyisle';
 import { createSky } from './sky';
 import { ISLET, PIER_DIR, deckAt, terrainMesh } from './terrain';
 import { createTheme, isNight } from './theme';
@@ -199,7 +202,7 @@ export async function startIsland() {
 		groundAt,
 		ripple: water.ripple,
 		pos,
-		canStand: () => ready && player.grounded && !player.swimming && !farm.busy && !farm.shopOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
+		canStand: () => ready && player.grounded && !player.swimming && !skyIsle.aboard && !farm.busy && !farm.shopOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
 		heading: () => player.heading,
 		towardCamera,
 		waters: (x, z) => ({
@@ -232,6 +235,10 @@ export async function startIsland() {
 	interactions.add(farm.offer);
 
 	// Pebble, who keeps the stand, behind its counter.
+	// Cloudrest, up in the sky, with a chest to open (E) at the top.
+	const skyIsle = createSkyIsle({ scene, toon, inventory, pos, addFeature, start: layout.START, toast: (text) => fishing.toast(text) });
+	interactions.add(skyIsle.offer);
+
 	const npc = createNpc({
 		scene,
 		camera,
@@ -336,6 +343,7 @@ export async function startIsland() {
 			interactions.update();
 		}
 		landmarks.update(time, dt);
+		skyIsle.update(time, dt);
 
 		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : null);
 		sky.update(time, camera, pos);

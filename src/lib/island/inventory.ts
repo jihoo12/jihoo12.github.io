@@ -4,9 +4,9 @@
 // island adds and takes items by id. What's in the bag is remembered in the browser.
 import { loadJSON, saveJSON } from './save';
 
-export type ItemKind = 'fish' | 'seed' | 'crop' | 'tool';
+export type ItemKind = 'fish' | 'seed' | 'crop' | 'tool' | 'material';
 
-const KIND_LABEL: Record<ItemKind, string> = { fish: 'Fish', seed: 'Seed', crop: 'Crop', tool: 'Tool' };
+const KIND_LABEL: Record<ItemKind, string> = { fish: 'Fish', seed: 'Seed', crop: 'Crop', tool: 'Tool', material: 'Material' };
 
 export interface ItemAction {
 	label: string;

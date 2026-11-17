@@ -1,8 +1,9 @@
 // Where things go: where she starts, and the places to come across (a lighthouse, a campfire,
-// standing stones, a flag on the summit, an islet out at sea, her garden…). Some sit at fixed spots
+// standing stones, a flag on the summit, an islet out at sea, her garden, the sky island…). Some sit at fixed spots
 // round the coast; the rest are picked, the same every visit, from ground that suits them.
 import * as THREE from 'three';
 import { groundAt } from './features';
+import { SKY, WINDSPOUT } from './skyisle';
 import { COAST, H, HALF, ISLET, N, PIER, PIER_ANGLE, PIER_DIR, STEP, islandHeight, mainHeight, slopeUp, terrainAt } from './terrain';
 import { TAU, rng } from './util';
 
@@ -15,6 +16,8 @@ export interface Place {
 	r: number;
 	/** How far round it to keep clear of trees and rocks. */
 	clear: number;
+	/** How high she has to be for it to count, for a place up in the sky. */
+	above?: number;
 }
 
 export type Layout = ReturnType<typeof planIsland>;
@@ -98,6 +101,11 @@ export function planIsland() {
 	);
 	const GARDEN_ANGLE = Math.atan2(START.x - GARDEN.x, START.z - GARDEN.z);
 	places.push({ id: 'garden', name: "Nixchan's Garden", ...GARDEN, r: 8, clear: 8.5 });
+	// The trees and rocks were laid out before there was a sky island, and keep to the places above
+	// so that none of them moves. The Windspout stands where none of them is in its way.
+	const scattered = [...places];
+	places.push({ id: 'windspout', name: 'The Windspout', x: WINDSPOUT.x, z: WINDSPOUT.z, r: WINDSPOUT.r, clear: 0 });
+	places.push({ id: 'sky', name: 'Cloudrest', x: SKY.x, z: SKY.z, r: SKY.r * 0.7, clear: 0, above: SKY.y - 3 });
 
 	return {
 		START,
@@ -111,7 +119,7 @@ export function planIsland() {
 		places,
 		prand,
 		/** Whether (x, z) is clear of every place by `gap` beyond the room it keeps round itself. */
-		clearOfPlaces: (x: number, z: number, gap: number) => places.every((p) => Math.hypot(p.x - x, p.z - z) > p.clear + gap),
+		clearOfPlaces: (x: number, z: number, gap: number) => scattered.every((p) => Math.hypot(p.x - x, p.z - z) > p.clear + gap),
 		clearOfStart: (x: number, z: number, gap: number) => Math.hypot(x - START.x, z - START.z) > gap,
 	};
 }

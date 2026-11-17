@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import type { Place } from './layout';
 import { loadJSON, loadText, saveJSON, saveText } from './save';
+import { skyTopAt } from './skyisle';
 import { WORLD_EDGE, deckAt, terrainAt } from './terrain';
 import { clamp } from './util';
 
@@ -54,10 +55,10 @@ export function createExplore(ui: ExploreUi, places: Place[]) {
 	let here: Place | null = null;
 	const checkPlaces = (pos: THREE.Vector3) => {
 		// She has to wander off a little way before the same place greets her again.
-		if (here && Math.hypot(pos.x - here.x, pos.z - here.z) > here.r * 1.5 + 3) here = null;
+		if (here && (Math.hypot(pos.x - here.x, pos.z - here.z) > here.r * 1.5 + 3 || (here.above !== undefined && pos.y < here.above - 6))) here = null;
 		if (here) return;
 		for (const p of places) {
-			if (Math.hypot(pos.x - p.x, pos.z - p.z) > p.r) continue;
+			if (Math.hypot(pos.x - p.x, pos.z - p.z) > p.r || (p.above !== undefined && pos.y < p.above)) continue;
 			here = p;
 			const first = !discovered.has(p.id);
 			if (first) {
@@ -82,7 +83,9 @@ export function createExplore(ui: ExploreUi, places: Place[]) {
 				const wx = ((x + 0.5) / MAP_PX - 0.5) * 2 * MAP_SPAN;
 				const wz = ((y + 0.5) / MAP_PX - 0.5) * 2 * MAP_SPAN;
 				const h = Math.max(terrainAt(wx, wz), deckAt(wx, wz));
-				const rgb = h < 0 ? (h > -1.2 ? [134, 227, 214] : h > -4 ? [92, 170, 222] : [58, 134, 208]) : h < 1.5 ? [244, 226, 174] : h > 14.5 ? [246, 245, 255] : [136, 204, 115 - Math.min(h, 12) * 3];
+				// The sky island is drawn over what's under it, paler, as seen from above.
+				const sky = skyTopAt(wx, wz);
+				const rgb = sky !== null ? [176, 226, 150] : h < 0 ? (h > -1.2 ? [134, 227, 214] : h > -4 ? [92, 170, 222] : [58, 134, 208]) : h < 1.5 ? [244, 226, 174] : h > 14.5 ? [246, 245, 255] : [136, 204, 115 - Math.min(h, 12) * 3];
 				img.data.set([...rgb, 255], (y * MAP_PX + x) * 4);
 			}
 		ctx.putImageData(img, 0, 0);
