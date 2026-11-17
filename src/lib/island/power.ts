@@ -21,7 +21,9 @@
 //
 // She carries a windmill or a drill in her arms (taken out of the bag, or picked up from where it
 // stood, to move it), a see-through one shows where it would go, and E sets it there. Belts she lays
-// a cell at a time, the way she's facing. The windmill, the drill and the hopper are Blender models
+// a cell at a time, the way she's facing. A belt is ground she can stand on, and one with power
+// carries her along it (beltCarry: the one question movement asks, "how high is it here?", gets a
+// second, "is it moving?"). The windmill, the drill and the hopper are Blender models
 // (tools/island-power); the belts are drawn here.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -157,13 +159,36 @@ interface Route {
 const key = (i: number, j: number) => (i + 1000) * 4096 + (j + 1000);
 const centre = (b: { i: number; j: number }) => ({ x: b.i + 0.5, z: b.j + 0.5 });
 
+// The belts, by cell, and which of them have power: kept out here, like the blocks' columns, so the
+// ground can ask about them.
+const belts = new Map<number, Belt>();
+let live = new Set<number>();
+
+/** The top of a belt at (x, z), or -Infinity where there's none: belts are ground she stands on. */
+export function beltGround(x: number, z: number) {
+	if (!belts.size || !belts.has(key(Math.floor(x), Math.floor(z)))) return -Infinity;
+	return terrainAt(x, z) + BELT_H - 0.02;
+}
+
+/** How fast the ground under her feet at (x, z) is carrying her, if she's standing (at height y) on
+ * a belt with power: along it, and a little in towards its middle, so she follows it round corners
+ * rather than drifting off its edge. Null if nothing's carrying her. */
+export function beltCarry(x: number, z: number, y: number) {
+	const k = key(Math.floor(x), Math.floor(z));
+	const b = belts.get(k);
+	if (!b || !live.has(k) || Math.abs(y - beltGround(x, z)) > 0.06) return null;
+	const [di, dj] = DIRS[b.dir];
+	const c = centre(b);
+	return { x: di * BELT_SPEED + (di === 0 ? (c.x - x) * 2 : 0), z: dj * BELT_SPEED + (dj === 0 ? (c.z - z) * 2 : 0) };
+}
+
 export function createPower(ctx: PowerContext) {
 	const { inventory } = ctx;
 	const veins = ctx.veins.veins();
 	const veinOf = (id: string) => veins.find((v) => v.id === id);
 	const num = (v: unknown, or: number) => (typeof v === 'number' && Number.isFinite(v) ? v : or);
 
-	const belts = new Map<number, Belt>();
+	belts.clear();
 	const state: Omit<Saved, 'belts'> = (() => {
 		const s: Omit<Saved, 'belts'> = { windmills: [], drills: [], hopper: 0 };
 		const saved = loadJSON('power') as Partial<Saved> | undefined;
@@ -204,7 +229,7 @@ export function createPower(ctx: PowerContext) {
 	const hopperAt = new THREE.Vector3(ctx.hopper.x, terrainAt(ctx.hopper.x, ctx.hopper.z), ctx.hopper.z);
 	ctx.addFeature({ x: hopperAt.x, z: hopperAt.z, r: 0.55, top: hopperAt.y + 0.9 });
 	/** The height of a belt's top at (x, z). */
-	const beltTop = (x: number, z: number) => terrainAt(x, z) + BELT_H;
+	const beltTop = (x: number, z: number) => beltGround(x, z) + 0.02;
 	/** The belts near (x, z), within `r` of their middles. */
 	const beltsNear = (x: number, z: number, r: number) => {
 		const out: Belt[] = [];
@@ -220,7 +245,6 @@ export function createPower(ctx: PowerContext) {
 	// ---------- the one question ----------
 
 	/** The belts with power: every belt joined to one that's within reach of a windmill. */
-	let live = new Set<number>();
 	const routes = new Map<Drill, Route>();
 	const nearWindmill = (x: number, z: number) => state.windmills.some((w) => Math.hypot(w.x - x, w.z - z) <= REACH);
 	const poweredAt = (x: number, z: number) => nearWindmill(x, z) || beltsNear(x, z, BELT_REACH).some((b) => live.has(key(b.i, b.j)));

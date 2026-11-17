@@ -47,7 +47,7 @@ The page is `src/pages/island/index.astro` (HTML/CSS for the menus and prompts),
 | `machines.ts` | Sprinklers and Sprocket the clockwork helper, looking after the garden |
 | `rift.ts` | The grey rift at the standing stones, through to `/monochrome/` |
 | `lantern.ts` | The Grey Lantern at her shoulder, made at the forge |
-| `power.ts` | Windmills, the drills they power on the ore veins, and belts that carry ore (and power) to the hopper by the forge: power is only ever on or off, and what's on a belt is worked out from when it set off |
+| `power.ts` | Windmills, the drills they power on the ore veins, and belts that carry ore (and power) to the hopper by the forge: power is only ever on or off, what's on a belt is worked out from when it set off, and a belt with power carries her too |
 | `save.ts` | Every localStorage key the island uses |
 
 To add something she can do, register it with `interactions.add(() => ({ label, go }))`. To add a landmark, add a function to `landmarks.ts`.

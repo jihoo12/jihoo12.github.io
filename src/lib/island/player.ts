@@ -46,6 +46,8 @@ export interface PlayerContext {
 	carrying?: () => boolean;
 	/** How her glider flies: its speed and how fast it sinks (better once upgraded at the forge). */
 	glider?: () => { speed: number; sink: number };
+	/** How fast what she's standing on (at x, z, at height y) is moving, if it is: a belt with power. */
+	carriedBy?: (x: number, z: number, y: number) => { x: number; z: number } | null;
 }
 
 export function createPlayer(ctx: PlayerContext) {
@@ -200,9 +202,11 @@ export function createPlayer(ctx: PlayerContext) {
 		vel.x = damp(vel.x, steer.x * speed, control, dt);
 		vel.z = damp(vel.z, steer.z * speed, control, dt);
 
-		// Move, sliding along whatever stops her rather than sticking to it.
-		const nx = pos.x + vel.x * dt;
-		const nz = pos.z + vel.z * dt;
+		// Move, sliding along whatever stops her rather than sticking to it. Standing on something
+		// that moves (a belt), she goes along with it, on top of her own walking.
+		const carried = grounded ? ctx.carriedBy?.(pos.x, pos.z, pos.y) : null;
+		const nx = pos.x + (vel.x + (carried?.x ?? 0)) * dt;
+		const nz = pos.z + (vel.z + (carried?.z ?? 0)) * dt;
 		if (canGo(nx, nz)) {
 			pos.x = nx;
 			pos.z = nz;

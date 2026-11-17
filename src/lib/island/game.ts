@@ -41,7 +41,7 @@ import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
-import { MAX_BELTS, MAX_WINDMILLS, createPower } from './power';
+import { MAX_BELTS, MAX_WINDMILLS, beltCarry, createPower } from './power';
 import { createLantern } from './lantern';
 import { createIslandRift, riftArrival } from './rift';
 import { loadJSON, saveJSON } from './save';
@@ -179,7 +179,8 @@ export async function startIsland() {
 		},
 		clip: () => forge.clip ?? farm.clip ?? fishing.clip,
 		carrying: () => machines.carrying || blocks.on || power.carrying,
-		// Remade at the forge, the glider flies faster and sinks slower.
+		// A belt with power carries her along it.
+		carriedBy: beltCarry,
 		// Remade at the forge, the glider flies faster and sinks slower; the prism glider most of all.
 		glider: () => (forge.has('prism') ? { speed: 12, sink: 1.1 } : forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
 	});
