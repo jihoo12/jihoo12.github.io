@@ -4,12 +4,13 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { buildNixFigure, type NixClip, type NixJump } from './nix-figure';
+import { buildPortal, PORTAL_FEET, PORTAL_HALF_WIDTH, PORTAL_RADIUS } from './portal';
 
 interface SceneData {
 	projects: { title: string; tagline: string; language: string; commits: number; href: string }[];
 	posts: { title: string; description: string; date: string; href: string }[];
 	comics: { title: string; href: string; image: string }[];
-	art: { thinking: string; nap: string; nix: { body: string; legL: string; legR: string; blink: string; model: string } };
+	art: { thinking: string; nap: string; nix: { body: string; legL: string; legR: string; blink: string; model: string }; portal: string };
 }
 
 /** Where the camera looks at each stop, and how much of the station it needs to fit. */
@@ -693,6 +694,16 @@ export async function start() {
 		return length;
 	});
 
+	// ---------- the sky gate, where the path ends ----------
+	// Past the last station the path runs up to a stone arch with the sky swirling in it. Walk her
+	// through it (or press E by it, or click it) and she's off to the island.
+	const portal = buildPortal(data.art.portal, reduceMotion);
+	const portalAt = new THREE.Vector3(pathX(lastZ - 13), FLOOR_Y, lastZ - 13);
+	portal.group.position.copy(portalAt);
+	scene.add(portal.group);
+	themed.push(() => portal.theme(document.documentElement.dataset.time === 'night'));
+	tickers.push((_dt, time) => portal.tick(time));
+
 	// The path itself: a flat ribbon laid on the ground.
 	{
 		const N = 480;
@@ -738,6 +749,7 @@ export async function start() {
 			// Not in the way of a station, or of where she hops up to one.
 			if (anchors.some((a) => a.distanceTo(at) < 3.6)) continue;
 			if (stations.some((g, i) => Math.abs(at.z - g.position.z) < 3 && Math.abs(at.x - g.position.x) < stops[i].width / 2 + 1)) continue;
+			if (Math.hypot(at.x - portalAt.x, at.z - portalAt.z) < PORTAL_RADIUS + 2.5) continue;
 			posts.push(at.clone());
 			const post = new THREE.Mesh(postGeo, plankMat);
 			post.position.set(at.x, FLOOR_Y + 0.75, at.z);
@@ -759,20 +771,23 @@ export async function start() {
 		return new THREE.Box3().setFromObject(group);
 	});
 	const BODY_R = 0.45;
+	/** Push `p` out of the box x0…x1, z0…z1 (grown by her girth), by the shortest way. */
+	const pushOut = (p: THREE.Vector3, x0: number, x1: number, z0: number, z1: number) => {
+		const dx0 = p.x - (x0 - BODY_R);
+		const dx1 = x1 + BODY_R - p.x;
+		const dz0 = p.z - (z0 - BODY_R);
+		const dz1 = z1 + BODY_R - p.z;
+		if (dx0 <= 0 || dx1 <= 0 || dz0 <= 0 || dz1 <= 0) return;
+		const least = Math.min(dx0, dx1, dz0, dz1);
+		if (least === dx0) p.x -= dx0;
+		else if (least === dx1) p.x += dx1;
+		else if (least === dz0) p.z -= dz0;
+		else p.z += dz1;
+	};
 	const collide = (p: THREE.Vector3) => {
-		for (const box of footprints) {
-			const dx0 = p.x - (box.min.x - BODY_R);
-			const dx1 = box.max.x + BODY_R - p.x;
-			const dz0 = p.z - (box.min.z - BODY_R);
-			const dz1 = box.max.z + BODY_R - p.z;
-			if (dx0 <= 0 || dx1 <= 0 || dz0 <= 0 || dz1 <= 0) continue;
-			// Out by the shortest way.
-			const least = Math.min(dx0, dx1, dz0, dz1);
-			if (least === dx0) p.x -= dx0;
-			else if (least === dx1) p.x += dx1;
-			else if (least === dz0) p.z -= dz0;
-			else p.z += dz1;
-		}
+		for (const box of footprints) pushOut(p, box.min.x, box.max.x, box.min.z, box.max.z);
+		// The feet of the arch; she goes through the opening between them.
+		for (const [x0, x1, z0, z1] of PORTAL_FEET) pushOut(p, portalAt.x + x0, portalAt.x + x1, portalAt.z + z0, portalAt.z + z1);
 		for (const post of posts) {
 			const dx = p.x - post.x;
 			const dz = p.z - post.z;
@@ -1326,7 +1341,7 @@ export async function start() {
 
 	const MOVE_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'];
 	addEventListener('keydown', (e) => {
-		if (!roam || e.ctrlKey || e.metaKey || e.altKey) return;
+		if (!roam || leaving >= 0 || e.ctrlKey || e.metaKey || e.altKey) return;
 		const target = e.target instanceof Element ? e.target : null;
 		if (target?.closest('input, textarea, select, [contenteditable]')) return;
 		const key = e.key.toLowerCase();
@@ -1339,7 +1354,8 @@ export async function start() {
 			e.preventDefault();
 			nix.hop();
 		} else if (key === 'e' && !e.repeat) {
-			nix.act();
+			if (nix.state === 'free' && byGate()) walkToGate();
+			else nix.act();
 		}
 	});
 	addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
@@ -1359,6 +1375,84 @@ export async function start() {
 		{ passive: false },
 	);
 
+	// ---------- through the gate ----------
+	const ISLAND = '/island/';
+	const warp = document.querySelector<HTMLElement>('[data-warp]');
+	/** Counts up from 0 to 1 while she goes through the gate, and the page fades into the sky; -1 before. */
+	let leaving = -1;
+	/** Which way she's going through: +1 in at the front (towards -z), -1 in at the back. */
+	let gateWay = 1;
+	/** Pressing E by the gate walks her through it: 1 while she gets in front of it, 2 on the way in. */
+	let autoGate = 0;
+	/** Where she was last frame, in front of the gate (+) or behind it (-). */
+	let gateZWas = 0;
+	const gateAim = new THREE.Vector3();
+	const byGate = () => Math.hypot(nix.root.position.x - portalAt.x, nix.root.position.z - portalAt.z) < PORTAL_RADIUS + 3.5;
+	/** Fade the page into the sky and go to the island. Walking about, she carries on through the gate `way`. */
+	const leave = (way = 1) => {
+		if (leaving >= 0) return;
+		leaving = 0;
+		gateWay = way;
+		autoGate = 0;
+		keys.clear();
+		warp?.classList.add('on');
+		if (!roam || reduceMotion) setTimeout(() => location.assign(ISLAND), reduceMotion ? 0 : 650);
+	};
+	const walkToGate = () => {
+		if (leaving >= 0) return;
+		gateWay = nix.root.position.z >= portalAt.z ? 1 : -1;
+		autoGate = 1;
+	};
+	// Coming back with the browser's back button brings the page back as it was left: put her right.
+	addEventListener('pageshow', (e) => {
+		if (!e.persisted || leaving < 0) return;
+		leaving = -1;
+		portal.surge = 0;
+		nix.root.scale.setScalar(1);
+		warp?.classList.remove('on');
+	});
+	pickables.push({
+		object: portal.pickable,
+		label: "Through the gate to Nixchan's island",
+		// Walking about, she walks over to it if it's close; otherwise straight there.
+		onClick: () => (roam && nix.state === 'free' && Math.hypot(nix.root.position.x - portalAt.x, nix.root.position.z - portalAt.z) < 16 ? walkToGate() : leave()),
+	});
+	portal.ready.catch(() => {});
+
+	/** The way she's steered while she goes to or through the gate, or null when it's up to the keys. */
+	const gateSteer = (dt: number): THREE.Vector3 | null => {
+		const p = nix.root.position;
+		if (leaving >= 0) {
+			leaving = Math.min(1, leaving + dt / 1.1);
+			portal.surge = leaving;
+			// Into the whirl she goes, smaller and smaller.
+			nix.root.scale.setScalar(Math.max(0.001, 1 - smooth(Math.min(1, leaving * 1.4))));
+			if (leaving === 1) {
+				leaving = 2;
+				location.assign(ISLAND);
+			}
+			return steerDir.set(0, 0, -gateWay);
+		}
+		if (nix.state === 'free') {
+			// Stepping through the opening, from either side, takes her.
+			const z = p.z - portalAt.z;
+			if (Math.sign(z) !== Math.sign(gateZWas) && gateZWas !== 0 && Math.abs(p.x - portalAt.x) < PORTAL_HALF_WIDTH - 0.2 && Math.abs(z) < 1) {
+				leave(gateZWas > 0 ? 1 : -1);
+			}
+			gateZWas = z || gateZWas;
+		}
+		if (!autoGate) return null;
+		if (keys.size || nix.state !== 'free') {
+			autoGate = 0;
+			return null;
+		}
+		// Round to the middle of the side she's on, then straight in.
+		gateAim.set(portalAt.x, FLOOR_Y, portalAt.z + (autoGate === 1 ? gateWay * 2.2 : -gateWay * 2));
+		const to = steerDir.set(gateAim.x - p.x, 0, gateAim.z - p.z);
+		if (autoGate === 1 && to.length() < 0.35) autoGate = 2;
+		return to.normalize();
+	};
+
 	/** One frame of walking about: steer her from the keys, and swing the camera round behind her. */
 	const roamFrame = (dt: number) => {
 		const held = (...names: string[]) => (names.some((n) => keys.has(n)) ? 1 : 0);
@@ -1367,7 +1461,8 @@ export async function start() {
 		// The keys point the way the camera faces.
 		steerDir.set(-Math.sin(orbitYaw) * forward + Math.cos(orbitYaw) * right, 0, -Math.cos(orbitYaw) * forward - Math.sin(orbitYaw) * right);
 		if (steerDir.lengthSq() > 1) steerDir.normalize();
-		nix.steer(steerDir, keys.has('shift'));
+		const toGate = gateSteer(dt);
+		nix.steer(toGate ?? steerDir, toGate ? false : keys.has('shift'));
 
 		roamTarget.copy(nix.root.position).y += 1.5;
 		camLook.x = damp(camLook.x, roamTarget.x, 9, dt);
@@ -1392,7 +1487,8 @@ export async function start() {
 		const side = near >= 0 && !narrow ? -0.13 : 0;
 		viewShift = { x: damp(viewShift.x, side, 4, dt), y: damp(viewShift.y, 0, 4, dt) };
 		const state = nix.state;
-		const act = state === 'perched' ? 'get down' : state === 'free' && near >= 0 ? 'sit here' : '';
+		const act =
+			leaving >= 0 ? '' : state === 'perched' ? 'get down' : state === 'free' && byGate() ? 'go to the island' : state === 'free' && near >= 0 ? 'sit here' : '';
 		if (act !== actShown && keyhintAct) {
 			actShown = act;
 			keyhintAct.hidden = !act;

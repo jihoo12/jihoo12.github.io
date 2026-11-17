@@ -13,6 +13,7 @@ import legL from '../../assets/nixchan/live/leg-l.webp';
 import legR from '../../assets/nixchan/live/leg-r.webp';
 import eyesClosed from '../../assets/nixchan/live/eyes-closed.webp';
 import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
+import portalModel from '../../assets/experimental/portal.glb?url';
 
 const title = 'Jihoo — in 3D (experimental)';
 const description = 'An experimental, walk-along 3D version of my little corner of the internet.';
@@ -49,6 +50,7 @@ const art = {
 	thinking: (await getImage({ src: thinkingArt, width: 640, format: 'webp' })).src,
 	nap: (await getImage({ src: napArt, width: 400, format: 'webp' })).src,
 	nix: { body: bodyIdle.src, legL: legL.src, legR: legR.src, blink: eyesClosed.src, model: nixModel },
+	portal: portalModel,
 };
 
 const scene = { projects, posts, comics, art };
@@ -131,7 +133,7 @@ const scene = { projects, posts, comics, art };
 			<section class="stop side end" data-stop aria-labelledby="end-title">
 				<div class="card">
 					<h2 id="end-title" class="display">A little at a time, at my own pace<span class="period">.</span></h2>
-					<p>That's the end of the path. This 3D version is an experiment — the regular site has everything.</p>
+					<p>That's the end of the path — almost. Past here a stone gate opens onto <a class="inline" href="/island/">Nixchan's island</a>; walk her through it, or just click it. This 3D version is an experiment — the regular site has everything.</p>
 					<div class="keys">
 						<a class="button primary" href="/?view=2d">Back to the 2D site</a>
 						<a class="button secondary" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
@@ -141,6 +143,7 @@ const scene = { projects, posts, comics, art };
 		</main>
 
 		<div class="tip" data-tip hidden></div>
+		<div class="warp" data-warp aria-hidden="true"></div>
 		<p class="keyhint" data-keyhint hidden>
 			<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span>
 			<span><kbd>Shift</kbd> run</span>
@@ -250,6 +253,18 @@ const scene = { projects, posts, comics, art };
 		background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--edge);
 		font: 900 12px var(--sans); text-align: center;
 	}
+
+	.card .inline { color: var(--accent); font-weight: 800; }
+
+	/* Going through the gate: the page fades into the sky in it, and the island loads behind. */
+	.warp {
+		position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: 0;
+		background: radial-gradient(circle at 50% 55%, #fffdf6 0%, #d8f0ff 35%, #9fd0f5 75%, #7db7ea 100%);
+		transition: opacity 0.9s ease-in;
+	}
+	:global([data-time='night']) .warp { background: radial-gradient(circle at 50% 55%, #f4f0ff 0%, #a9a0ec 40%, #4f4aa8 80%, #2a2f7a 100%); }
+	.warp:global(.on) { opacity: 1; pointer-events: auto; }
+	@media (prefers-reduced-motion: reduce) { .warp { transition: none; } }
 
 	.tip {
 		position: fixed; z-index: 30; left: 0; top: 0; max-width: 260px; pointer-events: none;
