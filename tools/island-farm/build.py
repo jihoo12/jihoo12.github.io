@@ -39,6 +39,7 @@ COLORS = {
     'Carrot': '#f28c3a',
     'Berry': '#ef4a5c',
     'Seed': '#ffe066',
+    'Fleck': '#fff1c4',
     'Flower': '#ffffff',
     'Pumpkin': '#f29a3a',
     'PumpkinDeep': '#d97a26',
@@ -269,18 +270,41 @@ def carrot():
 
 def strawberry():
     p = Part('Strawberry')
-    # A rounded cone, point down, with a ring of seeds and a leafy cap.
-    berry = cylinder(p, (0, -0.05, 0), (0, 0.04, 0), 0.008, 0.05, 'Berry', 14)
-    ball(p, (0, 0.04, 0), 0.05, 'Berry', scale=(1, 0.5, 1), seg=(14, 8))
-    for k in range(14):
-        a = k * TAU / 14
-        y = -0.01 + 0.03 * (k % 2)
-        r = 0.02 + (y + 0.05) / 0.09 * 0.03
-        ball(p, (math.cos(a) * r * 1.02, y, math.sin(a) * r * 1.02), 0.006, 'Seed', seg=(6, 4))
+    # A plump heart-shaped berry, point down, with a leafy cap. The seeds are a sparse scatter of
+    # little flat flecks set into the skin, not beads standing proud of it: round bumps packed close
+    # together read as unsettling rather than juicy, all the more so blown up in her hand.
+    berry = ball(p, (0, 0, 0), 1, 'Berry', seg=(18, 12))
+
+    def width(y):
+        # y runs from -1 (the tip) to 1 (the shoulders): narrow at the tip, fullest just above middle.
+        t = (y + 1) / 2
+        return 0.22 + 0.78 * math.sin(min(t * 1.25, 1) * math.pi / 2) ** 1.4
+
+    for v in berry:
+        y = v.co.y
+        w = width(y)
+        v.co = Vector((v.co.x * w * 0.05, y * 0.055 - 0.005, v.co.z * w * 0.05))
+    # Flatten the top a little, so the cap sits on it.
+    for v in berry:
+        if v.co.y > 0.035:
+            v.co.y = 0.035 + (v.co.y - 0.035) * 0.4
+
+    golden = math.pi * (3 - math.sqrt(5))
+    for k in range(11):
+        y = -0.7 + 1.25 * (k + 0.5) / 11  # in the sphere's -1..1, kept off the tip and the shoulders
+        a = k * golden
+        r = math.sqrt(max(0.0, 1 - y * y)) * width(y)
+        normal = Vector((math.cos(a) * r, y * 0.6, math.sin(a) * r)).normalized()
+        centre = Vector((math.cos(a) * r * 0.05, y * 0.055 - 0.005, math.sin(a) * r * 0.05))
+        fleck = bmesh.ops.create_uvsphere(p.bm, u_segments=6, v_segments=4, radius=0.0042)['verts']
+        # Squash it flat along the skin's normal and sink it halfway in.
+        rot = normal.to_track_quat('Z', 'Y').to_matrix().to_4x4()
+        place(p.bm, fleck, Matrix.Translation(centre - normal * 0.0008) @ rot @ Matrix.Diagonal((1, 1.35, 0.3, 1)))
+        p.paint(fleck, 'Fleck')
     for k in range(5):
         a = k * TAU / 5
-        leaf(p, (0, 0.06, 0), (math.cos(a), math.sin(a)), 0.045, 0.018, 'Leaf', lift=0.2, curl=0.3, thick=0.005)
-    cylinder(p, (0, 0.06, 0), (0, 0.1, 0), 0.006, 0.005, 'Stem', 6)
+        leaf(p, (0, 0.04, 0), (math.cos(a), math.sin(a)), 0.045, 0.018, 'Leaf', lift=0.15, curl=0.3, thick=0.005)
+    cylinder(p, (0, 0.04, 0), (0, 0.08, 0), 0.006, 0.005, 'Stem', 6)
     return p.done()
 
 
