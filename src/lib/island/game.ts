@@ -65,20 +65,20 @@ function fbm(x: number, y: number, octaves: number) {
 
 // ---------- the island's shape ----------
 
-const R = 80; // the island's radius, give or take its ragged coast
-const SIZE = 280; // the terrain mesh covers SIZE × SIZE, centred on the origin
-const N = 224;
+const R = 120; // the island's radius, give or take its ragged coast
+const SIZE = 420; // the terrain mesh covers SIZE × SIZE, centred on the origin
+const N = 336;
 const STEP = SIZE / N;
 const HALF = SIZE / 2;
-const PEAK = { x: -18, z: -14 };
+const PEAK = { x: -27, z: -21 };
 const SEA_FLOOR = -6;
 /** She starts swimming where the sea floor drops below this, and finds her feet again above SWIM_OUT. */
 const SWIM_IN = -1.35;
 const SWIM_OUT = -1.2;
 /** A little islet out at sea, a swim (or a glide) away from the main island. */
-const ISLET = { x: Math.cos(-1.25) * 114, z: Math.sin(-1.25) * 114, r: 19 };
+const ISLET = { x: Math.cos(-1.25) * 172, z: Math.sin(-1.25) * 172, r: 24 };
 /** How far she can roam before the open sea turns her back. */
-const WORLD_EDGE = 138;
+const WORLD_EDGE = 208;
 
 function mainHeight(x: number, z: number) {
 	// How far out from the middle, with the coast pushed in and out so it isn't a circle.
@@ -88,7 +88,7 @@ function mainHeight(x: number, z: number) {
 	const inland = smoothstep(0.62, 0.36, d);
 	const hills = (fbm(x * 0.03 + 5, z * 0.03 + 9, 4) * 0.5 + 0.5) * 6 * inland;
 	const pd = Math.hypot(x - PEAK.x, z - PEAK.z);
-	const peak = 15 * Math.exp(-(pd * pd) / 300) * smoothstep(0.75, 0.4, d);
+	const peak = 16 * Math.exp(-(pd * pd) / 620) * smoothstep(0.75, 0.4, d);
 	return base + hills + peak;
 }
 
@@ -97,8 +97,15 @@ function isletHeight(x: number, z: number) {
 	return 1.4 - 7.4 * smoothstep(0.45, 1.0, d) + 1.6 * smoothstep(0.5, 0.0, d);
 }
 
+/** Steepens the ground where it passes through the water line and leaves it alone elsewhere (the
+ * bump is gone by a metre or so either side), so no beach runs almost level with the sea. Where it
+ * did, sand and water fought over the same pixels and the surf swept metres back and forth. */
+function shoreline(h: number) {
+	return h + 1.5 * h * Math.exp(-(h * h) / 0.36);
+}
+
 function islandHeight(x: number, z: number) {
-	return Math.max(mainHeight(x, z), isletHeight(x, z));
+	return shoreline(Math.max(mainHeight(x, z), isletHeight(x, z)));
 }
 
 const heights = new Float32Array((N + 1) * (N + 1));
@@ -132,8 +139,8 @@ function slopeUp(x: number, z: number) {
 const PIER_ANGLE = 0.55;
 const PIER_DIR = { x: Math.cos(PIER_ANGLE), z: Math.sin(PIER_ANGLE) };
 const COAST = (() => {
-	for (let r = 20; r < 110; r += 0.25) if (islandHeight(PIER_DIR.x * r, PIER_DIR.z * r) < 0.3) return r;
-	return 60;
+	for (let r = 30; r < 170; r += 0.25) if (islandHeight(PIER_DIR.x * r, PIER_DIR.z * r) < 0.3) return r;
+	return 90;
 })();
 const PIER = { from: COAST - 4, to: COAST + 16, half: 1.25, deck: 1.25 };
 
@@ -146,19 +153,23 @@ function deckAt(x: number, z: number) {
 // ---------- things standing on the island ----------
 
 /** A trunk she walks round, a rock she can climb onto (a dome in the heightfield), or a flat-topped
- * plinth she can step or jump up onto (a pad). */
+ * plinth she can step or jump up onto (a pad). A tree's trunk stops at `top`, and its leaves are a
+ * ball (`crown`) that she glides round rather than through, and that the camera won't sit inside. */
 interface Feature {
 	x: number;
 	z: number;
 	r: number;
 	dome?: { base: number; top: number };
 	pad?: number;
+	top?: number;
+	crown?: { x: number; y: number; z: number; r: number };
 }
 const CELL = 4;
 const cells = new Map<number, Feature[]>();
 const cellKey = (cx: number, cz: number) => (cx + 1000) * 4096 + (cz + 1000);
 function addFeature(f: Feature) {
-	const reach = f.r + 1;
+	const c = f.crown;
+	const reach = Math.max(f.r, c ? Math.hypot(c.x - f.x, c.z - f.z) + c.r : 0) + 1;
 	for (let cx = Math.floor((f.x - reach) / CELL); cx <= Math.floor((f.x + reach) / CELL); cx++)
 		for (let cz = Math.floor((f.z - reach) / CELL); cz <= Math.floor((f.z + reach) / CELL); cz++) {
 			const k = cellKey(cx, cz);
@@ -394,8 +405,10 @@ export async function startIsland() {
 	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 	const scene = new THREE.Scene();
-	const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
-	const fog = new THREE.Fog('#ffffff', 80, 520);
+	// The near plane sits a little way out: the camera never comes closer than that, and it buys the
+	// depth buffer enough precision that the gently shelving beaches don't flicker against the sea.
+	const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 2000);
+	const fog = new THREE.Fog('#ffffff', 110, 640);
 	scene.fog = fog;
 	const ramp = toonRamp();
 	const toon = (params: THREE.MeshToonMaterialParameters = {}) => new THREE.MeshToonMaterial({ gradientMap: ramp, ...params });
@@ -483,7 +496,7 @@ export async function startIsland() {
 			const ny = e1.subVectors(q, p).cross(e2.subVectors(r, p)).normalize().y;
 			const n = noise(x * 0.15, z * 0.15);
 			const color =
-				h < 0.25
+				h < 0.55
 					? h < -1.5
 						? COLORS.seabed
 						: COLORS.wet
@@ -530,18 +543,26 @@ export async function startIsland() {
 	// Water: one big plane whose colour comes from how deep the sea floor is beneath it, so the
 	// shallows glow turquoise and foam laps at the shore without any depth buffer tricks.
 	const waterMat = (() => {
-		const data = new Uint8Array((N + 1) * (N + 1));
-		for (let k = 0; k < data.length; k++) data[k] = Math.round(clamp((heights[k] + 8) / 10, 0, 1) * 255);
-		const depthTex = new THREE.DataTexture(data, N + 1, N + 1, THREE.RedFormat);
+		// Half floats, not bytes: a byte's 4 cm steps showed as wobbles in the surf on the flattest beaches.
+		const data = new Uint16Array((N + 1) * (N + 1));
+		for (let k = 0; k < data.length; k++) data[k] = THREE.DataUtils.toHalfFloat(heights[k]);
+		const depthTex = new THREE.DataTexture(data, N + 1, N + 1, THREE.RedFormat, THREE.HalfFloatType);
 		depthTex.magFilter = depthTex.minFilter = THREE.LinearFilter;
 		depthTex.needsUpdate = true;
 		return new THREE.ShaderMaterial({
 			transparent: true,
+			// Where the beach runs almost level with the sea the two would fight over every pixel; nudge
+			// the water back a hair so the sand always wins there.
+			polygonOffset: true,
+			polygonOffsetFactor: 1,
+			polygonOffsetUnits: 4,
 			uniforms: {
 				uTime: { value: 0 },
 				uHeight: { value: depthTex },
 				// The texel centres sit on the grid's vertices.
 				uBounds: { value: new THREE.Vector3(-HALF - STEP / 2, -HALF - STEP / 2, SIZE + STEP) },
+				uTexel: { value: 1 / (N + 1) },
+				uStep: { value: STEP },
 				uShallow: { value: new THREE.Color() },
 				uDeep: { value: new THREE.Color() },
 				uFoam: { value: new THREE.Color() },
@@ -551,20 +572,29 @@ export async function startIsland() {
 			},
 			vertexShader: `varying vec3 vWorld; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vWorld = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
 			fragmentShader: `
-				uniform float uTime, uFogNear, uFogFar; uniform sampler2D uHeight; uniform vec3 uBounds, uShallow, uDeep, uFoam, uFogColor;
+				uniform float uTime, uFogNear, uFogFar, uTexel, uStep; uniform sampler2D uHeight; uniform vec3 uBounds, uShallow, uDeep, uFoam, uFogColor;
 				varying vec3 vWorld;
 				void main() {
 					vec2 uv = (vWorld.xz - uBounds.xy) / uBounds.z;
 					float h = -6.0;
-					if (uv.x > 0.0 && uv.y > 0.0 && uv.x < 1.0 && uv.y < 1.0) h = texture2D(uHeight, uv).r * 10.0 - 8.0;
+					if (uv.x > 0.0 && uv.y > 0.0 && uv.x < 1.0 && uv.y < 1.0) h = texture2D(uHeight, uv).r;
 					float depth = max(-h, 0.0);
 					float dist = distance(cameraPosition, vWorld);
 					float w = sin(vWorld.x * 0.35 + uTime * 1.1) * sin(vWorld.z * 0.3 - uTime * 0.9) + 0.5 * sin((vWorld.x + vWorld.z) * 0.6 + uTime * 1.7);
 					vec3 col = mix(uShallow, uDeep, smoothstep(0.0, 4.5, depth));
 					col += step(1.1, w) * 0.07 * (1.0 - smoothstep(30.0, 140.0, dist));
-					// A band of foam right at the water's edge, and rings of it rolling in over the shallows.
-					float foam = 1.0 - smoothstep(0.03, 0.09, depth + 0.035 * sin(uTime * 1.6 + vWorld.x * 0.2 + vWorld.z * 0.15));
+					// How steeply the sea floor shelves here, in metres down per metre out.
+					vec2 dx = vec2(uTexel, 0.0), dz = vec2(0.0, uTexel);
+					float slope = length(vec2(texture2D(uHeight, uv + dx).r - texture2D(uHeight, uv - dx).r, texture2D(uHeight, uv + dz).r - texture2D(uHeight, uv - dz).r)) / (2.0 * uStep);
+					// A band of foam right at the water's edge, measured in depth scaled by the slope so it's
+					// about half a metre wide and laps a few tens of centimetres whether the beach is steep or flat.
+					float s = max(slope, 0.04);
+					float foam = 1.0 - smoothstep(0.25 * s, 0.6 * s, depth + 0.2 * s * sin(uTime * 1.6 + vWorld.x * 0.2 + vWorld.z * 0.15));
+					// Rings of it rolling in over the shallows. They follow the depth, so over a near-level
+					// shelf a whole stretch of sea would flash white at once; keep them to where the sea
+					// floor shelves enough to make lines.
 					float ring = step(0.9, fract(depth * 2.2 - uTime * 0.35)) * (1.0 - smoothstep(0.2, 0.9, depth));
+					ring *= smoothstep(0.05, 0.11, slope);
 					foam = max(foam, ring * 0.7);
 					col = mix(col, uFoam, foam);
 					// The deep sea is opaque, so nothing shows past the edge of the sea floor.
@@ -632,9 +662,9 @@ export async function startIsland() {
 	const BUOY = (() => {
 		const a = PIER_ANGLE + 2.5;
 		const dir = { x: Math.cos(a), z: Math.sin(a) };
-		let r = 30;
-		while (r < 64 && islandHeight(dir.x * r, dir.z * r) > -1.6) r += 0.5;
-		r = Math.min(r + 6, 70);
+		let r = 45;
+		while (r < 96 && islandHeight(dir.x * r, dir.z * r) > -1.6) r += 0.5;
+		r = Math.min(r + 6, 105);
 		return new THREE.Vector3(dir.x * r, 0, dir.z * r);
 	})();
 
@@ -665,7 +695,7 @@ export async function startIsland() {
 	const findSpot = (ok: (x: number, z: number, g: number) => boolean, fallback: { x: number; z: number }) => {
 		for (let tries = 0; tries < 4000; tries++) {
 			const a = prand() * TAU;
-			const r = Math.sqrt(prand()) * 58;
+			const r = Math.sqrt(prand()) * 87;
 			const x = Math.cos(a) * r;
 			const z = Math.sin(a) * r;
 			if (ok(x, z, terrainAt(x, z))) return { x, z };
@@ -685,19 +715,19 @@ export async function startIsland() {
 	const LIGHT = (() => {
 		const a = PIER_ANGLE - 1.75;
 		const dir = { x: Math.cos(a), z: Math.sin(a) };
-		let edge = 40;
-		for (let r = 20; r < 100; r += 0.5) if (mainHeight(dir.x * r, dir.z * r) > 2.2) edge = r;
+		let edge = 60;
+		for (let r = 30; r < 150; r += 0.5) if (mainHeight(dir.x * r, dir.z * r) > 2.2) edge = r;
 		return { x: dir.x * (edge - 2), z: dir.z * (edge - 2) };
 	})();
 	places.push({ id: 'lighthouse', name: 'Lighthouse Point', ...LIGHT, r: 9, clear: 4.5 });
 	const CAMP = findSpot(
 		(x, z, g) => g > 2.4 && g < 6.5 && slopeUp(x, z) > 0.95 && flatAround(x, z, 4, 0.8) && farFromStart(x, z, 22) && farFromPlaces(x, z, 24),
-		{ x: -30, z: 25 },
+		{ x: -45, z: 38 },
 	);
 	places.push({ id: 'camp', name: 'Campfire Clearing', ...CAMP, r: 7, clear: 5.5 });
 	const STONES = findSpot(
 		(x, z, g) => g > 4 && g < 12 && slopeUp(x, z) > 0.9 && flatAround(x, z, 5.2, 1.4) && farFromStart(x, z, 22) && farFromPlaces(x, z, 22),
-		{ x: 10, z: -35 },
+		{ x: 15, z: -52 },
 	);
 	places.push({ id: 'stones', name: 'The Standing Stones', ...STONES, r: 8, clear: 7 });
 	places.push({ id: 'islet', name: 'Lonely Islet', x: ISLET.x, z: ISLET.z, r: ISLET.r * 0.75, clear: 0 });
@@ -725,12 +755,12 @@ export async function startIsland() {
 
 	const rocks: { x: number; z: number; r: number; top: number; base: number; rot: number }[] = [];
 	const bigRocks: typeof rocks = [];
-	for (let tries = 0; tries < 2000 && rocks.length < 46; tries++) {
-		const { x, z } = randomLand(62);
+	for (let tries = 0; tries < 4500 && rocks.length < 100; tries++) {
+		const { x, z } = randomLand(93);
 		const t = terrainAt(x, z);
 		if (t < -0.4 || nearPier(x, z, 2) || !clearOfStart(x, z, 6) || !clearOfPlaces(x, z, 3)) continue;
 		// A handful are big flat-topped ones, each just low enough to jump up onto.
-		const big = bigRocks.length < 6 && t > 1.5 && slopeUp(x, z) > 0.9;
+		const big = bigRocks.length < 12 && t > 1.5 && slopeUp(x, z) > 0.9;
 		const r = big ? 1.8 + rand() * 0.6 : 0.5 + rand() * 1.1;
 		if (!roomy(x, z, r + 1.5)) continue;
 		const top = big ? 1.15 + rand() * 0.15 : r * (0.55 + rand() * 0.25);
@@ -751,31 +781,45 @@ export async function startIsland() {
 		const up = new THREE.Vector3(0, 1, 0);
 		const place = (x: number, y: number, z: number, s: number, sy = s) =>
 			new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), q.setFromAxisAngle(up, rand() * TAU), new THREE.Vector3(s, sy, s));
-		for (let tries = 0; tries < 9000; tries++) {
-			const { x, z } = randomLand(64);
+		// A tree's trunk and the ball of its leaves, read off where it was placed: `at` is the middle
+		// of the leaves and `r` their reach, both in the tree's own (unscaled) units.
+		const tree = (m: THREE.Matrix4, trunk: number, at: [number, number, number], r: number) => {
+			const s = new THREE.Vector3().setFromMatrixScale(m).x;
+			const e = m.elements;
+			const c = new THREE.Vector3(...at).applyMatrix4(m);
+			addFeature({ x: e[12], z: e[14], r: trunk * s, top: c.y, crown: { x: c.x, y: c.y, z: c.z, r: r * s } });
+		};
+		const PALM = (m: THREE.Matrix4) => tree(m, 0.35, [1.1, 4.6, 0], 2.1);
+		const ROUND = (m: THREE.Matrix4) => tree(m, 0.4, [0, 3.6, 0], 1.7);
+		const PINE = (m: THREE.Matrix4) => tree(m, 0.3, [0, 2.5, 0], 1.55);
+		for (let tries = 0; tries < 20000; tries++) {
+			const { x, z } = randomLand(96);
 			const g = terrainAt(x, z);
 			if (g < 0.4 || nearPier(x, z, 2.5) || !clearOfStart(x, z, 4.5) || !clearOfPlaces(x, z, 1)) continue;
 			const up = slopeUp(x, z);
 			const forest = fbm(x * 0.05 + 40, z * 0.05, 2);
-			if (g < 2.4 && palms.length < 48 && rand() < 0.35) {
+			if (g < 2.4 && palms.length < 100 && rand() < 0.35) {
 				if (!roomy(x, z, 2.2)) continue;
 				const s = 0.85 + rand() * 0.35;
-				palms.push(place(x, g - 0.1, z, s));
-				addFeature({ x, z, r: 0.35 * s });
-			} else if (g >= 2.4 && g < 8.5 && up > 0.78 && forest > -0.05 && trees.length < 120) {
+				const m = place(x, g - 0.1, z, s);
+				palms.push(m);
+				PALM(m);
+			} else if (g >= 2.4 && g < 8.5 && up > 0.78 && forest > -0.05 && trees.length < 270) {
 				if (!roomy(x, z, 2.4)) continue;
 				const s = 0.8 + rand() * 0.5;
-				trees.push(place(x, g - 0.1, z, s));
-				addFeature({ x, z, r: 0.4 * s });
-			} else if (g >= 8.5 && g < 15.5 && up > 0.72 && pines.length + snowyPines.length < 70) {
+				const m = place(x, g - 0.1, z, s);
+				trees.push(m);
+				ROUND(m);
+			} else if (g >= 8.5 && g < 15.5 && up > 0.72 && pines.length + snowyPines.length < 150) {
 				if (!roomy(x, z, 1.8)) continue;
 				const s = 0.8 + rand() * 0.45;
-				(g > 12.5 ? snowyPines : pines).push(place(x, g - 0.1, z, s));
-				addFeature({ x, z, r: 0.3 * s });
+				const m = place(x, g - 0.1, z, s);
+				(g > 12.5 ? snowyPines : pines).push(m);
+				PINE(m);
 			}
 		}
-		for (let tries = 0; tries < 4000 && bushes.length < 110; tries++) {
-			const { x, z } = randomLand(62);
+		for (let tries = 0; tries < 9000 && bushes.length < 250; tries++) {
+			const { x, z } = randomLand(93);
 			const g = terrainAt(x, z);
 			if (g < 1.6 || g > 12 || nearPier(x, z, 1) || !roomy(x, z, 0.9) || !clearOfPlaces(x, z, 0.5)) continue;
 			const s = 0.5 + rand() * 0.5;
@@ -789,8 +833,9 @@ export async function startIsland() {
 		]) {
 			const x = ISLET.x + dx;
 			const z = ISLET.z + dz;
-			palms.push(place(x, terrainAt(x, z) - 0.1, z, s));
-			addFeature({ x, z, r: 0.35 * s });
+			const m = place(x, terrainAt(x, z) - 0.1, z, s);
+			palms.push(m);
+			PALM(m);
 		}
 		for (const [dx, dz] of [
 			[2.2, 2.0],
@@ -801,8 +846,8 @@ export async function startIsland() {
 			bushes.push(place(x, terrainAt(x, z) - 0.05, z, 0.7, 0.5));
 		}
 		const petals = ['#ffd84d', '#ff9ec7', '#ffffff', '#b9a6ff'];
-		for (let tries = 0; tries < 4000 && flowers.length < 360; tries++) {
-			const { x, z } = randomLand(60);
+		for (let tries = 0; tries < 9000 && flowers.length < 800; tries++) {
+			const { x, z } = randomLand(90);
 			const g = terrainAt(x, z);
 			if (g < 1.8 || g > 11 || slopeUp(x, z) < 0.8 || fbm(x * 0.08, z * 0.08 + 70, 2) < 0.05 || !clearOfPlaces(x, z, -1.5)) continue;
 			flowers.push({ m: place(x, g + 0.12, z, 0.8 + rand() * 0.5), c: petals[Math.floor(rand() * petals.length)] });
@@ -850,7 +895,7 @@ export async function startIsland() {
 	const clouds = new THREE.Group();
 	{
 		const crand = rng(5);
-		for (let i = 0; i < 16; i++) {
+		for (let i = 0; i < 28; i++) {
 			const cloud = new THREE.Group();
 			const puffs = 4 + Math.floor(crand() * 3);
 			for (let k = 0; k < puffs; k++) {
@@ -859,8 +904,8 @@ export async function startIsland() {
 				puff.scale.y = 0.65;
 				cloud.add(puff);
 			}
-			const a = (i / 16) * TAU + crand();
-			const r = 70 + crand() * 160;
+			const a = (i / 28) * TAU + crand();
+			const r = 100 + crand() * 240;
 			cloud.position.set(Math.cos(a) * r, 48 + crand() * 26, Math.sin(a) * r);
 			cloud.rotation.y = crand() * TAU;
 			clouds.add(cloud);
@@ -1341,6 +1386,8 @@ export async function startIsland() {
 	const JUMP_SPEED = 8.6;
 	const FLIGHT = (2 * JUMP_SPEED) / GRAVITY;
 	const BODY_R = 0.45;
+	/** How far above her feet her middle is. */
+	const BODY_MID = 0.8;
 	const pos = START.clone();
 	const vel = new THREE.Vector3();
 	let vy = 0;
@@ -1377,17 +1424,34 @@ export async function startIsland() {
 		// On her feet she takes steps and gentle slopes in her stride; in the air she clears what's beneath her.
 		return grounded ? g - pos.y <= 0.5 + step * 1.3 : g <= pos.y + 0.05;
 	};
+	/** Pushes her out of any trunk or ball of leaves she's moved into, and takes away the part of her
+	 * speed that was carrying her into it, so she slides round it instead of pressing on and juddering. */
 	const pushOut = (p: THREE.Vector3) => {
+		const out = (cx: number, cz: number, min: number) => {
+			const dx = p.x - cx;
+			const dz = p.z - cz;
+			const d = Math.hypot(dx, dz);
+			if (d >= min || d < 1e-4) return;
+			const nx = dx / d;
+			const nz = dz / d;
+			p.x = cx + nx * min;
+			p.z = cz + nz * min;
+			const into = vel.x * nx + vel.z * nz;
+			if (into < 0) {
+				vel.x -= into * nx;
+				vel.z -= into * nz;
+			}
+		};
 		for (const f of nearby(p.x, p.z)) {
 			if (f.dome || f.pad !== undefined) continue;
-			const dx = p.x - f.x;
-			const dz = p.z - f.z;
-			const d = Math.hypot(dx, dz);
-			const min = f.r + BODY_R;
-			if (d < min && d > 1e-4) {
-				p.x = f.x + (dx / d) * min;
-				p.z = f.z + (dz / d) * min;
-			}
+			if (f.top === undefined || p.y < f.top) out(f.x, f.z, f.r + BODY_R);
+			// On her feet she only meets trunks, as she always has; the leaves are for the air.
+			const c = f.crown;
+			if (!c || grounded) continue;
+			// Her middle against the ball of leaves: at this height, how far out round it she has to be.
+			const dy = p.y + BODY_MID - c.y;
+			const reach = c.r + BODY_R;
+			if (Math.abs(dy) < reach) out(c.x, c.z, Math.sqrt(reach * reach - dy * dy));
 		}
 	};
 
@@ -1677,7 +1741,8 @@ export async function startIsland() {
 	// ---------- coming across places ----------
 
 	const PLACES_KEY = 'island-places';
-	const MAP_KEY = 'island-map';
+	// v2: the island grew, so maps drawn of the old one no longer line up.
+	const MAP_KEY = 'island-map-v2';
 	const discovered = new Set<string>();
 	try {
 		const saved: unknown = JSON.parse(localStorage.getItem(PLACES_KEY) ?? '[]');
@@ -1724,7 +1789,7 @@ export async function startIsland() {
 
 	// Both maps are drawn from one picture of the whole sea, uncovered as she explores it.
 	const MAP_SPAN = WORLD_EDGE;
-	const MAP_PX = 256;
+	const MAP_PX = 384;
 	const toPx = (v: number) => ((v / MAP_SPAN) * 0.5 + 0.5) * MAP_PX;
 	const FOG = '#d6dbe9';
 	const mapImage = (() => {
@@ -1979,6 +2044,7 @@ export async function startIsland() {
 	const camLook = pos.clone();
 	camLook.y += 1.2;
 	const camPos = new THREE.Vector3();
+	let camReach = 9;
 	const orbitDir = new THREE.Vector3();
 	let time = 0;
 	let last = performance.now();
@@ -2025,7 +2091,30 @@ export async function startIsland() {
 		camLook.y = damp(camLook.y, pos.y + 1.2, 6, dt);
 		camLook.z = damp(camLook.z, chat ? THREE.MathUtils.lerp(pos.z, chat.z, 0.45) : pos.z, chat ? 4 : 10, dt);
 		orbitDir.set(Math.sin(orbitYaw) * Math.cos(orbitPitch), Math.sin(orbitPitch), Math.cos(orbitYaw) * Math.cos(orbitPitch));
-		camPos.copy(camLook).addScaledVector(orbitDir, orbitDistance * (1 + gliderOpen * 0.35));
+		// If a tree's leaves come between her and the camera, it closes in in front of them (quickly)
+		// rather than sitting inside them, and eases back out once they're past.
+		const wantDistance = orbitDistance * (1 + gliderOpen * 0.35);
+		let clear = wantDistance;
+		const checked = new Set<Feature>();
+		for (let t = 0; t <= wantDistance + 2; t += 1) {
+			for (const f of nearby(camLook.x + orbitDir.x * t, camLook.z + orbitDir.z * t)) {
+				const c = f.crown;
+				if (!c || checked.has(f)) continue;
+				checked.add(f);
+				const ox = camLook.x - c.x;
+				const oy = camLook.y - c.y;
+				const oz = camLook.z - c.z;
+				const r = c.r + 0.6;
+				const b = ox * orbitDir.x + oy * orbitDir.y + oz * orbitDir.z;
+				const inside = ox * ox + oy * oy + oz * oz - r * r;
+				// (When she's in among the leaves herself there's nowhere better to be, so leave it.)
+				if (inside < 0 || b * b - inside < 0) continue;
+				const hit = -b - Math.sqrt(b * b - inside);
+				if (hit > 0) clear = Math.min(clear, hit);
+			}
+		}
+		camReach = clear < camReach ? damp(camReach, clear, 7, dt) : damp(camReach, clear, 1.8, dt);
+		camPos.copy(camLook).addScaledVector(orbitDir, Math.max(Math.min(camReach, wantDistance), 1.5));
 		camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z) + 0.7, 0.6);
 		camera.position.copy(camPos);
 		camera.lookAt(camLook);
