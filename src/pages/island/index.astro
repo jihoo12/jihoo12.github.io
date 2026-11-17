@@ -1,10 +1,10 @@
 ---
-// Nixchan's island: a little game where the 3D Nixchan runs about an island hunting for snowflakes.
+// Nixchan's island: a little open world where the 3D Nixchan roams an island and the sea round it.
 import BaseHead from '../../components/BaseHead.astro';
 import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
 
 const title = "Nixchan's island (experimental)";
-const description = 'Run Nixchan around a little toon island and find all the snowflakes.';
+const description = "Roam a little toon island with Nixchan: climb, swim, glide and find what's out there.";
 ---
 <!doctype html>
 <html lang="en">
@@ -23,24 +23,33 @@ const description = 'Run Nixchan around a little toon island and find all the sn
 			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
 		</header>
 
-		<p class="count" aria-live="polite"><span class="flake" aria-hidden="true">❄</span> <span data-count>0 / 12</span><span class="sr-only"> snowflakes found</span></p>
-		<canvas class="map" data-map width="150" height="150" aria-hidden="true"></canvas>
+		<div class="banner" data-banner aria-live="polite">
+			<p class="banner-name" data-banner-name></p>
+			<p class="banner-note" data-banner-note hidden></p>
+		</div>
+		<canvas class="map" data-map width="150" height="150" role="button" aria-label="Open the map"></canvas>
 
 		<p class="keyhint">
 			<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span>
 			<span><kbd>Shift</kbd> run</span>
 			<span><kbd>Space</kbd> jump</span>
+			<span><kbd>Space</kbd> in the air glide</span>
 			<span><kbd>E</kbd> wave</span>
+			<span><kbd>M</kbd> map</span>
 			<span>drag to look</span>
 		</p>
-		<p class="touchhint">Left thumb to walk · drag to look</p>
+		<p class="touchhint">Left thumb to walk · drag to look · jump twice to glide · tap the map</p>
 
 		<div class="stick" data-stick hidden aria-hidden="true"><div class="knob" data-knob></div></div>
 		<button class="jump" type="button" data-jump aria-label="Jump">⤒</button>
 
-		<div class="toast" data-toast hidden role="status">
-			<p data-toast-text></p>
-			<button class="button primary" type="button" data-again>Play again</button>
+		<div class="atlas" data-atlas hidden role="dialog" aria-modal="true" aria-labelledby="atlas-title">
+			<div class="atlas-card">
+				<h2 id="atlas-title">Map</h2>
+				<canvas class="atlas-map" data-atlas-map width="560" height="560" aria-hidden="true"></canvas>
+				<p class="atlas-count" data-atlas-count></p>
+				<button class="button primary" type="button" data-atlas-close>Back to the island</button>
+			</div>
 		</div>
 		<p class="loading" data-loading>Nixchan is on her way…</p>
 		<noscript><p class="loading">The island needs JavaScript to run.</p></noscript>
@@ -92,20 +101,44 @@ const description = 'Run Nixchan around a little toon island and find all the sn
 	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }
 	:global([data-time='night']) .clock .moon { display: inline; }
 
-	.count {
-		position: fixed; z-index: 20; top: 72px; right: clamp(16px, 4vw, 40px); margin: 0;
-		padding: 6px 14px; border-radius: 12px; font: 900 20px var(--sans); color: var(--ink);
-		background: color-mix(in srgb, var(--surface) 82%, transparent);
-		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-		box-shadow: 0 4px 0 var(--edge);
+	/* A place's name fades in across the top of the screen as she arrives there. */
+	.banner {
+		position: fixed; z-index: 20; top: 84px; left: 50%; transform: translate(-50%, -6px);
+		width: max-content; max-width: calc(100% - 32px); text-align: center;
+		pointer-events: none; opacity: 0; transition: opacity 0.6s, transform 0.6s;
 	}
-	.count .flake { color: #5f9be8; }
+	.banner.show { opacity: 1; transform: translate(-50%, 0); }
+	.banner p { margin: 0; }
+	.banner-name {
+		font-family: var(--display); font-size: clamp(30px, 5vw, 46px); line-height: 1.1; color: #fdfbff;
+		text-shadow: 0 2px 0 #2c2a52, 0 0 18px rgba(28, 26, 62, 0.45);
+	}
+	.banner-note {
+		display: inline-block; margin-top: 8px !important; padding: 3px 12px; border-radius: 999px;
+		background: var(--star); color: #1c1a3e; font-size: 13px; font-weight: 900;
+	}
+	.banner-note[hidden] { display: none; }
 	.map {
 		position: fixed; z-index: 20; right: clamp(16px, 4vw, 40px); bottom: 18px;
-		width: 150px; height: 150px; border-radius: 50%;
-		background: color-mix(in srgb, #3a86d0 70%, transparent);
+		width: 150px; height: 150px; border-radius: 50%; cursor: pointer;
+		background: #d6dbe9;
 		box-shadow: 0 0 0 4px var(--surface), 0 8px 18px -8px var(--shadow);
 	}
+
+	.atlas {
+		position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 16px;
+		background: color-mix(in srgb, #1c1a3e 35%, transparent);
+	}
+	.atlas[hidden] { display: none; }
+	.atlas-card {
+		width: min(560px, 100%, calc(100dvh - 180px)); min-width: min(280px, 100%); padding: 18px; border-radius: 18px; text-align: center;
+		background: color-mix(in srgb, var(--surface) 94%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+		box-shadow: 0 14px 30px -18px var(--shadow);
+	}
+	.atlas-card h2 { margin: 0 0 12px; font-family: var(--display); font-size: 28px; color: var(--ink); }
+	.atlas-map { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; box-shadow: 0 4px 0 var(--edge); }
+	.atlas-count { margin: 14px 0; color: var(--muted); font-size: 15px; font-weight: 800; }
 
 	.keyhint, .touchhint {
 		position: fixed; z-index: 20; left: 50%; bottom: 18px; transform: translateX(-50%); margin: 0;
@@ -147,27 +180,16 @@ const description = 'Run Nixchan around a little toon island and find all the sn
 		.jump { display: block; }
 	}
 
-	.toast {
-		position: fixed; z-index: 30; left: 50%; top: 50%; transform: translate(-50%, -50%);
-		width: min(360px, calc(100% - 32px)); padding: 22px 24px; border-radius: 16px; text-align: center;
-		background: color-mix(in srgb, var(--surface) 90%, transparent);
-		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-		box-shadow: 0 14px 30px -18px var(--shadow);
-	}
-	.toast[hidden] { display: none; }
-	.toast p { margin: 0 0 16px; font: 900 20px var(--sans); color: var(--ink); }
-
 	.loading {
 		position: fixed; z-index: 40; inset: 0; margin: 0; display: grid; place-items: center; padding: 16px; text-align: center;
 		background: var(--bg); color: var(--ink); font: 900 20px var(--sans);
 	}
 	.loading[hidden] { display: none; }
-	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 	@media (max-width: 640px) {
 		.badge { display: none; }
-		.count { top: 68px; font-size: 17px; }
-		.map { width: 110px; height: 110px; bottom: auto; top: 116px; }
+		.banner { top: 190px; }
+		.map { width: 110px; height: 110px; bottom: auto; top: 68px; }
 		.touchhint { width: max-content; max-width: calc(100% - 32px); }
 	}
 </style>
