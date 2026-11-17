@@ -10,6 +10,7 @@ A clean, responsive personal website and journal, built with Astro and published
 - **Projects** and **Comics**.
 - **Experimental** (`/experimental/`) — a 3D Nixchan.
 - **Island** (`/island/`) — Nixchan's island, a small three.js game (see below).
+- **Monochrome** (`/monochrome/`) — the grey place through the rift at the island's standing stones (see below).
 
 Previous blog posts have been removed as part of this redesign. New Markdown posts can be added under `src/content/blog/`, using the existing Astro content collection.
 
@@ -44,11 +45,27 @@ The page is `src/pages/island/index.astro` (HTML/CSS for the menus and prompts),
 | `fishing.ts`, `farm.ts`, `npc.ts`, `inventory.ts` | Things to do, and her bag |
 | `forge.ts` | The smithy: ore veins, smelting, and the upgrades made at the anvil |
 | `machines.ts` | Sprinklers and Sprocket the clockwork helper, looking after the garden |
+| `rift.ts` | The grey rift at the standing stones, through to `/monochrome/` |
 | `save.ts` | Every localStorage key the island uses |
 
 To add something she can do, register it with `interactions.add(() => ({ label, go }))`. To add a landmark, add a function to `landmarks.ts`.
 
-The fish, garden, otter, sky ruin and forge models are made in Blender by the scripts in `tools/` (`nix develop .#blender -c blender -b -P tools/<name>/build.py -- <out.glb>`).
+The fish, garden, otter, sky ruin and forge models (and the grey place's walls and pieces, `tools/monochrome/`) are made in Blender by the scripts in `tools/` (`nix develop .#blender -c blender -b -P tools/<name>/build.py -- <out.glb>`).
+
+## Monochrome
+
+The grey place through the rift. The rift opens between the island's standing stones at night, once Nixchan has opened the chest at the top of Cloudrest. Through it, everything is grey but her, and the place doesn't fit together the way a map would: a hall that runs on for ever, a wood that goes round, three cells round an obelisk where there ought to be four, a house bigger inside than out, and a tower it takes two laps to get round. Three colour shards are hidden in it; each one brings a little colour back, and they colour the rift and the altar crystal on the island once they're home. She can leave snowflakes on the floor (Q) to know a place again.
+
+There's no map underneath it. The world is a graph of square cells, each side either walled or joined to a side of some other cell, turned any way. Each frame asks "which cell is she in, and where in it?": the cells round hers are laid out flat round her as far as the fog (where two ways round reach the same spot, the shorter wins), and when she steps over a side, the cell she steps into becomes the middle and everything shifts back by a cell.
+
+The page is `src/pages/monochrome/index.astro`, and the code is in `src/lib/monochrome/`:
+
+| Module | What it does |
+| --- | --- |
+| `world.ts` | The cells and how they're joined, and `place`, which lays them out round her |
+| `blocks.ts` | What each cell looks like (merged from the Blender pieces) and what in it is solid |
+| `game.ts` | Walking her from cell to cell, the camera, the shards, snowflakes and the compass |
+| `rift.ts` | The rift's shader, shared with the island |
 
 ## Deployment
 
@@ -62,8 +79,9 @@ All the artwork is Nixchan, drawn and modelled by jihoo for this site:
 - **Live Nixchan** — `src/assets/nixchan/live/`, the parts (body, eyes, legs) of the Nixchan who perches on cards on the home and 404 pages.
 - **3D Nixchan** — `src/assets/nixchan/nixchan-3d.glb`, built by `tools/nixchan-3d/build.py`, for `/experimental/` and the island.
 - **Island models** — `src/assets/island/` (fish, garden, market stand and the garden's machines, Pebble the otter, the ruins on Cloudrest, the forge), built by the scripts in `tools/island-*/`.
+- **Monochrome models** — `src/assets/monochrome/` (walls, posts, columns, the obelisk and the rest of the grey place), built by `tools/monochrome/build.py`.
 
 ## License
 
 - **Code** (including the Blender scripts in `tools/`) — [Apache License 2.0](LICENSE).
-- **Artwork** (`src/assets/nixchan/`, `src/assets/island/`) — [CC BY 4.0](LICENSE-ARTWORK). Use and adapt it freely, with credit: "Nixchan by jihoo, CC BY 4.0".
+- **Artwork** (`src/assets/nixchan/`, `src/assets/island/`, `src/assets/monochrome/`) — [CC BY 4.0](LICENSE-ARTWORK). Use and adapt it freely, with credit: "Nixchan by jihoo, CC BY 4.0".

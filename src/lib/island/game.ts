@@ -17,6 +17,7 @@
 //   fishing, farm, npc, inventory   the things to do
 //   forge              the smithy: ore to mine, ingots to smelt, tools to make better
 //   machines           sprinklers and Sprocket, made at the forge, looking after the garden
+//   rift               the grey rift at the standing stones, through to /monochrome
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
 import { createFollowCamera } from './camera';
@@ -35,6 +36,7 @@ import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
+import { createIslandRift, riftArrival } from './rift';
 import { scatter } from './scatter';
 import { createSkyIsle, skyWaterAt } from './skyisle';
 import { createSky } from './sky';
@@ -87,8 +89,18 @@ export async function startIsland() {
 
 	// ---------- Nixchan, and how she's steered ----------
 
-	// She starts with her back to the sea, looking inland, with the pier off to one side.
-	const orbit: Orbit = { yaw: Math.atan2(PIER_DIR.x, PIER_DIR.z) + 0.55, pitch: 0.32, distance: 9 };
+	// She starts with her back to the sea, looking inland, with the pier off to one side; or, back
+	// from the grey place, stepping out of the rift at the standing stones.
+	let heading = Math.atan2(-PIER_DIR.x, -PIER_DIR.z) + 0.55;
+	const fromRift = new URLSearchParams(location.search).get('from') === 'rift';
+	if (fromRift) {
+		const out = riftArrival(layout.STONES);
+		layout.START.copy(out.pos);
+		heading = out.heading;
+		history.replaceState(null, '', location.pathname);
+	}
+	// (From the rift, the camera starts off to one side, so the rift isn't in the way.)
+	const orbit: Orbit = { yaw: heading + Math.PI + (fromRift ? 0.9 : 0), pitch: 0.32, distance: 9 };
 	const controls = createControls(canvas, ui, orbit, {
 		intercept(key, e) {
 			// Talking with Pebble, the keys work the conversation.
@@ -130,7 +142,7 @@ export async function startIsland() {
 		toon,
 		modelUrl: canvas.dataset.model ?? '',
 		start: layout.START,
-		heading: Math.atan2(-PIER_DIR.x, -PIER_DIR.z) + 0.55,
+		heading,
 		controls,
 		orbit,
 		ripple: water.ripple,
@@ -301,6 +313,16 @@ export async function startIsland() {
 	const skyIsle = createSkyIsle({ scene, toon, theme, inventory, pos, addFeature, modelUrl: canvas.dataset.skyModel ?? '', toast: (text) => fishing.toast(text) });
 	interactions.add(skyIsle.offer);
 
+	// The rift at the standing stones, open on a night after she's been to the top of Cloudrest.
+	const rift = createIslandRift({
+		scene,
+		theme,
+		stones: layout.STONES,
+		pos,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !forge.busy && !menu.isOpen && !npc.talking,
+	});
+	interactions.add(rift.offer);
+
 	// Pebble, who keeps the stand, behind its counter.
 	const npc = createNpc({
 		scene,
@@ -398,7 +420,7 @@ export async function startIsland() {
 		if (ready) {
 			if (!greeted) {
 				greeted = true;
-				explore.announce("Nixchan's Island", 'Go wherever you like');
+				explore.announce("Nixchan's Island", fromRift ? 'Back where there\u2019s colour' : 'Go wherever you like');
 				if (menu.firstVisit) menu.open('help');
 			}
 			player.update(dt, time);
@@ -410,6 +432,7 @@ export async function startIsland() {
 		}
 		landmarks.update(time, dt);
 		skyIsle.update(time, dt);
+		rift.update(time, dt);
 		forge.update(time, dt);
 
 		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : forge.framing);

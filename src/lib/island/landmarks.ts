@@ -2,9 +2,11 @@
 // the campfire, the standing stones, the chest on the islet and the buoy out at sea. Each is a
 // self-contained block; add a new one as another function and call it from `buildLandmarks`.
 import * as THREE from 'three';
+import { SHARDS } from '../monochrome/world';
 import { addFeature } from './features';
 import type { Layout } from './layout';
 import { glowTexture, type Toon } from './look';
+import { loadJSON } from './save';
 import { ISLET, PIER, PIER_ANGLE, terrainAt } from './terrain';
 import type { Theme } from './theme';
 import { TAU, damp } from './util';
@@ -209,7 +211,9 @@ function campfire(k: Kit, { x, z }: { x: number; z: number }) {
 	addFeature({ x, z, r: 0.85 });
 }
 
-/** The standing stones: a ring on the hills round an altar, with a crystal turning over it. */
+/** The standing stones: a ring on the hills round an altar, with a crystal turning over it. The
+ * colour shards she brings home from the grey place (through the rift here) colour the crystal,
+ * turn and turn about. */
 function standingStones(k: Kit, { x, z }: { x: number; z: number }, rand: () => number) {
 	const { mesh, scene } = k;
 	const g = terrainAt(x, z);
@@ -230,7 +234,19 @@ function standingStones(k: Kit, { x, z }: { x: number; z: number }, rand: () => 
 	const glow = k.glowSprite(3, 0.7, '#9fe3ff');
 	scene.add(crystal, glow);
 	k.nightGlow(glow);
+	const saved = loadJSON('monoShards');
+	const shards = SHARDS.filter((s) => Array.isArray(saved) && saved.includes(s.id)).map((s) => new THREE.Color(s.color));
+	const hue = new THREE.Color();
 	k.animate((time) => {
+		if (shards.length) {
+			// Eases from one shard's colour to the next, a few seconds each.
+			// (The clock can start a hair below zero, the first frame being stamped before it starts.)
+			const t = (((time / 3) % shards.length) + shards.length) % shards.length;
+			const i = Math.floor(t);
+			hue.copy(shards[i]).lerp(shards[(i + 1) % shards.length], Math.max(0, (t - i - 0.7) / 0.3));
+			crystal.material.color.copy(hue);
+			glow.material.color.copy(hue);
+		}
 		crystal.position.set(x, g + 2.3 + Math.sin(time * 1.4) * 0.15, z);
 		crystal.rotation.y = time * 0.9;
 		glow.position.copy(crystal.position);

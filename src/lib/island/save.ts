@@ -1,4 +1,4 @@
-// What the island remembers between visits, all in the browser's localStorage. Every key lives
+// What the island (and the grey place through its rift) remembers between visits, all in the browser's localStorage. Every key lives
 // here, so it's one place to see what's saved, and one place to bump a key when a format changes
 // (as the map did when the island grew). Reading and writing never throw: a private window or a
 // full store just means the island forgets.
@@ -17,6 +17,11 @@ export const SAVE_KEYS = {
 	forge: 'island-forge',
 	ore: 'island-ore',
 	machines: 'island-machines',
+	// The grey place through the rift (/monochrome): the colour shards she's found there, and the
+	// snowflakes she's left to find her way.
+	monoShards: 'monochrome-shards',
+	monoMarks: 'monochrome-marks',
+	monoHelpSeen: 'monochrome-help-seen',
 } as const;
 
 export type SaveKey = keyof typeof SAVE_KEYS;

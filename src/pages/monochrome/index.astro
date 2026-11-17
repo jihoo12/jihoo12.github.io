@@ -1,0 +1,267 @@
+---
+// The grey place through the rift at the island's standing stones: a world with no colour left in
+// it, whose cells don't join up the way a map would, for Nixchan to find her way round.
+import BaseHead from '../../components/BaseHead.astro';
+import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
+import blocksModel from '../../assets/monochrome/monochrome.glb?url';
+
+const title = 'Monochrome (experimental)';
+const description = "Through the rift at the standing stones: a grey place that doesn't add up, and three pieces of colour to bring home.";
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={title} description={description} />
+		<meta name="robots" content="noindex" />
+	</head>
+	<body class="mono">
+		<canvas class="stage" data-stage data-model={nixModel} data-blocks={blocksModel} aria-label="Nixchan in the grey place"></canvas>
+		<div class="fade show" data-fade aria-hidden="true"></div>
+
+		<header class="bar">
+			<a class="brand" href="/">jihoo<span class="period">.</span></a>
+			<span class="badge">monochrome · experimental</span>
+			<span class="spacer"></span>
+			<span class="shards" data-shards aria-label="Colour shards found"></span>
+			<button class="pill help-button" type="button" data-help-open aria-label="Help (H)">?</button>
+			<a class="pill" href="/island/">Island</a>
+			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
+		</header>
+
+		<div class="banner" data-banner aria-live="polite">
+			<p class="banner-name" data-banner-name></p>
+			<p class="banner-note" data-banner-note hidden></p>
+		</div>
+		<div class="compass" data-compass aria-hidden="true"><span class="needle" data-needle></span></div>
+
+		<p class="prompt act-prompt" data-act-prompt hidden><kbd>E</kbd><span data-act-text></span></p>
+		<button class="act" type="button" data-act hidden>Do</button>
+		<p class="toast" data-toast aria-live="polite"></p>
+
+		<div class="stick" data-stick hidden aria-hidden="true"><div class="knob" data-knob></div></div>
+		<button class="jump" type="button" data-jump aria-label="Jump">⤒</button>
+		<button class="mark" type="button" data-mark aria-label="Leave a snowflake">❄</button>
+
+		<div class="dialog" data-help hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+			<div class="card">
+				<h2 id="help-title">The grey place</h2>
+				<div class="help">
+					<section>
+						<p>Through the rift, the colour's gone out of everything, and the way the place fits together doesn't add up: a hall that never ends, a wood that goes round, a house bigger inside than out. There's no map that works here. Three pieces of colour are still somewhere about: find them, and take them home.</p>
+					</section>
+					<section>
+						<h3>Getting about</h3>
+						<dl class="keys">
+							<dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Walk (or the arrow keys)</dd>
+							<dt><kbd>Shift</kbd></dt><dd>Run</dd>
+							<dt><kbd>Space</kbd></dt><dd>Jump</dd>
+							<dt>Drag</dt><dd>Look around; the scroll wheel zooms</dd>
+							<dt><kbd>E</kbd></dt><dd>Read a stone, take a shard, step through a rift; otherwise leave a snowflake</dd>
+							<dt><kbd>Q</kbd></dt><dd>Leave a snowflake on the floor where you stand</dd>
+							<dt><kbd>H</kbd></dt><dd>This help</dd>
+						</dl>
+						<dl class="touch">
+							<dt>Left thumb</dt><dd>Walk; push far to run</dd>
+							<dt>Drag the right</dt><dd>Look around</dd>
+							<dt>❄</dt><dd>Leave a snowflake on the floor</dd>
+						</dl>
+					</section>
+					<section>
+						<h3>Finding your way</h3>
+						<p>Snowflakes stay where you leave them, so you'll know a place when you come back to it (or find two of it). The compass only finds the rift home when it's close; the rest of the time it spins. Each shard you take opens a little rift back to the Threshold.</p>
+					</section>
+				</div>
+				<button class="button primary" type="button" data-help-close>Back in</button>
+			</div>
+		</div>
+
+		<p class="loading" data-loading>Stepping through the rift…</p>
+		<noscript><p class="loading">The grey place needs JavaScript to run.</p></noscript>
+	</body>
+</html>
+
+<script>
+	import { startMonochrome } from '../../lib/monochrome/game';
+
+	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
+	button?.addEventListener('click', () => {
+		const next = document.documentElement.dataset.time === 'night' ? 'day' : 'night';
+		document.documentElement.dataset.time = next;
+		try {
+			localStorage.setItem('time', next);
+		} catch {
+			// The choice just won't be remembered.
+		}
+		window.dispatchEvent(new Event('site-time'));
+		button.blur();
+	});
+
+	startMonochrome();
+</script>
+
+<style>
+	/* Everything's grey here, the page round the game included. */
+	:global(body.mono) {
+		--surface: #f2f2f2; --ink: #1e1e20; --muted: #6a6a6e; --edge: #a2a2a6; --shadow: #000; --bg: #e4e4e4; --star: #d6d6d6;
+	}
+	:global([data-time='night'] body.mono) {
+		--surface: #2a2a2e; --ink: #eeeef0; --muted: #a0a0a6; --edge: #111113; --bg: #0c0c0f; --star: #44444a;
+	}
+	:global(html:has(body.mono)), :global(body.mono) { overflow: hidden; height: 100%; }
+	:global(body.mono::before), :global(body.mono::after) { display: none; }
+	:global(body.mono) { background: var(--bg); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+	.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+	.stage:active { cursor: grabbing; }
+	:global(.no-3d) .stage { display: none; }
+
+	/* Through a rift, the screen goes white (or black, at night) and comes back. */
+	.fade { position: fixed; z-index: 40; inset: 0; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 0.45s; }
+	.fade.show { opacity: 1; }
+	@media (prefers-reduced-motion: reduce) { .fade { transition: none; } }
+
+	.bar {
+		position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+		display: flex; align-items: center; gap: 12px; padding: 16px clamp(16px, 4vw, 40px);
+		pointer-events: none;
+	}
+	.bar > * { pointer-events: auto; }
+	.brand { font-family: var(--display); font-size: 28px; line-height: 1; color: var(--ink); }
+	.badge { background: var(--ink); color: var(--surface); font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px; transform: rotate(-3deg); }
+	.spacer { flex: 1; }
+	.pill {
+		border: 0; border-radius: 9px; padding: 8px 15px; background: var(--surface); color: var(--ink);
+		font: 800 15px var(--sans); box-shadow: 0 4px 0 var(--edge); cursor: pointer;
+	}
+	.pill:hover { transform: translateY(-2px); }
+	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }
+	:global([data-time='night']) .clock .moon { display: inline; }
+
+	/* The three shards: empty rings until they're found, then their own colour (the only colour here). */
+	.shards { display: flex; gap: 6px; padding: 8px 10px; border-radius: 999px; background: var(--surface); box-shadow: 0 4px 0 var(--edge); }
+	.shards :global(.shard) { width: 14px; height: 14px; transform: rotate(45deg); border-radius: 2px; box-shadow: inset 0 0 0 2px var(--edge); }
+	.shards :global(.shard.found) { background: var(--c); box-shadow: 0 0 8px var(--c); }
+
+	.banner {
+		position: fixed; z-index: 20; top: 84px; left: 50%; transform: translate(-50%, -6px);
+		width: max-content; max-width: calc(100% - 32px); text-align: center;
+		pointer-events: none; opacity: 0; transition: opacity 0.6s, transform 0.6s;
+	}
+	.banner.show { opacity: 1; transform: translate(-50%, 0); }
+	.banner p { margin: 0; }
+	.banner-name {
+		font-family: var(--display); font-size: clamp(30px, 5vw, 46px); line-height: 1.1; color: #f6f6f6;
+		text-shadow: 0 2px 0 #1e1e20, 0 0 18px rgba(0, 0, 0, 0.35);
+	}
+	.banner-note {
+		display: inline-block; margin-top: 8px !important; padding: 3px 12px; border-radius: 999px;
+		background: var(--ink); color: var(--surface); font-size: 13px; font-weight: 900;
+	}
+	.banner-note[hidden] { display: none; }
+
+	/* The compass: points to the rift home when it's close, and spins when it isn't. */
+	.compass {
+		position: fixed; z-index: 20; right: clamp(16px, 4vw, 40px); bottom: 18px; width: 92px; height: 92px; border-radius: 50%;
+		background: var(--surface); box-shadow: 0 0 0 4px var(--edge), 0 8px 18px -8px var(--shadow);
+	}
+	.compass::before {
+		content: 'N'; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font: 900 11px var(--sans); color: var(--muted);
+	}
+	.needle { position: absolute; inset: 0; }
+	.needle::before, .needle::after {
+		content: ''; position: absolute; left: 50%; width: 0; height: 0; border: 7px solid transparent; transform: translateX(-50%);
+	}
+	.needle::before { top: 12px; border-bottom: 32px solid var(--ink); border-top: 0; }
+	.needle::after { bottom: 12px; border-top: 32px solid var(--edge); border-bottom: 0; }
+	.compass.lost { opacity: 0.75; }
+
+	.prompt {
+		position: fixed; z-index: 20; left: 50%; bottom: 28px; transform: translateX(-50%); margin: 0;
+		max-width: calc(100% - 260px); padding: 7px 14px; border-radius: 999px; pointer-events: none;
+		background: var(--surface); color: var(--ink); font-size: 15px; font-weight: 900; box-shadow: 0 4px 0 var(--edge);
+	}
+	.prompt[hidden] { display: none; }
+	.prompt kbd {
+		display: inline-block; min-width: 1.6em; margin-right: 6px; padding: 1px 5px; border-radius: 5px;
+		background: var(--ink); color: var(--surface); font: 900 12px var(--sans); text-align: center;
+	}
+	.act-prompt:global(.inactive) kbd { display: none; }
+	.act-prompt:global(.inactive) { color: var(--muted); }
+
+	.toast {
+		position: fixed; z-index: 35; left: 50%; top: 150px; transform: translateX(-50%); margin: 0; pointer-events: none;
+		width: max-content; max-width: min(560px, calc(100% - 32px)); text-align: center;
+		padding: 12px 18px; border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: 0 5px 0 var(--edge);
+		font: 800 18px/1.4 var(--sans); opacity: 0; transition: opacity 0.4s;
+	}
+	.toast:global(.show) { opacity: 1; }
+
+	.stick { position: fixed; z-index: 25; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+	.stick[hidden] { display: none; }
+	.stick::before, .knob { content: ''; position: absolute; border-radius: 50%; }
+	.stick::before {
+		left: -60px; top: -60px; width: 120px; height: 120px;
+		background: color-mix(in srgb, var(--surface) 45%, transparent); box-shadow: inset 0 0 0 3px var(--surface);
+	}
+	.knob { left: -26px; top: -26px; width: 52px; height: 52px; background: var(--surface); box-shadow: 0 4px 0 var(--edge); }
+	.jump, .mark, .act { display: none; }
+	.jump, .mark {
+		position: fixed; z-index: 25; right: 24px; width: 72px; height: 72px; border: 0; border-radius: 50%;
+		background: var(--surface); color: var(--ink); font: 900 30px var(--sans); box-shadow: 0 5px 0 var(--edge); touch-action: none;
+	}
+	.jump { bottom: 190px; }
+	.mark { right: 108px; bottom: 150px; width: 64px; height: 64px; color: #5f9be8; }
+	.jump:active, .mark:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--edge); }
+	.act {
+		position: fixed; z-index: 25; right: 24px; bottom: 280px; min-width: 72px; height: 52px; padding: 0 16px;
+		border: 0; border-radius: 999px; background: var(--ink); color: var(--surface); font: 900 16px var(--sans);
+		box-shadow: 0 5px 0 var(--edge); touch-action: none;
+	}
+	.act[hidden] { display: none !important; }
+
+	.dialog {
+		position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 16px;
+		background: color-mix(in srgb, #000 35%, transparent);
+	}
+	.dialog[hidden] { display: none; }
+	.card {
+		width: min(560px, 100%); padding: 18px; border-radius: 18px; text-align: center;
+		background: color-mix(in srgb, var(--surface) 94%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 14px 30px -18px var(--shadow);
+	}
+	.card h2 { margin: 0 0 12px; font-family: var(--display); font-size: 28px; color: var(--ink); }
+	.card .button { margin-top: 14px; background: var(--ink); color: var(--surface); box-shadow: 0 4px 0 var(--edge); }
+	.help { max-height: min(520px, calc(100dvh - 200px)); overflow: auto; text-align: left; color: var(--ink); }
+	.help section { padding: 12px 14px; border-radius: 12px; background: var(--bg); box-shadow: 0 3px 0 var(--edge); }
+	.help section + section { margin-top: 10px; }
+	.help h3 { margin: 0 0 8px; font-family: var(--display); font-size: 20px; }
+	.help p, .help dd { margin: 0; font-size: 14px; font-weight: 700; color: var(--muted); }
+	.help dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; align-items: center; }
+	.help dt { font-size: 13px; font-weight: 900; color: var(--ink); }
+	.help kbd {
+		display: inline-block; min-width: 1.6em; margin-right: 2px; padding: 1px 5px; border-radius: 5px;
+		background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--edge); font: 900 12px var(--sans); text-align: center;
+	}
+	.help .touch { display: none; }
+
+	.loading {
+		position: fixed; z-index: 45; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0;
+		font: 900 18px var(--sans); color: var(--muted);
+	}
+	.loading[hidden] { display: none; }
+
+	@media (pointer: coarse) {
+		.jump, .mark { display: block; }
+		.act { display: block; }
+		.prompt { max-width: calc(100% - 32px); }
+		.prompt kbd { display: none; }
+		.help .keys { display: none; }
+		.help dl.touch { display: grid; }
+		.compass { width: 72px; height: 72px; bottom: auto; top: 76px; }
+		.needle::before { top: 10px; border-bottom-width: 24px; }
+		.needle::after { bottom: 10px; border-top-width: 24px; }
+	}
+	@media (max-width: 640px) {
+		.badge { display: none; }
+	}
+</style>
