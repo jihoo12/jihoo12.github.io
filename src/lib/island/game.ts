@@ -1,6 +1,6 @@
 // Nixchan's island: a little toon island in the sea for the 3D Nixchan to run about on, hunting for
-// the snowflakes scattered over it. The island is a heightfield, so walking, wading and climbing
-// are all one question — how high is the ground here? — and needs no physics engine.
+// the snowflakes scattered over it. The island is a heightfield, so walking, wading, swimming and
+// climbing are all one question — how high is the ground here? — and needs no physics engine.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildNixFigure, snowflakeTexture, type NixClip } from '../experimental/nix-figure';
@@ -66,8 +66,9 @@ const STEP = SIZE / N;
 const HALF = SIZE / 2;
 const PEAK = { x: -18, z: -14 };
 const SEA_FLOOR = -6;
-/** The deepest water she'll wade into; beyond it the sea turns her back. */
-const WADE = -0.85;
+/** She starts swimming where the sea floor drops below this, and finds her feet again above SWIM_OUT. */
+const SWIM_IN = -1.35;
+const SWIM_OUT = -1.2;
 
 function islandHeight(x: number, z: number) {
 	// How far out from the middle, with the coast pushed in and out so it isn't a circle.
@@ -596,6 +597,15 @@ export async function startIsland() {
 		return along > PIER.from - gap && along < PIER.to + gap && Math.abs(across) < PIER.half + gap;
 	};
 
+	const BUOY = (() => {
+		const a = PIER_ANGLE + 2.5;
+		const dir = { x: Math.cos(a), z: Math.sin(a) };
+		let r = 30;
+		while (r < 64 && islandHeight(dir.x * r, dir.z * r) > -1.6) r += 0.5;
+		r = Math.min(r + 6, 70);
+		return new THREE.Vector3(dir.x * r, 0, dir.z * r);
+	})();
+
 	// Scatter rocks first, since she can climb them; then the trees round them.
 	const rand = rng(12);
 	const randomLand = (radius: number) => {
@@ -632,6 +642,8 @@ export async function startIsland() {
 		flakeSpots.push(new THREE.Vector3(top.x, groundAt(top.x, top.z) + 1.2, top.z));
 		// Two hang over big rocks, to be jumped for from on top.
 		for (const rock of bigRocks.slice(0, 2)) flakeSpots.push(new THREE.Vector3(rock.x, rock.base + rock.top + 2.3, rock.z));
+		// One floats on a buoy out at sea, round the far side, to be swum for.
+		flakeSpots.push(BUOY.clone().setY(0.95));
 		const spaced = (x: number, z: number) => flakeSpots.every((p) => Math.hypot(p.x - x, p.z - z) > 13);
 		let high = 0;
 		for (let tries = 0; tries < 4000 && flakeSpots.length < 12; tries++) {
@@ -755,6 +767,52 @@ export async function startIsland() {
 	}
 	scene.add(clouds);
 
+	// The buoy the sea snowflake floats over: a striped ring bobbing on the swell.
+	const buoy = (() => {
+		const geo = new THREE.TorusGeometry(0.85, 0.24, 10, 32).toNonIndexed();
+		const p = geo.attributes.position;
+		const col = new Float32Array(p.count * 3);
+		const red = new THREE.Color('#f25f6b');
+		const white = new THREE.Color('#fdfbff');
+		for (let i = 0; i < p.count; i += 3) {
+			// Colour each triangle by where its middle sits round the ring, in four stripes of each.
+			const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3;
+			const y = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3;
+			const c = Math.floor(((Math.atan2(y, x) + Math.PI) / TAU) * 8) % 2 ? red : white;
+			for (let k = 0; k < 3; k++) c.toArray(col, (i + k) * 3);
+		}
+		geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+		geo.deleteAttribute('uv');
+		geo.computeVertexNormals();
+		geo.rotateX(-Math.PI / 2);
+		const mesh = new THREE.Mesh(geo, toon({ vertexColors: true }));
+		mesh.position.copy(BUOY);
+		mesh.castShadow = true;
+		scene.add(mesh);
+		return mesh;
+	})();
+
+	// Ripples spread out on the water round her wherever she swims or wades.
+	const ripples = Array.from({ length: 10 }, () => {
+		const mat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false });
+		const geo = new THREE.RingGeometry(0.82, 1, 40);
+		geo.rotateX(-Math.PI / 2);
+		const mesh = new THREE.Mesh(geo, mat);
+		mesh.visible = false;
+		mesh.renderOrder = 2;
+		scene.add(mesh);
+		return { mesh, mat, age: 0, size: 1 };
+	});
+	let nextRipple = 0;
+	const ripple = (x: number, z: number, size: number) => {
+		const r = ripples[nextRipple];
+		nextRipple = (nextRipple + 1) % ripples.length;
+		r.mesh.position.set(x, 0.04, z);
+		r.mesh.visible = true;
+		r.age = 0;
+		r.size = size;
+	};
+
 	// The snowflakes themselves.
 	const flakeTex = snowflakeTexture();
 	const glowTex = glowTexture();
@@ -816,6 +874,7 @@ export async function startIsland() {
 		waterMat.uniforms.uDeep.value.set(p.deep);
 		waterMat.uniforms.uFoam.value.set(p.foam);
 		cloudMat.color.set(p.cloud);
+		for (const r of ripples) r.mat.color.set(p.foam);
 		stars.visible = p.night;
 		lantern.intensity = p.night ? 2.2 : 0;
 		pierLamp.intensity = p.night ? 9 : 0;
@@ -913,6 +972,8 @@ export async function startIsland() {
 
 	const WALK = 3;
 	const RUN = 7.5;
+	const SWIM = 2.4;
+	const SWIM_FAST = 3.6;
 	const GRAVITY = 26;
 	const JUMP_SPEED = 8.6;
 	const FLIGHT = (2 * JUMP_SPEED) / GRAVITY;
@@ -921,6 +982,9 @@ export async function startIsland() {
 	const vel = new THREE.Vector3();
 	let vy = 0;
 	let grounded = true;
+	let swimming = false;
+	let rippleClock = 0;
+	let swimClock = 0;
 	let jumped = false;
 	let airTime = 0;
 	let heading = Math.atan2(-PIER_DIR.x, -PIER_DIR.z) + 0.55;
@@ -941,6 +1005,7 @@ export async function startIsland() {
 		vel.set(0, 0, 0);
 		vy = 0;
 		grounded = true;
+		swimming = false;
 		found = 0;
 		started = null;
 		finished = false;
@@ -963,7 +1028,9 @@ export async function startIsland() {
 	/** Whether she can move her feet from where she is to (x, z). */
 	const canGo = (x: number, z: number) => {
 		const g = groundAt(x, z);
-		if (g < WADE || Math.hypot(x, z) > 105) return false;
+		if (Math.hypot(x, z) > 105) return false;
+		// Swimming, she goes round the pier and anything else standing up out of the water.
+		if (swimming) return g < 0.05;
 		const step = Math.hypot(x - pos.x, z - pos.z);
 		// On her feet she takes steps and gentle slopes in her stride; in the air she clears what's beneath her.
 		return grounded ? g - pos.y <= 0.5 + step * 1.3 : g <= pos.y + 0.05;
@@ -1000,8 +1067,9 @@ export async function startIsland() {
 		if (moving && started === null) started = performance.now();
 
 		const wading = grounded && pos.y < 0.05;
-		const speed = (running ? RUN : WALK) * (wading ? 0.6 : 1);
-		const control = grounded ? 10 : 3;
+		const speed = swimming ? (running ? SWIM_FAST : SWIM) : (running ? RUN : WALK) * (wading ? 0.6 : 1);
+		// In the water she glides, and in the air she can only steer a little.
+		const control = grounded ? 10 : swimming ? 4 : 3;
 		vel.x = damp(vel.x, steer.x * speed, control, dt);
 		vel.z = damp(vel.z, steer.z * speed, control, dt);
 
@@ -1022,17 +1090,40 @@ export async function startIsland() {
 		}
 		pushOut(pos);
 
-		if (jumpQueued && grounded) {
+		// She can jump from her feet, or spring up out of the water: high enough to reach the pier.
+		if (jumpQueued && (grounded || swimming)) {
+			if (swimming) ripple(pos.x, pos.z, 1.2);
 			vy = JUMP_SPEED;
 			grounded = false;
+			swimming = false;
 			jumped = true;
 			airTime = 0;
 			waving = 0;
 		}
 		jumpQueued = false;
 		const ground = groundAt(pos.x, pos.z);
-		if (grounded) {
-			if (ground < pos.y - 0.6) {
+		const intoWater = () => {
+			// The swimming clips float her with the water line at her origin, which lines her
+			// shoulders up with where they were standing chest deep, so she needn't jump.
+			swimming = true;
+			grounded = false;
+			vy = 0;
+			waving = 0;
+			ripple(pos.x, pos.z, 1.5);
+		};
+		if (swimming) {
+			if (ground > SWIM_OUT) {
+				swimming = false;
+				grounded = true;
+				pos.y = ground;
+			} else {
+				swimClock += dt;
+				pos.y = Math.sin(swimClock * 2.2) * 0.05;
+			}
+		} else if (grounded) {
+			if (ground < SWIM_IN) {
+				intoWater();
+			} else if (ground < pos.y - 0.6) {
 				// Stepped off an edge.
 				grounded = false;
 				jumped = false;
@@ -1042,11 +1133,14 @@ export async function startIsland() {
 				pos.y = ground;
 			}
 		}
-		if (!grounded) {
+		if (!grounded && !swimming) {
 			airTime += dt;
 			vy -= GRAVITY * dt;
 			pos.y += vy * dt;
-			if (pos.y <= ground && vy <= 0) {
+			if (pos.y <= 0 && ground < SWIM_IN && vy <= 0) {
+				pos.y = 0;
+				intoWater();
+			} else if (pos.y <= ground && vy <= 0) {
 				pos.y = ground;
 				grounded = true;
 				vy = 0;
@@ -1064,13 +1158,24 @@ export async function startIsland() {
 		waveQueued = false;
 		if (moving) waving = 0;
 		waving = Math.max(0, waving - dt);
-		let clip: NixClip = planar > 3 ? 'Run' : planar > 0.25 ? 'Walk' : 'Idle';
+		let clip: NixClip = swimming ? (planar > 0.3 ? 'Swim' : 'Tread') : planar > 3 ? 'Run' : planar > 0.25 ? 'Walk' : 'Idle';
 		if (waving > 0) clip = 'Wave';
-		// The clips are cut for about 1.5 (walk) and 4.2 (run) a second.
-		const pace = clip === 'Run' ? clamp(planar / 4.2, 0.8, 2.4) : clip === 'Walk' ? clamp(planar / 1.5, 0.6, 1.8) : 1;
+		// The clips are cut for about 1.5 (walk), 4.2 (run) and 2.4 (swim) a second.
+		const pace =
+			clip === 'Run' ? clamp(planar / 4.2, 0.8, 2.4) : clip === 'Walk' ? clamp(planar / 1.5, 0.6, 1.8) : clip === 'Swim' ? clamp(planar / 2.4, 0.7, 1.6) : 1;
 		figure.play(clip, pace);
-		const flight = grounded ? null : { t: jumped ? clamp(airTime / FLIGHT, 0, 0.97) : clamp(0.5 + airTime, 0.5, 0.97), clip: 'JumpStand' as const };
-		return { flight, airborne: !grounded };
+
+		// Rings on the water: steadily as she swims, now and then as she treads water or wades.
+		rippleClock -= dt;
+		const wet = swimming || (grounded && pos.y < -0.15);
+		if (wet && rippleClock <= 0) {
+			ripple(pos.x, pos.z, swimming ? (planar > 0.3 ? 0.9 : 0.7) : 0.6);
+			rippleClock = planar > 0.3 ? 0.4 : 1.1;
+		}
+
+		const airborne = !grounded && !swimming;
+		const flight = airborne ? { t: jumped ? clamp(airTime / FLIGHT, 0, 0.97) : clamp(0.5 + airTime, 0.5, 0.97), clip: 'JumpStand' as const } : null;
+		return { flight, airborne, swimming };
 	};
 
 	const finish = () => {
@@ -1166,8 +1271,9 @@ export async function startIsland() {
 		time += dt;
 
 		if (ready) {
-			const { flight, airborne } = step(dt);
-			figure.tick(dt, time, { airborne, look: zero, still: false, jump: flight });
+			const { flight, airborne, swimming } = step(dt);
+			// Dropping into the water isn't a landing, so no bending of the knees.
+			figure.tick(dt, time, { airborne, look: zero, still: false, jump: flight, landed: !swimming });
 			nextBlink -= dt;
 			if (nextBlink < 0) {
 				const closed = nextBlink > -0.13;
@@ -1216,6 +1322,19 @@ export async function startIsland() {
 		sun.target.position.copy(pos);
 		lantern.position.set(pos.x + 0.5, pos.y + 2.2, pos.z + 0.8);
 		clouds.rotation.y = time * 0.004;
+		buoy.position.y = Math.sin(time * 1.8) * 0.06;
+		buoy.rotation.z = Math.sin(time * 1.3) * 0.05;
+		for (const r of ripples) {
+			if (!r.mesh.visible) continue;
+			r.age += dt;
+			const t = r.age / 1.3;
+			if (t >= 1) {
+				r.mesh.visible = false;
+				continue;
+			}
+			r.mesh.scale.setScalar(r.size * (0.6 + t * 2.2));
+			r.mat.opacity = 0.75 * (1 - t) * (1 - t);
+		}
 		waterMat.uniforms.uTime.value = time;
 
 		mapClock -= dt;

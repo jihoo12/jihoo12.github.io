@@ -190,11 +190,15 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 }
 
 /** The looping clips baked into the model. */
-export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave';
+export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread';
 /** The jumps, which the page scrubs along her flight, by where she leaps from and lands: a seat or her feet. */
 export type NixJump = 'Jump' | 'JumpUp' | 'JumpDown' | 'JumpStand';
 /** The jumps that land her on her feet, which a Land clip follows. */
 const LANDS_STANDING: NixJump[] = ['JumpDown', 'JumpStand'];
+/** Swimming tips her forwards, so her head tips back up to look where she's going. */
+const HEAD_LIFT: Partial<Record<NixClip, number>> = { Swim: -0.55, Tread: -0.08 };
+/** How far her long hair streams back behind her in each clip. */
+const HAIR_STREAM: Partial<Record<NixClip, number>> = { Run: 0.3, Walk: 0.1, Swim: 0.45, Tread: 0.12 };
 
 export interface NixFigure {
 	group: THREE.Group;
@@ -203,8 +207,9 @@ export interface NixFigure {
 	setBlink(closed: boolean): void;
 	/** Blend into a looping clip, played at `speed` times its natural pace. */
 	play(clip: NixClip, speed?: number): void;
-	/** `jump` is the jump she's in and how far through it she is (0 → 1), or null on the ground. */
-	tick(dt: number, time: number, state: { airborne: boolean; look: THREE.Vector2; still: boolean; jump: { t: number; clip: NixJump } | null }): void;
+	/** `jump` is the jump she's in and how far through it she is (0 → 1), or null on the ground.
+	 * `landed: false` ends a jump without the landing clip, as when she drops into water. */
+	tick(dt: number, time: number, state: { airborne: boolean; look: THREE.Vector2; still: boolean; jump: { t: number; clip: NixJump } | null; landed?: boolean }): void;
 }
 
 export function buildNixFigure(url: string): NixFigure {
@@ -326,6 +331,7 @@ export function buildNixFigure(url: string): NixFigure {
 	let yaw = 0;
 	let pitch = 0;
 	let flow = 0;
+	let lift = 0;
 	let jumpWeight = 0;
 	let jumping: NixJump | null = null;
 	// The jump last played, which stays on as it fades out under a sit.
@@ -350,7 +356,7 @@ export function buildNixFigure(url: string): NixFigure {
 			const action = actions.get(next);
 			if (action && (weights.get(action) ?? 0) < 0.05) action.time = 0;
 		},
-		tick(dt, time, { airborne, look: pointer, still, jump }) {
+		tick(dt, time, { airborne, look: pointer, still, jump, landed = true }) {
 			if (!head || !longHair || !mixer) return;
 			const damp = (from: number, to: number, rate: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
 			const landAction = actions.get('Land');
@@ -359,7 +365,7 @@ export function buildNixFigure(url: string): NixFigure {
 				landing = null;
 			} else if (jumping) {
 				// Down on her feet, she goes straight into the landing: knees bend, then she straightens up.
-				if (LANDS_STANDING.includes(jumping) && landAction && !still) {
+				if (LANDS_STANDING.includes(jumping) && landAction && !still && landed) {
 					landing = 0;
 					landWeight = 1;
 					jumpWeight = 0;
@@ -392,9 +398,10 @@ export function buildNixFigure(url: string): NixFigure {
 			// She glances towards the pointer, and her hair streams back when she runs or lifts in the air.
 			yaw = damp(yaw, THREE.MathUtils.clamp(pointer.x, -1, 1) * 0.28, 4);
 			pitch = damp(pitch, THREE.MathUtils.clamp(-pointer.y, -1, 1) * 0.12, 4);
-			const stream = clip === 'Run' ? 0.3 : clip === 'Walk' ? 0.1 : 0;
+			const stream = HAIR_STREAM[clip] ?? 0;
+			lift = damp(lift, HEAD_LIFT[clip] ?? 0, 5);
 			flow = damp(flow, airborne ? -0.2 : stream + (still ? 0 : Math.sin(time * 1.7) * 0.02), airborne ? 6 : 3);
-			head.quaternion.copy(rest.head).multiply(look.setFromEuler(euler.set(pitch, yaw, still ? 0 : Math.sin(time * 0.8) * 0.03)));
+			head.quaternion.copy(rest.head).multiply(look.setFromEuler(euler.set(pitch + lift, yaw, still ? 0 : Math.sin(time * 0.8) * 0.03)));
 			// The long hair hangs from her shoulders and is only half as stiff, so it trails a turn of the head.
 			longHair.quaternion.copy(rest.hair).multiply(look.setFromEuler(euler.set(flow, yaw * 0.55, 0)));
 		},

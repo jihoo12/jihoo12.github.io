@@ -1,12 +1,13 @@
 # Builds the 3D Nixchan figure for /experimental and exports it as a .glb.
 #
-#   blender -b -P tools/nixchan-3d/build.py -- <out.glb> [preview-dir]
+#   nix develop .#blender -c blender -b -P tools/nixchan-3d/build.py -- <out.glb> [preview-dir]
 #
 # Everything is modelled straight in three.js coordinates (y up, she faces +z, y = 0 is the seat,
 # z = 0 the front edge of whatever she sits on) and exported without the y-up conversion.
 # Materials are only placeholders: the page swaps them for toon materials by name and paints the
-# face onto the "Face" mesh. She is rigged, standing in rest, with clips Sit, Idle, Walk, Run, Wave
-# and the jumps and landing baked in; the page plays those, and turns the "Head" and "Hair" bones itself.
+# face onto the "Face" mesh. She is rigged, standing in rest, with clips Sit, Idle, Walk, Run, Wave,
+# Swim and Tread and the jumps and landing baked in; the page plays those, and turns the "Head" and
+# "Hair" bones itself. The swimming clips put the water line at y = 0 rather than her feet.
 import math
 import os
 import sys
@@ -850,6 +851,50 @@ def wave(t):
     return p
 
 
+def afloat(pose, depth=-0.06):
+    """Raise or drop her so her shoulders sit `depth` below the water line, which is y = 0."""
+    world = fk(pose)
+    shoulders = sum(world['UpperArm' + s].translation.y for _, s in SIDES) / 2
+    pose['Hips'][0].y += depth - shoulders
+
+
+# Swimming she tips forwards into a doggy paddle; the page lifts her head back up to look ahead.
+SWIM_LEAN = 0.75
+
+
+def swim(t):
+    p = new_pose()
+    ph = TAU * t
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(SWIM_LEAN, 0.06 * math.sin(ph), 0.04 * math.sin(ph))
+    p['Chest'][1] = euler(-0.2, 0.1 * math.sin(ph), 0)
+    for side, s in SIDES:
+        q = ph + (0 if side > 0 else math.pi)
+        # A quick flutter kick behind her, twice to each paddle, toes pointed.
+        k = 2 * ph + (0 if side > 0 else math.pi)
+        legs(p, s, 0.2 + 0.3 * math.sin(k), 0.3 + 0.35 * max(0.0, math.cos(k)), 0.75, roll=side * 0.04)
+        # Each paw circles under her chin, reaching forwards and pulling back, in turn.
+        reach(p, s, Vector((side * 0.19, 0.6 + 0.1 * math.sin(q), BODY_Z + 0.34 + 0.12 * math.cos(q))), (side, -0.5, -0.4), hand=euler(0.5 + 0.3 * math.sin(q)))
+    afloat(p, -0.02)
+    return p
+
+
+def tread(t):
+    p = new_pose()
+    ph = TAU * t
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(0.12, 0, 0.02 * math.sin(ph))
+    p['Chest'][1] = euler(0.02 * math.sin(ph))
+    for side, s in SIDES:
+        q = ph + (0 if side > 0 else math.pi)
+        # Slow bicycling legs, and paws sculling out to the sides just under the surface.
+        legs(p, s, -0.45 + 0.3 * math.sin(q), 0.85 + 0.35 * math.cos(q), 0.3, yaw=side * 0.1)
+        sweep = math.sin(2 * ph)
+        reach(p, s, Vector((side * (0.5 + 0.05 * sweep), 0.5, BODY_Z + 0.2 + 0.1 * math.cos(2 * ph))), (side, -1, -0.4), hand=euler(0, 0, side * 0.35 * sweep))
+    afloat(p, -0.1 + 0.03 * math.sin(2 * ph))
+    return p
+
+
 def jump_key(thigh, knee, foot, hips, chest, arms):
     p = new_pose()
     p['Hips'][0] = Vector(hips)
@@ -924,7 +969,7 @@ land = keyed([(0.0, STAND_REACH), (0.3, STAND_SQUASH), (1.0, idle(0))])
 
 # Looping clips end where they start; the jumps and Land play once.
 FPS = 30
-CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land)}
+CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land), 'Swim': (30, swim), 'Tread': (60, tread)}
 CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
 UNKEYED = {'Head', 'Hair'}
@@ -1024,11 +1069,17 @@ if PREVIEW:
         bpy.ops.render.render(write_still=True)
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
-    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45)):
+    only_clips = os.environ.get('NIX_PREVIEW_CLIPS')
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25)):
+        if only_clips and clip not in only_clips.split(','):
+            continue
         apply_pose(CLIPS[clip][1](t))
+        # The swimming clips float her at the water line, lower down and stretched out.
+        afloat_clip = clip in ('Swim', 'Tread')
+        look = Vector((0, -0.3, BODY_Z + 0.2)) if afloat_clip else standing
         for view, at in (('front', (0, 1.4, 8)), ('side', (6, 1.6, 5))):
-            pos = Vector(at)
-            cam.matrix_world = facing(pos - standing, pos)
+            pos = look + (Vector(at) - standing) * (1.25 if afloat_clip else 1)
+            cam.matrix_world = facing(pos - look, pos)
             scene.render.filepath = os.path.join(PREVIEW, f'{clip.lower()}-{t}-{view}.png')
             bpy.ops.render.render(write_still=True)
     print(f'nixchan: previews in {PREVIEW}')
