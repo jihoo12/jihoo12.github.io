@@ -6,10 +6,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { NixClip, NixFigure } from '../experimental/nix-figure';
+import type { Toon } from './look';
+import { loadJSON, saveJSON } from './save';
 import { thumbnail } from './thumbnail';
-
-const clamp = THREE.MathUtils.clamp;
-const damp = (from: number, to: number, rate: number, dt: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
+import { clamp, damp } from './util';
 
 type Shape = 'Sardine' | 'Bream' | 'Puffer' | 'Moonfish';
 export interface Species {
@@ -56,7 +56,7 @@ export interface FishingContext {
 	figure: NixFigure;
 	root: THREE.Object3D;
 	modelUrl: string;
-	toon: (params?: THREE.MeshToonMaterialParameters) => THREE.MeshToonMaterial;
+	toon: Toon;
 	groundAt: (x: number, z: number) => number;
 	ripple: (x: number, z: number, size: number) => void;
 	/** Where she stands, and whether she's on her feet and standing still enough to fish. */
@@ -95,22 +95,13 @@ export function createFishing(ctx: FishingContext) {
 
 	// ---------- what she's caught ----------
 
-	const BOOK_KEY = 'island-fish';
 	const best = new Map<string, number>();
-	try {
-		const saved: unknown = JSON.parse(localStorage.getItem(BOOK_KEY) ?? '{}');
+	{
+		const saved = loadJSON('fishBook');
 		if (saved && typeof saved === 'object')
 			for (const [id, cm] of Object.entries(saved)) if (SPECIES.some((s) => s.id === id) && typeof cm === 'number') best.set(id, cm);
-	} catch {
-		// An empty book, then.
 	}
-	const saveBook = () => {
-		try {
-			localStorage.setItem(BOOK_KEY, JSON.stringify(Object.fromEntries(best)));
-		} catch {
-			// It just won't be remembered.
-		}
-	};
+	const saveBook = () => saveJSON('fishBook', Object.fromEntries(best));
 	const renderBook = () => {
 		if (ui.bookCount) ui.bookCount.textContent = `${best.size} of ${SPECIES.length} kinds caught`;
 		if (!ui.book) return;

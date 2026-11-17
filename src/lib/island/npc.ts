@@ -5,9 +5,9 @@
 // are made in Blender (tools/island-otter).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-
-const clamp = THREE.MathUtils.clamp;
-const damp = (from: number, to: number, rate: number, dt: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
+import type { Toon } from './look';
+import { loadText, saveText } from './save';
+import { clamp, damp } from './util';
 
 type Clip = 'Idle' | 'Wave' | 'Talk' | 'Happy';
 
@@ -27,7 +27,7 @@ export interface Facts {
 export interface NpcContext {
 	scene: THREE.Scene;
 	camera: THREE.Camera;
-	toon: (params?: THREE.MeshToonMaterialParameters) => THREE.MeshToonMaterial;
+	toon: Toon;
 	modelUrl: string;
 	spot: { x: number; z: number; angle: number };
 	groundAt: (x: number, z: number) => number;
@@ -38,7 +38,6 @@ export interface NpcContext {
 }
 
 const NAME = 'Pebble';
-const MET_KEY = 'island-pebble';
 
 /** Tips, most pressing first; she gives the first that fits and that she hasn't said lately. */
 const TIPS: { id: string; when: (f: Facts) => boolean; say: (f: Facts) => string }[] = [
@@ -134,12 +133,7 @@ export function createNpc(ctx: NpcContext) {
 
 	// ---------- speech ----------
 
-	let met = false;
-	try {
-		met = localStorage.getItem(MET_KEY) === '1';
-	} catch {
-		// Strangers, then.
-	}
+	let met = loadText('pebbleMet') === '1';
 	const recent: string[] = [];
 	const nextTip = (f: Facts) => {
 		const tip = TIPS.find((t) => t.when(f) && !recent.includes(t.id)) ?? TIPS.find((t) => t.when(f))!;
@@ -150,11 +144,7 @@ export function createNpc(ctx: NpcContext) {
 	const greeting = (f: Facts) => {
 		if (!met) {
 			met = true;
-			try {
-				localStorage.setItem(MET_KEY, '1');
-			} catch {
-				// She'll introduce herself again next time.
-			}
+			saveText('pebbleMet', '1');
 			return `Oh, hello! You must be Nixchan. I'm ${NAME}, and this is my stand: seeds to sell, and a fair price for anything you catch or grow.`;
 		}
 		if (f.night) return 'Up late, Nixchan? The best fish come out after dark, you know.';

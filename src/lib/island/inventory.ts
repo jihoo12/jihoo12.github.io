@@ -2,6 +2,7 @@
 // else in particular: each kind of thing she can carry is registered with a name, a picture and the
 // things she can do with it (let a fish go; later, plant a seed or eat a turnip), and the rest of the
 // island adds and takes items by id. What's in the bag is remembered in the browser.
+import { loadJSON, saveJSON } from './save';
 
 export type ItemKind = 'fish' | 'seed' | 'crop' | 'tool';
 
@@ -45,14 +46,12 @@ export interface Inventory {
 
 export function createInventory({
 	slots,
-	storageKey,
 	grid,
 	detail,
 	summary,
 	note,
 }: {
 	slots: number;
-	storageKey: string;
 	grid: HTMLElement | null;
 	detail: HTMLElement | null;
 	summary: HTMLElement | null;
@@ -64,21 +63,13 @@ export function createInventory({
 	const stacks = new Map<string, number>();
 	let selected: string | null = null;
 
-	try {
-		const saved: unknown = JSON.parse(localStorage.getItem(storageKey) ?? '[]');
+	{
+		const saved = loadJSON('bag');
 		if (Array.isArray(saved))
 			for (const entry of saved)
 				if (Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'number' && entry[1] > 0) stacks.set(entry[0], Math.floor(entry[1]));
-	} catch {
-		// An empty bag, then.
 	}
-	const save = () => {
-		try {
-			localStorage.setItem(storageKey, JSON.stringify([...stacks]));
-		} catch {
-			// It just won't be remembered.
-		}
-	};
+	const save = () => saveJSON('bag', [...stacks]);
 
 	const picture = (def: ItemDef | undefined, className: string) => {
 		const el = document.createElement('span');

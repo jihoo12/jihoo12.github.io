@@ -8,10 +8,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { NixClip, NixFigure } from '../experimental/nix-figure';
 import type { Inventory } from './inventory';
+import type { Offer } from './interact';
+import type { Toon } from './look';
+import { loadJSON, saveJSON } from './save';
 import { thumbnail } from './thumbnail';
-
-const clamp = THREE.MathUtils.clamp;
-const damp = (from: number, to: number, rate: number, dt: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
+import { clamp, damp } from './util';
 
 interface Crop {
 	id: string;
@@ -45,7 +46,6 @@ const GAP = 1.95;
 const CAN_HOLDS = 5;
 /** The crops are modelled true to size; grown up a bit, they read better from where the camera is. */
 const PLANT_SCALE = 1.7;
-const STATE_KEY = 'island-garden';
 
 interface Plot {
 	crop: string | null;
@@ -67,7 +67,7 @@ export interface FarmContext {
 	renderer: THREE.WebGLRenderer;
 	scene: THREE.Scene;
 	figure: NixFigure;
-	toon: (params?: THREE.MeshToonMaterialParameters) => THREE.MeshToonMaterial;
+	toon: Toon;
 	inventory: Inventory;
 	modelUrl: string;
 	/** The middle of the garden, and the way its front (where the plots face the beach) points. */
@@ -91,9 +91,6 @@ export interface FarmContext {
 export function createFarm(ctx: FarmContext) {
 	const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel);
 	const ui = {
-		prompt: $('[data-act-prompt]'),
-		promptText: $('[data-act-text]'),
-		button: $<HTMLButtonElement>('[data-act]'),
 		shop: $('[data-shop]'),
 		coins: $('[data-coins]'),
 		buy: $('[data-shop-buy]'),
@@ -106,7 +103,7 @@ export function createFarm(ctx: FarmContext) {
 	const fresh = (): Saved => ({ plots: Array.from({ length: ROWS * COLS }, () => ({ crop: null, stage: 0, wet: false, since: 0 })), water: 0, coins: 0, gifted: false, seed: null });
 	const state: Saved = (() => {
 		try {
-			const saved = JSON.parse(localStorage.getItem(STATE_KEY) ?? 'null') as Partial<Saved> | null;
+			const saved = (loadJSON('garden') ?? null) as Partial<Saved> | null;
 			const s = fresh();
 			if (saved && Array.isArray(saved.plots))
 				saved.plots.slice(0, s.plots.length).forEach((p, i) => {
@@ -123,13 +120,7 @@ export function createFarm(ctx: FarmContext) {
 			return fresh();
 		}
 	})();
-	const save = () => {
-		try {
-			localStorage.setItem(STATE_KEY, JSON.stringify(state));
-		} catch {
-			// It just won't be remembered.
-		}
-	};
+	const save = () => saveJSON('garden', state);
 	const crop = (id: string | null) => CROPS.find((c) => c.id === id);
 	const stageMs = (c: Crop) => c.minutes * 60_000;
 
@@ -641,7 +632,7 @@ export function createFarm(ctx: FarmContext) {
 	};
 
 	/** What pressing E would do right now, as a label (and the doing, if there is any). */
-	const option = (): { label: string; go?: () => void } | null => {
+	const option = (): Offer | null => {
 		if (job || walk || shopOpen || !ctx.canAct()) return null;
 		if (Math.hypot(BARREL.x - ctx.pos.x, BARREL.z - ctx.pos.z) < 1.6) {
 			if (!inv.has('tool-can')) return { label: 'A barrel of rainwater' };
@@ -703,8 +694,6 @@ export function createFarm(ctx: FarmContext) {
 		if (state.water <= 0) return { label: 'The can is empty: fill it at the barrel' };
 		return { label: `Water the ${c.name.toLowerCase()} (can ${state.water}/${CAN_HOLDS})`, go: () => atPlot(i, waterJob(i)) };
 	};
-	let current: ReturnType<typeof option> = null;
-
 	// ---------- the market stand ----------
 
 	const row = (icon: string | null, color: string, name: string, sub: string, buttons: [string, boolean, () => void][]) => {
@@ -805,18 +794,6 @@ export function createFarm(ctx: FarmContext) {
 	let growClock = 0;
 	const mid = new THREE.Vector3();
 	const other = new THREE.Vector3();
-	const press = () => {
-		if (!current?.go) return false;
-		current.go();
-		current = null;
-		return true;
-	};
-	if (ui.button)
-		ui.button.addEventListener('pointerdown', (e) => {
-			e.preventDefault();
-			press();
-		});
-
 	const update = (dt: number) => {
 		growClock -= dt;
 		if (growClock <= 0) {
@@ -878,20 +855,11 @@ export function createFarm(ctx: FarmContext) {
 			view.wetMix = damp(view.wetMix, p.wet ? 1 : 0, p.wet ? 1.6 : 0.8, dt);
 			view.mat.color.copy(dry).lerp(wet, view.wetMix);
 		});
-
-		current = option();
-		const label = current?.label ?? '';
-		ui.prompt?.toggleAttribute('hidden', !current);
-		ui.prompt?.classList.toggle('inactive', !current?.go);
-		if (ui.promptText) ui.promptText.textContent = label;
-		if (ui.button) {
-			ui.button.hidden = !current?.go;
-			ui.button.textContent = label.split(' ')[0] || 'Do';
-		}
 	};
 
 	return {
-		press,
+		/** What pressing E would do in the garden right now, for the island's interactions. */
+		offer: option,
 		update,
 		openShop,
 		closeShop,
