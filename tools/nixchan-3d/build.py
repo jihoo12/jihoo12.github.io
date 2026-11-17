@@ -13,6 +13,8 @@
 # out) are in her right hand in every clip, and the page shows each only when she's using it. The
 # garden clips are Tend (crouched, patting the soil) and Water. Her smithing hammer ("Hammer") is in
 # that hand too, for Smith, a loop of strikes on the anvil in front of her.
+# For /skills she has a fighting stance (Ready), a held spell (Charge), and four spells that each
+# play once from Ready back to Ready: Shot, Slam, Summon and Dash.
 import math
 import os
 import sys
@@ -1265,10 +1267,127 @@ PLANT_KEYS = [
 plant = keyed(PLANT_KEYS)
 
 
+# ---------- snow magic, for /skills ----------
+# Ready is a loop: a light, wide stance with both paws up in front, bouncing on her toes. The spells
+# play once each, from Ready back to Ready; the page throws the effects at the moments noted.
+
+
+def battle_pose(arms, wide=0.11, bend=0.14, chest=0.06, twist=0.0, hips=0.0, lift=0.0):
+    """`arms(side)` gives each wrist's (target, pole), in the chest's rest frame."""
+    p = new_pose()
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(hips, twist * 0.5, 0)
+    p['Chest'][1] = euler(chest, twist, 0)
+    for side, s in SIDES:
+        legs(p, s, -bend, bend * 2, -bend, yaw=side * 0.12, roll=side * wide)
+        target, pole = arms(side)
+        reach(p, s, Vector(target), pole)
+    ground(p, lift=lift)
+    return p
+
+
+GUARD = lambda side, dy=0.0: ((side * 0.21, 0.5 + dy, BODY_Z + 0.33), (side, -1, -0.3))
+
+
+def ready(t):
+    b = math.sin(TAU * t)
+    return battle_pose(lambda side: GUARD(side, 0.02 * b), bend=0.15 + 0.04 * b, chest=0.06 + 0.02 * b)
+
+
+# Cupped together in front of her chest, where the page grows the snowball between her paws.
+CUP = lambda side, z=0.4: ((side * 0.07, 0.5, BODY_Z + z), (side, -1, -0.5))
+# Both paws pushed straight out in front at shoulder height.
+PUSH = lambda side: ((side * 0.11, 0.62, BODY_Z + 0.56), (side, -0.6, -0.4))
+
+
+def charge(t):
+    """A loop, held while she gathers a spell: a little tremble, leaning in."""
+    k = math.sin(TAU * t * 2)
+    return battle_pose(lambda side: CUP(side, 0.4 + 0.01 * k), bend=0.2, chest=0.14 + 0.01 * k, twist=0.02 * k)
+
+
+# Frost Shot: she pulls her paws back to her chest and shoves them forwards. The bolt leaves at 0.3.
+SHOT_FIRE = 0.3
+shot = keyed([
+    (0.0, ready(0)),
+    (0.15, battle_pose(lambda side: CUP(side, 0.3), bend=0.22, chest=0.0, twist=0.1)),
+    (SHOT_FIRE, battle_pose(PUSH, bend=0.18, chest=0.22, hips=0.06)),
+    (0.6, battle_pose(PUSH, bend=0.17, chest=0.18, hips=0.05)),
+    (1.0, ready(0)),
+])
+
+# Glacier Slam: both paws flung up and out (her head's too big to reach over), a little hop, and down onto the ground in a crouch.
+# Her paws hit the ground at 0.55, where the page bursts ice out of it.
+SLAM_HIT = 0.55
+UP_HIGH = lambda side: ((side * 0.58, 0.9, BODY_Z + 0.3), (side, -0.3, -1))
+
+
+def slam_low():
+    p = new_pose()
+    p['Hips'][0].z = STAND_Z
+    p['Chest'][1] = euler(0.6, 0, 0)
+    for side, s in SIDES:
+        legs(p, s, -1.05, 1.75, -0.7, yaw=side * 0.18, roll=side * 0.12)
+        reach(p, s, Vector((side * 0.1, 0.28, BODY_Z + 0.46)), (side, -1, -0.2))
+    ground(p)
+    return p
+
+
+slam = keyed([
+    (0.0, ready(0)),
+    (0.12, battle_pose(GUARD, bend=0.3, chest=0.2)),
+    (0.32, battle_pose(UP_HIGH, bend=0.0, chest=-0.18, lift=0.22)),
+    (0.42, battle_pose(UP_HIGH, bend=0.05, chest=-0.2, lift=0.18)),
+    (SLAM_HIT, slam_low()),
+    (0.75, slam_low()),
+    (1.0, ready(0)),
+])
+
+# Blizzard Crown: arms flung up and out in a V to call the storm down, held, then lowered. The rune
+# opens over her at 0.3 and the storm falls while her arms are up, until 0.8.
+SUMMON_OPEN = 0.3
+# Out in front of her long hair, or it hides them.
+V_UP = lambda side, w=0.0: ((side * (0.6 + w), 0.86 + w, BODY_Z + 0.32), (side, -0.3, -1))
+summon = keyed([
+    (0.0, ready(0)),
+    (0.12, battle_pose(lambda side: CUP(side, 0.35), bend=0.24, chest=0.18)),
+    (SUMMON_OPEN, battle_pose(lambda side: V_UP(side), bend=0.04, chest=-0.22, lift=0.03)),
+    (0.55, battle_pose(lambda side: V_UP(side, 0.04), bend=0.06, chest=-0.26, lift=0.03)),
+    (0.8, battle_pose(lambda side: V_UP(side), bend=0.06, chest=-0.22)),
+    (1.0, ready(0)),
+])
+
+# Snow Dash: a low lunge to one side, her right paw slashing across, then back. The slash is at 0.4.
+DASH_SLASH = 0.4
+
+
+def lunge(sweep, low):
+    p = new_pose()
+    p['Hips'][0].z = STAND_Z
+    p['Hips'][1] = euler(0.12 * low, -0.4 * sweep, 0)
+    p['Chest'][1] = euler(0.18 * low, -0.5 * sweep, 0)
+    legs(p, 'L', -0.2 - 0.5 * low, 0.3 + 0.9 * low, -0.1 - 0.3 * low, roll=0.14)
+    legs(p, 'R', 0.15 + 0.25 * low, 0.15 + 0.3 * low, -0.2, roll=-0.14)
+    reach(p, 'R', Vector((-0.45 + 0.75 * sweep, 0.58, BODY_Z + 0.38)), (-1, -1, -0.3))
+    reach(p, 'L', Vector((0.3, 0.45, BODY_Z + 0.2)), (1, -1, -0.3))
+    ground(p)
+    return p
+
+
+dash = keyed([
+    (0.0, ready(0)),
+    (0.2, lunge(0.0, 0.6)),
+    (DASH_SLASH, lunge(1.0, 1.0)),
+    (0.6, lunge(1.0, 0.9)),
+    (1.0, ready(0)),
+])
+
+
 # Looping clips end where they start; the jumps and Land play once.
 FPS = 30
 CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land), 'Swim': (30, swim), 'Tread': (60, tread)}
 CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show), 'Water': (54, water), 'Tend': (30, tend), 'Plant': (72, plant), 'Smith': (36, smith)})
+CLIPS.update({'Ready': (40, ready), 'Charge': (24, charge), 'Shot': (27, shot), 'Slam': (42, slam), 'Summon': (90, summon), 'Dash': (27, dash)})
 CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
 UNKEYED = {'Head', 'Hair'}
@@ -1369,7 +1488,7 @@ if PREVIEW:
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
     only_clips = os.environ.get('NIX_PREVIEW_CLIPS')
-    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74), ('Smith', 0.4), ('Smith', 0.62)):
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74), ('Smith', 0.4), ('Smith', 0.62), ('Ready', 0), ('Charge', 0), ('Shot', 0.15), ('Shot', 0.3), ('Slam', 0.32), ('Slam', 0.55), ('Summon', 0.3), ('Summon', 0.55), ('Dash', 0.2), ('Dash', 0.4)):
         if only_clips and clip not in only_clips.split(','):
             continue
         apply_pose(CLIPS[clip][1](t))

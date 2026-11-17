@@ -190,9 +190,11 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 }
 
 /** The looping clips baked into the model. */
-export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show' | 'Water' | 'Tend' | 'Plant' | 'Smith';
+export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show' | 'Water' | 'Tend' | 'Plant' | 'Smith'
+	// The snow magic on /skills: a fighting stance, holding a spell, and the spells themselves.
+	| 'Ready' | 'Charge' | 'Shot' | 'Slam' | 'Summon' | 'Dash';
 /** Clips that play once through from the top each time they're played, and hold their last pose. */
-const ONCE: NixClip[] = ['Water', 'Plant'];
+const ONCE: NixClip[] = ['Water', 'Plant', 'Shot', 'Slam', 'Summon', 'Dash'];
 /** The things she can hold, each hidden until she's using it. */
 export type NixProp = 'Rod' | 'Can' | 'Hammer';
 const PROP_PARTS: Record<NixProp, string[]> = { Rod: ['Rod', 'Reel'], Can: ['Can'], Hammer: ['Hammer'] };
@@ -203,7 +205,7 @@ const LANDS_STANDING: NixJump[] = ['JumpDown', 'JumpStand'];
 /** Swimming tips her forwards, so her head tips back up to look where she's going. */
 const HEAD_LIFT: Partial<Record<NixClip, number>> = { Swim: -0.55, Tread: -0.08 };
 /** How far her long hair streams back behind her in each clip. */
-const HAIR_STREAM: Partial<Record<NixClip, number>> = { Run: 0.3, Walk: 0.1, Swim: 0.45, Tread: 0.12 };
+const HAIR_STREAM: Partial<Record<NixClip, number>> = { Run: 0.3, Walk: 0.1, Swim: 0.45, Tread: 0.12, Dash: 0.35, Charge: 0.08 };
 
 export interface NixFigure {
 	group: THREE.Group;
@@ -216,6 +218,8 @@ export interface NixFigure {
 	node(name: string): THREE.Object3D | null;
 	/** Recolours one of her materials by name ("Can", "Reel"…), as when a tool is upgraded. */
 	tint(material: string, hex: string): void;
+	/** How long a clip runs at its natural pace, in seconds (0 until the model's in). */
+	duration(clip: NixClip): number;
 	/** Blend into a looping clip, played at `speed` times its natural pace. */
 	play(clip: NixClip, speed?: number): void;
 	/** `jump` is the jump she's in and how far through it she is (0 → 1), or null on the ground.
@@ -387,6 +391,9 @@ export function buildNixFigure(url: string): NixFigure {
 		},
 		node(name) {
 			return loaded?.getObjectByName(name) ?? null;
+		},
+		duration(name) {
+			return actions.get(name)?.getClip().duration ?? 0;
 		},
 		play(next, speed = 1) {
 			const playing = actions.get(next);

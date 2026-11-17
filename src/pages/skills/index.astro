@@ -1,0 +1,169 @@
+---
+// Nixchan's snow magic: a little night arena for trying out spell effects on a training dummy.
+// Kept apart from /island on purpose — the island is cozy, this is the flashy one.
+import BaseHead from '../../components/BaseHead.astro';
+import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
+
+const title = "Nixchan's snow magic (experimental)";
+const description = 'A moonlit stage where Nixchan shows off her snow-magic skills on a long-suffering training dummy.';
+const skills = [
+	{ id: 'shot', key: '1', name: 'Frost Shot', icon: '❄' },
+	{ id: 'slam', key: '2', name: 'Glacier Slam', icon: '▲' },
+	{ id: 'summon', key: '3', name: 'Blizzard Crown', icon: '✦' },
+	{ id: 'dash', key: '4', name: 'Snow Dash', icon: '✕' },
+];
+---
+<!doctype html>
+<html lang="en" data-time="night">
+	<head>
+		<BaseHead title={title} description={description} />
+		<meta name="robots" content="noindex" />
+	</head>
+	<body class="arena">
+		<canvas class="stage" data-stage data-model={nixModel} aria-label="Nixchan casting snow magic at a training dummy"></canvas>
+		<div class="flash" data-flash aria-hidden="true"></div>
+
+		<header class="bar">
+			<a class="brand" href="/">jihoo<span class="period">.</span></a>
+			<span class="badge">skills · experimental</span>
+			<span class="spacer"></span>
+			<a class="pill" href="/island/">Island</a>
+			<a class="pill" href="/experimental/">3D home</a>
+		</header>
+
+		<p class="loading" data-loading role="status">Nixchan's getting ready…</p>
+
+		<div class="banner" data-banner aria-live="polite">
+			<p class="banner-name" data-banner-name></p>
+			<p class="banner-sub" data-banner-sub></p>
+		</div>
+
+		<p class="combo" data-combo hidden aria-hidden="true"><b>0</b> hits</p>
+
+		<nav class="dock" aria-label="Skills">
+			<div class="skills">
+				{skills.map((s) => (
+					<button class="skill" type="button" data-skill={s.id} disabled>
+						<span class="icon" aria-hidden="true">{s.icon}</span>
+						<span class="name">{s.name}</span>
+						<kbd>{s.key}</kbd>
+					</button>
+				))}
+			</div>
+			<div class="toggles">
+				<button class="toggle" type="button" data-slow aria-pressed="false">Slow-mo <kbd>Q</kbd></button>
+				<button class="toggle" type="button" data-auto aria-pressed="false">Auto <kbd>R</kbd></button>
+			</div>
+		</nav>
+		<p class="hint">Drag to look around · scroll to zoom</p>
+	</body>
+</html>
+
+<script>
+	import { startSkills } from '../../lib/skills/stage';
+
+	startSkills();
+</script>
+
+<style>
+	:global(html:has(body.arena)), :global(body.arena) { overflow: hidden; height: 100%; }
+	:global(body.arena::before), :global(body.arena::after) { display: none; }
+	:global(body.arena) { background: #0d0c26; color: #eef0ff; }
+
+	.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+	.stage:active { cursor: grabbing; }
+	:global(.no-3d) .stage { display: none; }
+	.flash { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; background: radial-gradient(circle, #ffffff 0%, #cfe8ff 45%, #8fc3ff 100%); mix-blend-mode: screen; }
+
+	.bar {
+		position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+		display: flex; align-items: center; gap: 12px; padding: 16px clamp(16px, 4vw, 40px);
+		pointer-events: none;
+	}
+	.bar > * { pointer-events: auto; }
+	.brand { font-family: var(--display); font-size: 28px; line-height: 1; color: #eef0ff; }
+	.badge { background: var(--star); color: #1c1a3e; font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px; transform: rotate(-3deg); }
+	.spacer { flex: 1; }
+	.pill {
+		border: 0; border-radius: 9px; padding: 8px 15px; background: #2c2a52; color: #eef0ff;
+		font: 800 15px var(--sans); box-shadow: 0 4px 0 #17163a; cursor: pointer;
+	}
+	.pill:hover { transform: translateY(-2px); }
+
+	.loading {
+		position: fixed; z-index: 10; left: 50%; top: 46%; transform: translate(-50%, -50%); margin: 0;
+		font-weight: 800; color: #b9c2ff;
+	}
+	.loading[hidden] { display: none; }
+
+	/* The spell's name, swept across the screen as she casts it. */
+	.banner { position: fixed; z-index: 10; left: 0; right: 0; top: 17%; text-align: center; pointer-events: none; opacity: 0; }
+	.banner-name {
+		margin: 0; font-family: var(--display); font-size: clamp(34px, 6vw, 68px); line-height: 1;
+		color: #f4f8ff; letter-spacing: 0.02em;
+		text-shadow: 0 0 18px #7fb8ff, 0 0 42px #4f7dff, 0 4px 0 #1d1b3a;
+	}
+	.banner-sub { margin: 8px 0 0; font-weight: 800; font-size: 15px; color: #b9d7ff; letter-spacing: 0.08em; text-transform: lowercase; }
+	.banner:global(.show) { animation: banner 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+	@keyframes banner {
+		0% { opacity: 0; transform: translateX(-60px) skewX(-12deg); filter: blur(6px); }
+		14% { opacity: 1; transform: translateX(0) skewX(0); filter: blur(0); }
+		75% { opacity: 1; transform: translateX(14px); }
+		100% { opacity: 0; transform: translateX(60px); filter: blur(4px); }
+	}
+
+	.combo {
+		position: fixed; z-index: 10; right: clamp(16px, 6vw, 80px); top: 30%; margin: 0;
+		font-family: var(--display); font-size: 22px; color: #ffe7a3; text-shadow: 0 3px 0 #1d1b3a, 0 0 16px #ffb347;
+		transform: rotate(-6deg);
+	}
+	.combo b { font-size: 52px; margin-right: 4px; font-weight: 400; }
+	.combo[hidden] { display: none; }
+	.combo:global(.pop) b { display: inline-block; animation: pop 0.25s ease-out; }
+	@keyframes pop { from { transform: scale(1.5); } to { transform: scale(1); } }
+
+	.dock {
+		position: fixed; z-index: 20; left: 16px; right: 16px; bottom: 34px; pointer-events: none;
+		display: flex; flex-direction: column; align-items: center; gap: 10px;
+	}
+	.dock > * { pointer-events: auto; }
+	.skills { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+	.skill {
+		position: relative; display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 10px;
+		min-width: 150px; padding: 10px 16px 10px 12px; border: 2px solid #4b4f96; border-radius: 14px;
+		background: linear-gradient(180deg, #2c2a5ccc, #1a1940cc); color: #eef0ff; cursor: pointer;
+		-webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+		box-shadow: 0 4px 0 #0f0e2a, inset 0 0 14px #5f7dff33;
+		font: 800 15px var(--sans); text-align: left; transition: transform 0.12s, border-color 0.2s, box-shadow 0.2s;
+	}
+	.skill:hover:not(:disabled) { transform: translateY(-3px); border-color: #8fb6ff; box-shadow: 0 7px 0 #0f0e2a, 0 0 22px #5f9bff88; }
+	.skill:disabled { opacity: 0.5; cursor: progress; }
+	.skill:global(.waiting) { opacity: 0.55; }
+	.skill:global(.waiting.casting) { opacity: 1; border-color: #bfe0ff; box-shadow: 0 4px 0 #0f0e2a, 0 0 26px #7fc0ff; }
+	.icon {
+		grid-row: span 2; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px;
+		background: radial-gradient(circle, #9fd4ff 0%, #4f7dff 70%); color: #fff; font-size: 20px; text-shadow: 0 0 8px #fff;
+	}
+	.name { white-space: nowrap; }
+	kbd {
+		display: inline-block; min-width: 1.5em; padding: 0 5px; border-radius: 5px; justify-self: start;
+		background: #eef0ff; color: #1d1b3a; box-shadow: 0 2px 0 #8a85c4; font: 900 11px var(--sans); text-align: center;
+	}
+	.toggles { display: flex; gap: 8px; }
+	.toggle {
+		border: 0; border-radius: 999px; padding: 5px 12px; background: #2c2a52cc; color: #c9cdf5;
+		font: 800 13px var(--sans); cursor: pointer; box-shadow: 0 3px 0 #0f0e2a;
+	}
+	.toggle[aria-pressed='true'] { background: var(--star); color: #1c1a3e; }
+	.toggle kbd { margin-left: 4px; }
+	.hint { position: fixed; z-index: 10; left: 0; right: 0; bottom: 8px; margin: 0; text-align: center; font-size: 12px; font-weight: 700; color: #8d92c9; pointer-events: none; }
+
+	@media (max-width: 700px) {
+		.badge { display: none; }
+		.skill { min-width: 0; padding: 8px 10px; gap: 0 6px; font-size: 13px; }
+		.skill kbd { display: none; }
+		.icon { width: 30px; height: 30px; font-size: 17px; }
+		.toggle kbd { display: none; }
+		.dock { bottom: 28px; }
+	}
+</style>
