@@ -42,6 +42,8 @@ export interface PlayerContext {
 	hold: (tryingToMove: boolean) => number | null;
 	/** A clip something wants her playing instead of her own, if any. */
 	clip: () => NixClip | null;
+	/** How her glider flies: its speed and how fast it sinks (better once upgraded at the forge). */
+	glider?: () => { speed: number; sink: number };
 }
 
 export function createPlayer(ctx: PlayerContext) {
@@ -51,20 +53,26 @@ export function createPlayer(ctx: PlayerContext) {
 	root.add(figure.group);
 	ctx.scene.add(root);
 
-	// Her glider: a striped wing on two struts, which she opens in mid-air.
+	// Her glider: a striped wing on two struts, which she opens in mid-air. Its stripes can be
+	// repainted, as when it's remade at the forge.
+	let paintGlider: (a: string, b: string) => void = () => {};
 	const glider = (() => {
 		const rig = new THREE.Group();
 		const geo = new THREE.BoxGeometry(3.6, 0.06, 1.25, 16, 1, 1).toNonIndexed();
 		const p = geo.attributes.position;
 		for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) - (p.getX(i) / 1.8) ** 2 * 0.42);
-		const col = new Float32Array(p.count * 3);
-		const colors = [new THREE.Color('#ffd84d'), new THREE.Color('#f25f6b')];
-		for (let i = 0; i < p.count; i += 3) {
-			const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3;
-			const c = colors[Math.floor((x + 1.8) / 0.6) % 2];
-			for (let k = 0; k < 3; k++) c.toArray(col, (i + k) * 3);
-		}
-		geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+		const col = new THREE.BufferAttribute(new Float32Array(p.count * 3), 3);
+		paintGlider = (a, b) => {
+			const colors = [new THREE.Color(a), new THREE.Color(b)];
+			for (let i = 0; i < p.count; i += 3) {
+				const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3;
+				const c = colors[Math.floor((x + 1.8) / 0.6) % 2];
+				for (let k = 0; k < 3; k++) col.setXYZ(i + k, c.r, c.g, c.b);
+			}
+			col.needsUpdate = true;
+		};
+		paintGlider('#ffd84d', '#f25f6b');
+		geo.setAttribute('color', col);
 		geo.deleteAttribute('uv');
 		geo.computeVertexNormals();
 		const wing = new THREE.Mesh(geo, ctx.toon({ vertexColors: true, side: THREE.DoubleSide }));
@@ -183,7 +191,8 @@ export function createPlayer(ctx: PlayerContext) {
 		if (gliding && !moving && lift === 0) steer.set(Math.sin(heading) * 0.6, 0, Math.cos(heading) * 0.6);
 
 		const wading = grounded && pos.y < 0.05;
-		const speed = gliding ? GLIDE : swimming ? (running ? SWIM_FAST : SWIM) : (running ? RUN : WALK) * (wading ? 0.6 : 1);
+		const wing = ctx.glider?.() ?? { speed: GLIDE, sink: GLIDE_SINK };
+		const speed = gliding ? wing.speed : swimming ? (running ? SWIM_FAST : SWIM) : (running ? RUN : WALK) * (wading ? 0.6 : 1);
 		// In the water she glides, and in the air she can only steer a little (more so under the wing).
 		const control = grounded ? 10 : swimming ? 4 : gliding ? 2.2 : 3;
 		vel.x = damp(vel.x, steer.x * speed, control, dt);
@@ -257,7 +266,7 @@ export function createPlayer(ctx: PlayerContext) {
 		if (!grounded && !swimming) {
 			airTime += dt;
 			// Under the glider the wind lifts her; without it, it only slows her fall a little.
-			if (gliding) vy = damp(vy, lift > 0 ? lift : -GLIDE_SINK, lift > 0 ? 2 : 3, dt);
+			if (gliding) vy = damp(vy, lift > 0 ? lift : -wing.sink, lift > 0 ? 2 : 3, dt);
 			else vy = Math.max(vy - GRAVITY * (lift > 0 ? 0.6 : 1) * dt, -FALL_MAX);
 			pos.y += vy * dt;
 			// She bumps her head on the underside of the sky island rather than rising into it.
@@ -338,6 +347,8 @@ export function createPlayer(ctx: PlayerContext) {
 		get swimming() {
 			return swimming;
 		},
+		/** Repaints the glider's stripes. */
+		paintGlider: (a: string, b: string) => paintGlider(a, b),
 		/** How far open her glider is, 0 … 1. */
 		get gliderOpen() {
 			return gliderOpen;

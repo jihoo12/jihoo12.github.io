@@ -15,13 +15,15 @@
 //   interact           what E does here (sources register offers)
 //   explore, menu      places found, the maps, and the menu over the game
 //   fishing, farm, npc, inventory   the things to do
+//   forge              the smithy: ore to mine, ingots to smelt, tools to make better
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
 import { createFollowCamera } from './camera';
 import { createControls, type Orbit } from './controls';
 import { createExplore } from './explore';
 import { createFarm } from './farm';
-import { addFeature, groundAt } from './features';
+import { addFeature, groundAt, roomy } from './features';
+import { createForge, type Upgrade } from './forge';
 import { createFishing, SPECIES } from './fishing';
 import { createInteractions } from './interact';
 import { createInventory } from './inventory';
@@ -95,13 +97,14 @@ export async function startIsland() {
 			}
 			// With the menu open, only the keys that work the menu do anything.
 			if (menu.isOpen && !['m', 'i', 'h', '?', 'escape'].includes(key)) return true;
-			if (farm.shopOpen && key !== 'escape') return true;
+			if ((farm.shopOpen || forge.dialogOpen) && key !== 'escape') return true;
 			return false;
 		},
 		command(key, e) {
 			if (key === 'escape') {
 				menu.close();
 				farm.closeShop();
+				forge.closeDialog();
 			}
 			if (e.repeat) return;
 			// E does whatever there is to do here, and otherwise she waves.
@@ -134,6 +137,7 @@ export async function startIsland() {
 			let held: number | null = null;
 			if (npc.talking) held = npc.facing;
 			if (farm.busy) held = farm.facing;
+			if (forge.busy) held = forge.facing;
 			// So does fishing, but walking off (or jumping) puts the rod away, unless a fish is on the line.
 			if (fishing.active) {
 				if (held === null && tryingToMove && !fishing.hooked) fishing.interrupt();
@@ -141,7 +145,9 @@ export async function startIsland() {
 			}
 			return held;
 		},
-		clip: () => farm.clip ?? fishing.clip,
+		clip: () => forge.clip ?? farm.clip ?? fishing.clip,
+		// Remade at the forge, the glider flies faster and sinks slower.
+		glider: () => (forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
 	});
 	const { figure, pos } = player;
 	let ready = false;
@@ -203,7 +209,8 @@ export async function startIsland() {
 		waterAt: (x, z) => (skyIsle.aboard ? skyWaterAt(x, z, pos.y) : groundAt(x, z) < -0.5 ? 0 : null),
 		ripple: water.ripple,
 		pos,
-		canStand: () => ready && player.grounded && !player.swimming && !farm.busy && !farm.shopOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
+		canStand: () => ready && player.grounded && !player.swimming && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
+		rod: () => (forge.has('rod') ? { lo: 0.15, hi: 0.9, speed: 1.45 } : { lo: 0.25, hi: 0.85, speed: 1 }),
 		heading: () => player.heading,
 		towardCamera,
 		waters: (x, z) => ({
@@ -229,18 +236,48 @@ export async function startIsland() {
 		addFeature,
 		pos,
 		towardCamera,
-		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !menu.isOpen && !npc.talking,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !menu.isOpen && !npc.talking && !forge.busy && !forge.dialogOpen,
 		toast: (text) => fishing.toast(text),
 		keeper: { name: 'Pebble', talk: () => npc.open() },
 		onTrade: () => npc.cheer(),
+		canHolds: () => (forge.has('can') ? 12 : 5),
 	});
+
+	// The forge, near the garden: ore to mine in the hills (E), and the anvil to make things at.
+	const forge = createForge({
+		renderer,
+		scene,
+		toon,
+		theme,
+		figure,
+		inventory,
+		modelUrl: canvas.dataset.forgeModel ?? '',
+		near: layout.GARDEN,
+		places: layout.places,
+		clearOfPlaces: layout.clearOfPlaces,
+		roomy,
+		addFeature,
+		pos,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !menu.isOpen && !npc.talking,
+		toast: (text) => fishing.toast(text),
+		onUpgrade: (id) => showUpgrade(id),
+	});
+	/** What an upgrade looks like on her: a steel can, a sky-blue reel, a sky-blue glider. */
+	const showUpgrade = (id: Upgrade) => {
+		if (id === 'can') figure.tint('Can', '#c9d3e8');
+		if (id === 'rod') figure.tint('Reel', '#9fe3ff');
+		if (id === 'glider') player.paintGlider('#9fe3ff', '#fdfbff');
+	};
+	for (const id of ['can', 'rod', 'glider'] as const) if (forge.has(id)) showUpgrade(id);
+	// Smithing comes first, so E strikes while she's at it.
+	interactions.add(forge.offer);
 	interactions.add(farm.offer);
 
-	// Pebble, who keeps the stand, behind its counter.
 	// Cloudrest, up in the sky: crystals to gather (E), and a chest at the top of the spire.
 	const skyIsle = createSkyIsle({ scene, toon, theme, inventory, pos, addFeature, modelUrl: canvas.dataset.skyModel ?? '', toast: (text) => fishing.toast(text) });
 	interactions.add(skyIsle.offer);
 
+	// Pebble, who keeps the stand, behind its counter.
 	const npc = createNpc({
 		scene,
 		camera,
@@ -271,6 +308,7 @@ export async function startIsland() {
 				sellable,
 				seeds,
 				garden: farm.summary(),
+				forged: forge.has,
 			};
 		},
 	});
@@ -346,8 +384,9 @@ export async function startIsland() {
 		}
 		landmarks.update(time, dt);
 		skyIsle.update(time, dt);
+		forge.update(time, dt);
 
-		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : null);
+		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : forge.framing);
 		sky.update(time, camera, pos);
 		water.update(time, dt);
 

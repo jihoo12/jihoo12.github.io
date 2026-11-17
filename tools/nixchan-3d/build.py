@@ -11,7 +11,8 @@
 # line at y = 0 rather than her feet. Her fishing rod ("Rod" and "Reel", with a "RodTip" empty for
 # the line to hang from) and her watering can ("Can", with a "CanSpout" empty where the water comes
 # out) are in her right hand in every clip, and the page shows each only when she's using it. The
-# garden clips are Tend (crouched, patting the soil) and Water.
+# garden clips are Tend (crouched, patting the soil) and Water. Her smithing hammer ("Hammer") is in
+# that hand too, for Smith, a loop of strikes on the anvil in front of her.
 import math
 import os
 import sys
@@ -423,6 +424,23 @@ bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP) @ Matrix.Scale(CAN_SCALE
 watering_can = mesh_object('Can', bm, ['Can', 'Metal'])
 can_spout = empty('CanSpout', GRIP + Vector((0, CAN_Y + 0.115, 0.3)) * CAN_SCALE)
 
+# Her smithing hammer, through her right fist like the rod: in rest its handle points forwards (+z)
+# from her palm, with the head across the end of it, standing upright (its striking face down, -y).
+# The Smith clip turns her hand to swing it.
+HAMMER_LEN = 0.3
+bm = bmesh.new()
+verts = bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=0.018, radius2=0.015, depth=HAMMER_LEN + 0.1)['verts']
+bmesh.ops.translate(bm, vec=GRIP + Vector((0, 0, (HAMMER_LEN - 0.1) / 2)), verts=verts)
+set_mat(verts, 0)
+verts = bmesh.ops.create_cube(bm, size=1)['verts']
+bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP + Vector((0, -0.02, HAMMER_LEN))) @ Matrix.Diagonal((0.075, 0.17, 0.085, 1)), verts=verts)
+set_mat(verts, 1)
+HAMMER_SCALE = 1.4
+bmesh.ops.transform(bm, matrix=Matrix.Translation(GRIP) @ Matrix.Scale(HAMMER_SCALE, 4) @ Matrix.Translation(-GRIP), verts=bm.verts[:])
+hammer = mesh_object('Hammer', bm, ['Rod', 'Metal'])
+# The middle of the hammer's striking face, where the sparks fly from.
+hammer_face = empty('HammerFace', GRIP + Vector((0, -0.105, HAMMER_LEN)) * HAMMER_SCALE)
+
 flake_chest = empty('FlakeChest', matrix=facing((0, 0.2, 1), Vector((0, 0.47, BODY_Z + 0.352))))
 
 # ---------- legs: thighs from the hips, shins and sneakers from the knees ----------
@@ -720,7 +738,7 @@ def attach(obj, bone):
 
 for obj in (hood, cords, flake_chest):
     attach(obj, 'Chest')
-for obj in (rod, reel, rod_tip, watering_can, can_spout):
+for obj in (rod, reel, rod_tip, watering_can, can_spout, hammer, hammer_face):
     attach(obj, 'HandR')
 attach(head, 'Head')
 attach(long_hair, 'Hair')
@@ -1161,6 +1179,40 @@ WATER_KEYS = [
 water = keyed(WATER_KEYS)
 
 
+# Smithing, a loop: she stands square to the anvil in front of her, raises the hammer back over her
+# shoulder, brings it down on the anvil (her left hand steadying the work there with tongs she
+# doesn't have), lets it bounce up, and raises it again. The strike lands at t = 0.62; the page
+# throws the sparks then, from "HammerFace".
+SMITH_STRIKE = 0.62
+
+
+def smith_pose(lift, lean=0.0):
+    """`lift` is how far the hammer's raised: 1 back over her shoulder, 0 down on the anvil."""
+    p = new_pose()
+    stance(p, wide=0.1, bend=0.1 + 0.05 * (1 - lift))
+    p['Chest'][1] = euler(0.12 + 0.18 * (1 - lift) + lean, -0.12 * lift, 0)
+    wrist = Vector((-0.16 - 0.1 * lift, 0.36 + 0.4 * lift, BODY_Z + 0.42 - 0.1 * lift))
+    reach(p, 'R', wrist, (-1, -0.6 + 0.8 * lift, -0.4))
+    # The handle swings from pointing up (raised) to forwards (striking), its face turning from
+    # forwards to down with it. These are in the chest's frame, which leans forwards as she strikes,
+    # so the handle's tipped up a little there to come out level.
+    aim = Vector((0.04 + 0.06 * lift, 0.3 + 0.7 * lift, 1 - 1.3 * lift))
+    up = Vector((0, 1 - lift, -lift))
+    hand_frame(p, 'R', aim, up)
+    reach(p, 'L', Vector((0.12, 0.3, BODY_Z + 0.46)), (1, -1, -0.3))
+    ground(p)
+    return p
+
+
+smith = keyed([
+    (0.0, smith_pose(0.85)),
+    (0.4, smith_pose(1.0)),
+    (SMITH_STRIKE, smith_pose(0.0, lean=0.04)),
+    (0.72, smith_pose(0.18)),
+    (1.0, smith_pose(0.85)),
+])
+
+
 # Tending: crouched down low, patting the soil in front of her with both hands, out of step.
 def tend(t):
     ph = TAU * t
@@ -1216,7 +1268,7 @@ plant = keyed(PLANT_KEYS)
 # Looping clips end where they start; the jumps and Land play once.
 FPS = 30
 CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land), 'Swim': (30, swim), 'Tread': (60, tread)}
-CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show), 'Water': (54, water), 'Tend': (30, tend), 'Plant': (72, plant)})
+CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show), 'Water': (54, water), 'Tend': (30, tend), 'Plant': (72, plant), 'Smith': (36, smith)})
 CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
 UNKEYED = {'Head', 'Hair'}
@@ -1317,13 +1369,14 @@ if PREVIEW:
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
     only_clips = os.environ.get('NIX_PREVIEW_CLIPS')
-    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74)):
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74), ('Smith', 0.4), ('Smith', 0.62)):
         if only_clips and clip not in only_clips.split(','):
             continue
         apply_pose(CLIPS[clip][1](t))
         # Only what she's holding for this clip, as on the page.
         rod.hide_render = reel.hide_render = clip not in ('Cast', 'Fish', 'Reel')
         watering_can.hide_render = clip != 'Water'
+        hammer.hide_render = clip != 'Smith'
         # The swimming clips float her at the water line, lower down and stretched out.
         afloat_clip = clip in ('Swim', 'Tread')
         look = Vector((0, -0.3, BODY_Z + 0.2)) if afloat_clip else standing

@@ -72,6 +72,9 @@ export interface FishingContext {
 	heading: () => number;
 	towardCamera: () => number;
 	waters: (x: number, z: number) => { deep: boolean; islet: boolean; pier: boolean; sky: boolean };
+	/** How forgiving her rod is: the stretch of tension that's in the green, and how quickly she
+	 * reels in there (better once it's upgraded at the forge). */
+	rod?: () => { lo: number; hi: number; speed: number };
 	/** A fish landed: false if there was no room in the bag for it. */
 	onCatch: (s: Species, cm: number) => boolean;
 	/** The fish's pictures are ready, for anything showing them to draw again. */
@@ -428,8 +431,9 @@ export function createFishing(ctx: FishingContext) {
 			surge = Math.max(0, surge - dt);
 			tension += (held ? 0.8 : -0.85) * dt + (surge > 0 ? hooked.pull * 0.85 * dt : 0);
 			tension = clamp(tension, 0, 1.05);
-			const good = tension > 0.25 && tension < 0.85;
-			if (held && good && surge === 0) progress += (0.3 / hooked.tough) * dt;
+			const rod = ctx.rod?.() ?? { lo: 0.25, hi: 0.85, speed: 1 };
+			const good = tension > rod.lo && tension < rod.hi;
+			if (held && good && surge === 0) progress += ((0.3 * rod.speed) / hooked.tough) * dt;
 			if (surge > 0) progress -= 0.05 * dt;
 			if (tension < 0.15) progress -= 0.14 * dt;
 			if (tension >= 1) {
@@ -443,10 +447,12 @@ export function createFishing(ctx: FishingContext) {
 			}
 			if (ui.tension) {
 				ui.tension.style.setProperty('--t', String(Math.min(tension, 1)));
-				ui.tension.classList.toggle('danger', tension > 0.85);
+				ui.tension.classList.toggle('danger', tension > rod.hi);
+				ui.tension.style.setProperty('--lo', String(rod.lo));
+				ui.tension.style.setProperty('--hi', String(rod.hi));
 			}
 			if (ui.progress) ui.progress.style.setProperty('--p', String(clamp(progress, 0, 1)));
-			if (ui.reelNote) ui.reelNote.textContent = surge > 0 ? "It's making a run for it!" : tension > 0.85 ? 'Ease off!' : tension < 0.25 ? 'Reel in!' : 'Keep it steady…';
+			if (ui.reelNote) ui.reelNote.textContent = surge > 0 ? "It's making a run for it!" : tension > rod.hi ? 'Ease off!' : tension < rod.lo ? 'Reel in!' : 'Keep it steady…';
 			// The bobber's dragged under and about, coming in as she wins.
 			const u = clamp(progress, 0, 1);
 			const side = Math.sin(time * (surge > 0 ? 9 : 4)) * (surge > 0 ? 0.6 : 0.25);

@@ -6,6 +6,7 @@ import fishModel from '../../assets/island/fish.glb?url';
 import farmModel from '../../assets/island/farm.glb?url';
 import otterModel from '../../assets/island/otter.glb?url';
 import skyModel from '../../assets/island/sky.glb?url';
+import forgeModel from '../../assets/island/forge.glb?url';
 
 const title = "Nixchan's island (experimental)";
 const description = "Roam a little toon island with Nixchan: climb, swim, glide, fish, grow a garden and find what's out there.";
@@ -17,7 +18,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<meta name="robots" content="noindex" />
 	</head>
 	<body class="isle">
-		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} data-sky-model={skyModel} aria-label="Nixchan on her island"></canvas>
+		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} data-sky-model={skyModel} data-forge-model={forgeModel} aria-label="Nixchan on her island"></canvas>
 
 		<header class="bar">
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
@@ -45,6 +46,12 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 			<div class="tension" data-tension aria-hidden="true"><span class="zone"></span><span class="needle"></span></div>
 			<div class="progress" data-progress aria-hidden="true"><span></span></div>
 			<p class="reel-hint"><span class="keys">Hold <kbd>F</kbd> to reel in, let go to ease off</span><span class="touch">Hold Reel to reel in, let go to ease off</span></p>
+		</div>
+		<div class="smith" data-smith hidden role="status">
+			<p class="reel-note" data-smith-note>Strike when the marker's in the glow!</p>
+			<div class="smith-bar" data-smith-bar aria-hidden="true"><span class="glow"></span><span class="sweet"></span><span class="marker"></span></div>
+			<p class="smith-marks" data-smith-marks aria-label="Strikes">○ ○ ○</p>
+			<p class="reel-hint"><span class="keys">Press <kbd>E</kbd> to strike</span><span class="touch">Tap Strike! to strike</span></p>
 		</div>
 		<div class="catch" data-catch aria-live="polite">
 			<p class="catch-name" data-catch-name></p>
@@ -122,6 +129,14 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 						<p>The garden keeps growing while you're away.</p>
 					</section>
 					<section>
+						<h3>The forge</h3>
+						<ol>
+							<li>The Old Forge is a short walk from the garden. Iron ore crops out of glinting rocks up in the hills: stand by one and press <kbd class="keys">E</kbd><span class="touch">the action button</span> to mine it. It grows back after a while.</li>
+							<li>At the anvil, press <kbd class="keys">E</kbd><span class="touch">the action button</span> to choose what to make, then strike three times when the marker's in the glow. Three perfect strikes make it especially well.</li>
+							<li>Two ore smelt into an ingot. Ingots, and sky shards from Cloudrest, make a sturdier watering can, a sky rod and a sky glider.</li>
+						</ol>
+					</section>
+					<section>
 						<h3>Menus</h3>
 						<dl class="keys">
 							<dt><kbd>I</kbd></dt><dd>Bag: everything you're carrying</dd>
@@ -151,6 +166,18 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 					</section>
 				</div>
 				<button class="button primary" type="button" data-shop-close>Back to the garden</button>
+			</div>
+		</div>
+		<div class="atlas shop" data-forge hidden role="dialog" aria-modal="true" aria-labelledby="forge-title">
+			<div class="atlas-card">
+				<h2 id="forge-title" class="shop-title">The Old Forge</h2>
+				<p class="coins">Smelt ore into ingots, and make your tools better.</p>
+				<div class="shop-columns forge-columns">
+					<section>
+						<ul class="shop-list" data-forge-list></ul>
+					</section>
+				</div>
+				<button class="button primary" type="button" data-forge-close>Back to the island</button>
 			</div>
 		</div>
 		<p class="loading" data-loading>Nixchan is on her way…</p>
@@ -340,14 +367,37 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 	.reel-hint .touch { display: none; }
 	/* The line's tension: keep the needle in the green, out of the red. */
 	.tension {
-		--t: 0.4; position: relative; height: 18px; border-radius: 999px; overflow: hidden;
-		background: linear-gradient(90deg, #c9d3ff 0 25%, #8ee07f 25% 85%, #f25f6b 85%);
+		--t: 0.4; --lo: 0.25; --hi: 0.85; position: relative; height: 18px; border-radius: 999px; overflow: hidden;
+		background: linear-gradient(90deg, #c9d3ff 0 calc(var(--lo) * 100%), #8ee07f calc(var(--lo) * 100%) calc(var(--hi) * 100%), #f25f6b calc(var(--hi) * 100%));
 	}
 	.tension .needle {
 		position: absolute; top: -2px; bottom: -2px; width: 6px; border-radius: 3px; left: calc(var(--t) * (100% - 6px));
 		background: #2c2a52; box-shadow: 0 0 0 2px #fdfbff;
 	}
 	.tension.danger { animation: shake 0.12s infinite; }
+	/* Smithing at the anvil: strike when the marker's over the glow, dead centre for a perfect one. */
+	.smith {
+		/* Up top, out of the way of the anvil and her hammer. */
+		position: fixed; z-index: 22; left: 50%; top: 84px; transform: translateX(-50%);
+		width: min(360px, calc(100% - 32px)); padding: 12px 16px; border-radius: 14px; text-align: center;
+		background: color-mix(in srgb, var(--surface) 90%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 4px 0 var(--edge);
+	}
+	.smith[hidden] { display: none; }
+	.smith p { margin: 0; }
+	.smith-bar {
+		--m: 0; --sweet: 0.5; --w: 0.22; --pw: 0.07; position: relative; height: 20px; border-radius: 999px; overflow: hidden;
+		background: linear-gradient(90deg, #4f5675, #7d86a8 50%, #4f5675);
+	}
+	.smith-bar .sweet, .smith-bar .glow { position: absolute; top: 0; bottom: 0; }
+	.smith-bar .glow { left: calc((var(--sweet) - var(--w) / 2) * 100%); width: calc(var(--w) * 100%); background: linear-gradient(90deg, transparent, #ffb347 30% 70%, transparent); }
+	.smith-bar .sweet { left: calc((var(--sweet) - var(--pw) / 2) * 100%); width: calc(var(--pw) * 100%); background: #fff1b8; }
+	.smith-bar .marker {
+		position: absolute; top: -2px; bottom: -2px; width: 6px; border-radius: 3px; left: calc(var(--m) * (100% - 6px));
+		background: #2c2a52; box-shadow: 0 0 0 2px #fdfbff;
+	}
+	.smith-marks { margin: 6px 0 0; font-weight: 900; letter-spacing: 6px; color: var(--ink); }
+	.forge-columns { grid-template-columns: 1fr; }
 	@keyframes shake { 50% { transform: translateX(2px); } }
 	/* How close the fish is to landing. */
 	.progress { --p: 0.3; height: 8px; margin-top: 8px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 15%, transparent); overflow: hidden; }

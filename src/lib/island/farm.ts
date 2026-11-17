@@ -43,6 +43,7 @@ const ROWS = 3;
 const COLS = 4;
 const PLOT = 1.5;
 const GAP = 1.95;
+/** How many waterings the can holds, until it's made sturdier at the forge. */
 const CAN_HOLDS = 5;
 /** The crops are modelled true to size; grown up a bit, they read better from where the camera is. */
 const PLANT_SCALE = 1.7;
@@ -75,6 +76,8 @@ export interface FarmContext {
 	angle: number;
 	groundAt: (x: number, z: number) => number;
 	addFeature: (f: { x: number; z: number; r: number }) => void;
+	/** How many waterings the can holds now (more once it's upgraded at the forge). */
+	canHolds?: () => number;
 	pos: THREE.Vector3;
 	/** The way that would face her to the camera, to show off a harvest. */
 	towardCamera: () => number;
@@ -89,6 +92,7 @@ export interface FarmContext {
 
 
 export function createFarm(ctx: FarmContext) {
+	const holds = () => ctx.canHolds?.() ?? CAN_HOLDS;
 	const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel);
 	const ui = {
 		shop: $('[data-shop]'),
@@ -110,7 +114,7 @@ export function createFarm(ctx: FarmContext) {
 					if (p && (p.crop === null || CROPS.some((c) => c.id === p.crop))) s.plots[i] = { crop: p.crop, stage: clamp(Math.floor(p.stage) || 0, 0, 3), wet: !!p.wet, since: Number(p.since) || 0 };
 				});
 			if (saved) {
-				s.water = clamp(Number(saved.water) || 0, 0, CAN_HOLDS);
+				s.water = clamp(Number(saved.water) || 0, 0, holds());
 				s.coins = Math.max(0, Math.floor(Number(saved.coins) || 0));
 				s.gifted = !!saved.gifted;
 				s.seed = typeof saved.seed === 'string' ? saved.seed : null;
@@ -198,7 +202,7 @@ export function createFarm(ctx: FarmContext) {
 		id: 'tool-can',
 		name: 'Watering can',
 		kind: 'tool',
-		description: `Holds ${CAN_HOLDS} waterings. Fill it at the barrel by the garden.`,
+		description: 'For watering the garden. Fill it at the barrel there; the label on E says how much is left.',
 		color: '#5fb0e8',
 		icon: () => iconOf('can', () => make('Can'), new THREE.Vector3(1, 0.4, 0.6)),
 	});
@@ -636,12 +640,12 @@ export function createFarm(ctx: FarmContext) {
 		if (job || walk || shopOpen || !ctx.canAct()) return null;
 		if (Math.hypot(BARREL.x - ctx.pos.x, BARREL.z - ctx.pos.z) < 1.6) {
 			if (!inv.has('tool-can')) return { label: 'A barrel of rainwater' };
-			if (state.water >= CAN_HOLDS) return { label: 'The watering can is full' };
+			if (state.water >= holds()) return { label: 'The watering can is full' };
 			return {
 				label: 'Fill the watering can',
 				go: () =>
 					act('Tend', 0.9, BARREL.x, BARREL.z, () => {
-						state.water = CAN_HOLDS;
+						state.water = holds();
 						save();
 						ctx.toast('The can is full of water.');
 					}),
@@ -692,7 +696,7 @@ export function createFarm(ctx: FarmContext) {
 		if (p.wet) return { label: `${c.name}: next stage in ${fmt(stageMs(c) - (Date.now() - p.since))}` };
 		if (!inv.has('tool-can')) return { label: `The ${c.name.toLowerCase()} needs water` };
 		if (state.water <= 0) return { label: 'The can is empty: fill it at the barrel' };
-		return { label: `Water the ${c.name.toLowerCase()} (can ${state.water}/${CAN_HOLDS})`, go: () => atPlot(i, waterJob(i)) };
+		return { label: `Water the ${c.name.toLowerCase()} (can ${state.water}/${holds()})`, go: () => atPlot(i, waterJob(i)) };
 	};
 	// ---------- the market stand ----------
 
@@ -803,7 +807,7 @@ export function createFarm(ctx: FarmContext) {
 		// The first time she comes by, there's a can and some seeds waiting for her.
 		if (!state.gifted && Math.hypot(ctx.centre.x - ctx.pos.x, ctx.centre.z - ctx.pos.z) < 8 && ctx.canAct()) {
 			state.gifted = true;
-			state.water = CAN_HOLDS;
+			state.water = holds();
 			inv.add('tool-can');
 			inv.add('seed-turnip', 3);
 			save();

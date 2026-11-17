@@ -22,6 +22,8 @@ export interface Facts {
 	sellable: { count: number; value: number; name: string | null };
 	seeds: number;
 	garden: { planted: number; thirsty: string | null; ripe: string | null; coins: number };
+	/** Whether she's made this at the forge. */
+	forged: (id: 'can' | 'rod' | 'glider') => boolean;
 }
 
 export interface NpcContext {
@@ -49,6 +51,8 @@ const TIPS: { id: string; when: (f: Facts) => boolean; say: (f: Facts) => string
 	{ id: 'pumpkin', when: (f) => f.garden.coins >= 80, say: () => "You've got enough for pumpkin seeds now. Slow growers, but nobody pays more for a crop." },
 	{ id: 'moonfish', when: (f) => f.night && !f.hasCaught('moonfish'), say: () => 'On a night like this the Moonfish come up from the deep. Biggest fish there is!' },
 	{ id: 'snapper', when: (f) => !f.night && !f.hasCaught('snapper'), say: () => 'Sunny Snappers love deep water while the sun is up. Try the end of the pier.' },
+	{ id: 'forge', when: (f) => !f.found('forge'), say: () => "There's an old forge past the garden that nobody's used in years. Iron ore crops out of the rocks up in the hills, if you fancy having a go!" },
+	{ id: 'skyglider', when: (f) => f.found('forge') && f.found('sky') && !f.forged('glider'), say: () => 'With a few sky shards, that forge could make your glider fly ever so much further. Just a thought!' },
 	{ id: 'sky', when: (f) => !f.found('sky'), say: () => "Ever looked up past the summit? There are islands floating up there! The wind at the Windspout blows straight up. Open your glider in it and hold on." },
 	{ id: 'spire', when: (f) => f.found('sky') && !f.found('spire'), say: () => "Been up to Cloudrest? There's a second wind up there, by the temple, that goes higher still. Something's waiting at the top of the spire." },
 	{ id: 'skyfish', when: (f) => f.found('sky') && !f.hasCaught('cloudkoi'), say: () => "They say the lake on Cloudrest has fish in it that have never once seen the sea. Imagine!" },

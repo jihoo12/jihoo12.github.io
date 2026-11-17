@@ -190,12 +190,12 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 }
 
 /** The looping clips baked into the model. */
-export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show' | 'Water' | 'Tend' | 'Plant';
+export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show' | 'Water' | 'Tend' | 'Plant' | 'Smith';
 /** Clips that play once through from the top each time they're played, and hold their last pose. */
 const ONCE: NixClip[] = ['Water', 'Plant'];
 /** The things she can hold, each hidden until she's using it. */
-export type NixProp = 'Rod' | 'Can';
-const PROP_PARTS: Record<NixProp, string[]> = { Rod: ['Rod', 'Reel'], Can: ['Can'] };
+export type NixProp = 'Rod' | 'Can' | 'Hammer';
+const PROP_PARTS: Record<NixProp, string[]> = { Rod: ['Rod', 'Reel'], Can: ['Can'], Hammer: ['Hammer'] };
 /** The jumps, which the page scrubs along her flight, by where she leaps from and lands: a seat or her feet. */
 export type NixJump = 'Jump' | 'JumpUp' | 'JumpDown' | 'JumpStand';
 /** The jumps that land her on her feet, which a Land clip follows. */
@@ -210,10 +210,12 @@ export interface NixFigure {
 	/** Resolves once the model is in, or rejects if it could not be loaded. */
 	ready: Promise<void>;
 	setBlink(closed: boolean): void;
-	/** Show or hide something in her right hand: the fishing rod or the watering can. */
+	/** Show or hide something in her right hand: the fishing rod, the watering can or the hammer. */
 	setProp(prop: NixProp, shown: boolean): void;
 	/** A named node of the model once it's in: a bone like "HandL", or the "RodTip" the line hangs from. */
 	node(name: string): THREE.Object3D | null;
+	/** Recolours one of her materials by name ("Can", "Reel"…), as when a tool is upgraded. */
+	tint(material: string, hex: string): void;
 	/** Blend into a looping clip, played at `speed` times its natural pace. */
 	play(clip: NixClip, speed?: number): void;
 	/** `jump` is the jump she's in and how far through it she is (0 → 1), or null on the ground.
@@ -276,7 +278,7 @@ export function buildNixFigure(url: string): NixFigure {
 	const weights = new Map<THREE.AnimationAction, number>();
 	let clip: NixClip = 'Sit';
 	let loaded: THREE.Object3D | null = null;
-	const propShown: Record<NixProp, boolean> = { Rod: false, Can: false };
+	const propShown: Record<NixProp, boolean> = { Rod: false, Can: false, Hammer: false };
 	const showProps = () => {
 		for (const prop of Object.keys(PROP_PARTS) as NixProp[])
 			for (const name of PROP_PARTS[prop]) {
@@ -378,6 +380,10 @@ export function buildNixFigure(url: string): NixFigure {
 			if (propShown[prop] === shown) return;
 			propShown[prop] = shown;
 			showProps();
+		},
+		tint(material, hex) {
+			const mat = materials[material] as THREE.MeshToonMaterial | undefined;
+			mat?.color.set(hex);
 		},
 		node(name) {
 			return loaded?.getObjectByName(name) ?? null;
