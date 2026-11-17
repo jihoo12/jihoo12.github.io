@@ -5,6 +5,7 @@ import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
 import fishModel from '../../assets/island/fish.glb?url';
 import farmModel from '../../assets/island/farm.glb?url';
 import otterModel from '../../assets/island/otter.glb?url';
+import skyModel from '../../assets/island/sky.glb?url';
 
 const title = "Nixchan's island (experimental)";
 const description = "Roam a little toon island with Nixchan: climb, swim, glide, fish, grow a garden and find what's out there.";
@@ -16,7 +17,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<meta name="robots" content="noindex" />
 	</head>
 	<body class="isle">
-		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} aria-label="Nixchan on her island"></canvas>
+		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} data-sky-model={skyModel} aria-label="Nixchan on her island"></canvas>
 
 		<header class="bar">
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
@@ -108,7 +109,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 							<li>When the bobber dunks under and a <strong>!</strong> pops up, press it again quickly to hook the fish.</li>
 							<li>Hold to reel in and let go to ease off. Keep the needle in the green: too tight and the line snaps, too slack and it gets away.</li>
 						</ol>
-						<p>Different fish bite at different times and places. The fish book has a hint for each one you're still missing.</p>
+						<p>Different fish bite at different times and places, and the lake up on Cloudrest has fish of its own. The fish book has a hint for each one you're still missing.</p>
 					</section>
 					<section>
 						<h3>Gardening</h3>

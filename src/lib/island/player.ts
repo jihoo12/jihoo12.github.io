@@ -8,7 +8,7 @@ import { buildNixFigure, type NixClip } from '../experimental/nix-figure';
 import type { Controls, Orbit } from './controls';
 import { ceilingAt, groundAt, nearby, within } from './features';
 import type { Toon } from './look';
-import { windLift } from './skyisle';
+import { skyWaterDepth, windLift } from './skyisle';
 import { SWIM_IN, SWIM_OUT, WORLD_EDGE } from './terrain';
 import { clamp, damp } from './util';
 
@@ -118,6 +118,11 @@ export function createPlayer(ctx: PlayerContext) {
 		if (Math.hypot(x, z) > WORLD_EDGE) return false;
 		// Nor into the side of the sky island, flying at it from below its grass.
 		if (ceilingAt(x, z, pos.y) < pos.y + HEAD) return false;
+		// Nor any deeper than her knees into the lake up there (she can always wade back out).
+		if (grounded) {
+			const deep = skyWaterDepth(x, z, pos.y);
+			if (deep > 0.45 && deep > skyWaterDepth(pos.x, pos.z, pos.y) + 1e-3) return false;
+		}
 		// Swimming, she goes round the pier and anything else standing up out of the water.
 		if (swimming) return g < 0.05;
 		const step = Math.hypot(x - pos.x, z - pos.z);

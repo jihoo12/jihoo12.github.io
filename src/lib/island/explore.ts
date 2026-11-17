@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import type { Place } from './layout';
 import { loadJSON, loadText, saveJSON, saveText } from './save';
-import { skyTopAt } from './skyisle';
+import { skyTopAt, skyWaterAt } from './skyisle';
 import { WORLD_EDGE, deckAt, terrainAt } from './terrain';
 import { clamp } from './util';
 
@@ -85,7 +85,7 @@ export function createExplore(ui: ExploreUi, places: Place[]) {
 				const h = Math.max(terrainAt(wx, wz), deckAt(wx, wz));
 				// The sky island is drawn over what's under it, paler, as seen from above.
 				const sky = skyTopAt(wx, wz);
-				const rgb = sky !== null ? [176, 226, 150] : h < 0 ? (h > -1.2 ? [134, 227, 214] : h > -4 ? [92, 170, 222] : [58, 134, 208]) : h < 1.5 ? [244, 226, 174] : h > 14.5 ? [246, 245, 255] : [136, 204, 115 - Math.min(h, 12) * 3];
+				const rgb = sky !== null ? (skyWaterAt(wx, wz, Infinity) !== null ? [134, 210, 236] : [176, 226, 150]) : h < 0 ? (h > -1.2 ? [134, 227, 214] : h > -4 ? [92, 170, 222] : [58, 134, 208]) : h < 1.5 ? [244, 226, 174] : h > 14.5 ? [246, 245, 255] : [136, 204, 115 - Math.min(h, 12) * 3];
 				img.data.set([...rgb, 255], (y * MAP_PX + x) * 4);
 			}
 		ctx.putImageData(img, 0, 0);
@@ -122,8 +122,8 @@ export function createExplore(ui: ExploreUi, places: Place[]) {
 	const reveal = (pos: THREE.Vector3) => {
 		if (revealedAt.distanceTo(new THREE.Vector2(pos.x, pos.z)) < 2) return;
 		revealedAt.set(pos.x, pos.z);
-		// She sees further from high up.
-		const metres = 22 + Math.max(0, pos.y) * 1.4;
+		// She sees further from high up (though from up in the sky, not the whole sea at once).
+		const metres = 22 + clamp(pos.y, 0, 30) * 1.4;
 		const r = (metres / MAP_SPAN) * 0.5 * MAP_PX;
 		const cx = toPx(pos.x);
 		const cy = toPx(pos.z);

@@ -94,11 +94,11 @@ export function createWater(scene: THREE.Scene, fog: THREE.Fog, theme: Theme) {
 	});
 
 	return {
-		/** Starts a ring spreading on the water at (x, z). */
-		ripple(x: number, z: number, size: number) {
+		/** Starts a ring spreading on the water at (x, z): the sea, or water standing at `level`. */
+		ripple(x: number, z: number, size: number, level = 0) {
 			const r = ripples[nextRipple];
 			nextRipple = (nextRipple + 1) % ripples.length;
-			r.mesh.position.set(x, 0.04, z);
+			r.mesh.position.set(x, level + 0.04, z);
 			r.mesh.visible = true;
 			r.age = 0;
 			r.size = size;

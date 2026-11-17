@@ -3,7 +3,7 @@
 // round the coast; the rest are picked, the same every visit, from ground that suits them.
 import * as THREE from 'three';
 import { groundAt } from './features';
-import { SKY, WINDSPOUT } from './skyisle';
+import { CROWN, MAIN, TEMPLE, WINDSPOUT } from './skyisle';
 import { COAST, H, HALF, ISLET, N, PIER, PIER_ANGLE, PIER_DIR, STEP, islandHeight, mainHeight, slopeUp, terrainAt } from './terrain';
 import { TAU, rng } from './util';
 
@@ -105,7 +105,9 @@ export function planIsland() {
 	// so that none of them moves. The Windspout stands where none of them is in its way.
 	const scattered = [...places];
 	places.push({ id: 'windspout', name: 'The Windspout', x: WINDSPOUT.x, z: WINDSPOUT.z, r: WINDSPOUT.r, clear: 0 });
-	places.push({ id: 'sky', name: 'Cloudrest', x: SKY.x, z: SKY.z, r: SKY.r * 0.7, clear: 0, above: SKY.y - 3 });
+	places.push({ id: 'sky', name: 'Cloudrest', x: MAIN.x, z: MAIN.z, r: MAIN.r * 0.75, clear: 0, above: MAIN.y - 3 });
+	places.push({ id: 'temple', name: 'Temple of the Winds', x: TEMPLE.x, z: TEMPLE.z, r: 8, clear: 0, above: MAIN.y - 3 });
+	places.push({ id: 'spire', name: 'The Sky Spire', x: CROWN.x, z: CROWN.z, r: CROWN.r * 0.8, clear: 0, above: CROWN.y - 3 });
 
 	return {
 		START,

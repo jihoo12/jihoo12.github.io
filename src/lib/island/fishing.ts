@@ -30,6 +30,8 @@ export interface Species {
 	deep?: boolean;
 	islet?: boolean;
 	pier?: boolean;
+	/** Lives only in the lake up on Cloudrest (which has nothing else in it). */
+	sky?: boolean;
 	/** What the fish book says before she's caught one. */
 	hint: string;
 	/** What the bag says about one. */
@@ -46,6 +48,9 @@ export const SPECIES: Species[] = [
 	{ id: 'puffer', name: 'Puff Puffer', shape: 'Puffer', body: '#e8c27a', belly: '#fff3d6', fin: '#9a6a43', size: [15, 28], pull: 0.8, tough: 1.2, weight: 4, hint: 'Nibbles in the shallows now and then.', blurb: 'Puffs itself up when it is cross. Handle with care.', price: 30 },
 	{ id: 'starpuffer', name: 'Starlight Puffer', shape: 'Puffer', body: '#b9a6ff', belly: '#f1ecff', fin: '#7d6ad8', size: [15, 30], pull: 1.1, tough: 1.6, weight: 2, when: 'night', hint: 'A rare one, out under the stars.', blurb: 'Lavender spines that catch the starlight.', price: 90 },
 	{ id: 'angelfish', name: 'Islet Angelfish', shape: 'Moonfish', body: '#5f9be8', belly: '#ffe066', fin: '#ffd84d', size: [20, 35], pull: 1.3, tough: 1.7, weight: 6, islet: true, hint: 'Only lives in the waters round the islet.', blurb: 'Blue and gold, and found nowhere but the islet.', price: 60 },
+	{ id: 'mistminnow', name: 'Mist Minnow', shape: 'Sardine', body: '#cfe9ff', belly: '#ffffff', fin: '#9fc7f0', size: [8, 16], pull: 0.6, tough: 1, weight: 8, sky: true, hint: 'Darts about in the lake up on Cloudrest.', blurb: 'So pale you can almost see through it, like a wisp of cloud.', price: 35 },
+	{ id: 'cloudkoi', name: 'Cloud Koi', shape: 'Bream', body: '#fdfbff', belly: '#ffe6f0', fin: '#ff9ec7', size: [30, 55], pull: 1.2, tough: 1.6, weight: 5, when: 'day', sky: true, hint: 'Basks in the sky lake while the sun is up.', blurb: 'White as a cloud, with pink fins that ripple like silk.', price: 80 },
+	{ id: 'starfin', name: 'Starfin', shape: 'Moonfish', body: '#3d3a8c', belly: '#b9a6ff', fin: '#ffe066', size: [35, 60], pull: 1.5, tough: 2, weight: 3, when: 'night', sky: true, hint: 'Rises in the sky lake at night, closer to the stars than any fish.', blurb: 'Deep blue, flecked with gold, like a piece of the night sky.', price: 150 },
 	{ id: 'moonfish', name: 'Moonfish', shape: 'Moonfish', body: '#dfe4f5', belly: '#ffffff', fin: '#ff9ec7', size: [40, 75], pull: 1.6, tough: 2.2, weight: 1.5, when: 'night', deep: true, hint: 'Deep water, late at night. The biggest of them all.', blurb: 'A great silver disc that rises with the moon.', price: 160 },
 ];
 
@@ -57,15 +62,16 @@ export interface FishingContext {
 	root: THREE.Object3D;
 	modelUrl: string;
 	toon: Toon;
-	groundAt: (x: number, z: number) => number;
-	ripple: (x: number, z: number, size: number) => void;
+	/** The height of the water's surface at (x, z), if there's water there deep enough to fish. */
+	waterAt: (x: number, z: number) => number | null;
+	ripple: (x: number, z: number, size: number, level?: number) => void;
 	/** Where she stands, and whether she's on her feet and standing still enough to fish. */
 	pos: THREE.Vector3;
 	canStand: () => boolean;
 	/** The way she's facing, the way that would face the camera, and what kind of water lies at a spot. */
 	heading: () => number;
 	towardCamera: () => number;
-	waters: (x: number, z: number) => { deep: boolean; islet: boolean; pier: boolean };
+	waters: (x: number, z: number) => { deep: boolean; islet: boolean; pier: boolean; sky: boolean };
 	/** A fish landed: false if there was no room in the bag for it. */
 	onCatch: (s: Species, cm: number) => boolean;
 	/** The fish's pictures are ready, for anything showing them to draw again. */
@@ -204,7 +210,8 @@ export function createFishing(ctx: FishingContext) {
 			const x = THREE.MathUtils.lerp(tip.x, bobber.position.x, u);
 			const z = THREE.MathUtils.lerp(tip.z, bobber.position.z, u);
 			const y = THREE.MathUtils.lerp(tip.y, bobber.position.y + 0.08, u) - sag * 4 * u * (1 - u);
-			p.setXYZ(i, x, Math.max(y, bobber.position.y > -0.05 ? 0.02 : y), z);
+			const water = target.y;
+			p.setXYZ(i, x, Math.max(y, bobber.position.y > water - 0.05 ? water + 0.02 : y), z);
 		}
 		p.needsUpdate = true;
 	};
@@ -227,14 +234,16 @@ export function createFishing(ctx: FishingContext) {
 	let shown: THREE.Object3D | null = null;
 	let canCast = false;
 
-	/** The furthest spot within a cast, straight ahead of her, that's water deep enough to fish. */
+	/** The furthest spot within a cast, straight ahead of her, that's water deep enough to fish (on
+	 * the water: its y is the surface, the sea's or the sky lake's). */
 	const findWater = (out: THREE.Vector3) => {
 		const h = ctx.heading();
 		for (let d = 7.5; d >= 3; d -= 0.5) {
 			const x = ctx.pos.x + Math.sin(h) * d;
 			const z = ctx.pos.z + Math.cos(h) * d;
-			if (ctx.groundAt(x, z) < -0.5) {
-				out.set(x, 0, z);
+			const surface = ctx.waterAt(x, z);
+			if (surface !== null) {
+				out.set(x, surface, z);
 				return true;
 			}
 		}
@@ -269,7 +278,7 @@ export function createFishing(ctx: FishingContext) {
 	const pick = (): Species => {
 		const night = document.documentElement.dataset.time === 'night';
 		const w = ctx.waters(target.x, target.z);
-		const pool = SPECIES.filter((s) => (!s.when || (s.when === 'night') === night) && (!s.deep || w.deep) && (!s.islet || w.islet));
+		const pool = SPECIES.filter((s) => (!s.when || (s.when === 'night') === night) && !!s.sky === w.sky && (!s.deep || w.deep) && (!s.islet || w.islet));
 		const weights = pool.map((s) => s.weight * (s.pier && w.pier ? 2.5 : 1) * (s.islet ? 1.5 : 1));
 		let r = Math.random() * weights.reduce((a, b) => a + b, 0);
 		for (let i = 0; i < pool.length; i++) if ((r -= weights[i]) <= 0) return pool[i];
@@ -313,7 +322,7 @@ export function createFishing(ctx: FishingContext) {
 			shown.rotation.y = Math.PI / 2;
 			ctx.figure.group.add(shown);
 		}
-		ctx.ripple(shore.x, shore.z, 1.2);
+		ctx.ripple(shore.x, shore.z, 1.2, target.y);
 	};
 
 	// ---------- input ----------
@@ -370,7 +379,7 @@ export function createFishing(ctx: FishingContext) {
 			tipNode.getWorldPosition(tip);
 		}
 		// Where the bobber comes back to as she reels in: the water's edge, just in front of her.
-		shore.copy(ctx.pos).lerp(target, 0.35).setY(0);
+		shore.copy(ctx.pos).lerp(target, 0.35).setY(target.y);
 
 		if (state === 'cast') {
 			// The bobber leaves the rod tip as the rod flicks forwards, and arcs out onto the water.
@@ -379,11 +388,11 @@ export function createFishing(ctx: FishingContext) {
 				bobber.visible = line.visible = true;
 				const u = Math.min(t, 1);
 				bobber.position.lerpVectors(tip, target, u);
-				bobber.position.y = THREE.MathUtils.lerp(tip.y, 0.02, u) + 2.2 * u * (1 - u);
+				bobber.position.y = THREE.MathUtils.lerp(tip.y, target.y + 0.02, u) + 2.2 * u * (1 - u);
 				drawLine(0.4);
 			}
 			if (t >= 1) {
-				ctx.ripple(target.x, target.z, 0.8);
+				ctx.ripple(target.x, target.z, 0.8, target.y);
 				startWait();
 			}
 		} else if (state === 'wait' || state === 'bite') {
@@ -397,7 +406,7 @@ export function createFishing(ctx: FishingContext) {
 				}
 				if (clock > waitFor) {
 					setState('bite');
-					ctx.ripple(target.x, target.z, 1);
+					ctx.ripple(target.x, target.z, 1, target.y);
 				}
 			} else {
 				dip = 0.17;
@@ -406,7 +415,7 @@ export function createFishing(ctx: FishingContext) {
 					startWait();
 				}
 			}
-			bobber.position.set(target.x, 0.03 + Math.sin(time * 2.4) * 0.03 - dip, target.z);
+			bobber.position.set(target.x, target.y + 0.03 + Math.sin(time * 2.4) * 0.03 - dip, target.z);
 			drawLine(0.5);
 		} else if (state === 'reel' && hooked) {
 			// Holding on pulls the line tight, letting go slackens it, and every so often the fish
@@ -444,8 +453,8 @@ export function createFishing(ctx: FishingContext) {
 			bobber.position.lerpVectors(target, shore, u * 0.85);
 			bobber.position.x += Math.cos(facing) * side;
 			bobber.position.z -= Math.sin(facing) * side;
-			bobber.position.y = -0.06 + Math.sin(time * 11) * 0.03;
-			if (Math.random() < dt * 6) ctx.ripple(bobber.position.x, bobber.position.z, 0.4);
+			bobber.position.y = target.y - 0.06 + Math.sin(time * 11) * 0.03;
+			if (Math.random() < dt * 6) ctx.ripple(bobber.position.x, bobber.position.z, 0.4, target.y);
 			drawLine(0);
 		} else if (state === 'show') {
 			const l = ctx.figure.node('HandL');

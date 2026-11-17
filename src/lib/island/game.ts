@@ -32,7 +32,7 @@ import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
 import { scatter } from './scatter';
-import { createSkyIsle } from './skyisle';
+import { createSkyIsle, skyWaterAt } from './skyisle';
 import { createSky } from './sky';
 import { ISLET, PIER_DIR, deckAt, terrainMesh } from './terrain';
 import { createTheme, isNight } from './theme';
@@ -199,16 +199,18 @@ export async function startIsland() {
 		root: player.root,
 		modelUrl: canvas.dataset.fishModel ?? '',
 		toon,
-		groundAt,
+		// Up on Cloudrest it's the lake she fishes in; down here, the sea.
+		waterAt: (x, z) => (skyIsle.aboard ? skyWaterAt(x, z, pos.y) : groundAt(x, z) < -0.5 ? 0 : null),
 		ripple: water.ripple,
 		pos,
-		canStand: () => ready && player.grounded && !player.swimming && !skyIsle.aboard && !farm.busy && !farm.shopOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
+		canStand: () => ready && player.grounded && !player.swimming && !farm.busy && !farm.shopOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
 		heading: () => player.heading,
 		towardCamera,
 		waters: (x, z) => ({
 			deep: groundAt(x, z) < -3.5,
 			islet: Math.hypot(x - ISLET.x, z - ISLET.z) < 48,
 			pier: deckAt(pos.x, pos.z) > -Infinity,
+			sky: skyIsle.aboard,
 		}),
 		onCatch: (s) => inventory.add(`fish-${s.id}`),
 		onIcons: () => inventory.render(),
@@ -235,8 +237,8 @@ export async function startIsland() {
 	interactions.add(farm.offer);
 
 	// Pebble, who keeps the stand, behind its counter.
-	// Cloudrest, up in the sky, with a chest to open (E) at the top.
-	const skyIsle = createSkyIsle({ scene, toon, inventory, pos, addFeature, start: layout.START, toast: (text) => fishing.toast(text) });
+	// Cloudrest, up in the sky: crystals to gather (E), and a chest at the top of the spire.
+	const skyIsle = createSkyIsle({ scene, toon, theme, inventory, pos, addFeature, modelUrl: canvas.dataset.skyModel ?? '', toast: (text) => fishing.toast(text) });
 	interactions.add(skyIsle.offer);
 
 	const npc = createNpc({

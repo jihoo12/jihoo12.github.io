@@ -13,6 +13,7 @@ export const SAVE_KEYS = {
 	map: 'island-map-v2',
 	helpSeen: 'island-help-seen',
 	skyChest: 'island-sky-chest',
+	skyCrystals: 'island-sky-crystals',
 } as const;
 
 export type SaveKey = keyof typeof SAVE_KEYS;
