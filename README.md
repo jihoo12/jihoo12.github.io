@@ -53,4 +53,14 @@ GitHub Actions builds and publishes the site at [jihoo12.github.io](https://jiho
 
 ## Artwork
 
-Illustrations are Nixchan images from the `nixchan` collection, stored in `src/assets/nixchan/` and optimized at build time by `astro:assets`.
+All the artwork is Nixchan, drawn and modelled by jihoo for this site:
+
+- **Illustrations** — `src/assets/nixchan/*.png`, used across the site and optimized at build time by `astro:assets`.
+- **Live Nixchan** — `src/assets/nixchan/live/`, the parts (body, eyes, legs) of the Nixchan who perches on cards on the home and 404 pages.
+- **3D Nixchan** — `src/assets/nixchan/nixchan-3d.glb`, built by `tools/nixchan-3d/build.py`, for `/experimental/` and the island.
+- **Island models** — `src/assets/island/` (fish, garden and market stand, Pebble the otter), built by the scripts in `tools/island-*/`.
+
+## License
+
+- **Code** (including the Blender scripts in `tools/`) — [Apache License 2.0](LICENSE).
+- **Artwork** (`src/assets/nixchan/`, `src/assets/island/`) — [CC BY 4.0](LICENSE-ARTWORK). Use and adapt it freely, with credit: "Nixchan by jihoo, CC BY 4.0".
