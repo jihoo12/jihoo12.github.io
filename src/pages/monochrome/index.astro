@@ -22,6 +22,7 @@ const description = "Through the rift at the standing stones: a grey place that 
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
 			<span class="badge">monochrome · experimental</span>
 			<span class="spacer"></span>
+			<span class="carried" data-carried hidden aria-live="polite"></span>
 			<span class="shards" data-shards aria-label="Colour shards found"></span>
 			<button class="pill help-button" type="button" data-help-open aria-label="Help (H)">?</button>
 			<a class="pill" href="/island/">Island</a>
@@ -67,8 +68,12 @@ const description = "Through the rift at the standing stones: a grey place that 
 						</dl>
 					</section>
 					<section>
+						<h3>Ashen ore</h3>
+						<p>Dark rocks here and there have pale, glassy ore growing out of them: stand by one and press <kbd>E</kbd> to chip some off. It grows back after a while, and there's more of it the further in you go. Whatever you're carrying goes into your bag when you step back through to the island, and the forge there can make something of it.</p>
+					</section>
+					<section>
 						<h3>Finding your way</h3>
-						<p>Snowflakes stay where you leave them, so you'll know a place when you come back to it (or find two of it). The compass only finds the rift home when it's close; the rest of the time it spins. Each shard you take opens a little rift back to the Threshold.</p>
+						<p>Snowflakes stay where you leave them, so you'll know a place when you come back to it (or find two of it). The compass only finds the rift home when it's close; the rest of the time it spins (unless the forge on the island has made it something better). Each shard you take opens a little rift back to the Threshold.</p>
 					</section>
 				</div>
 				<button class="button primary" type="button" data-help-close>Back in</button>
@@ -136,6 +141,10 @@ const description = "Through the rift at the standing stones: a grey place that 
 	.pill:hover { transform: translateY(-2px); }
 	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }
 	:global([data-time='night']) .clock .moon { display: inline; }
+
+	.carried { padding: 8px 12px; border-radius: 999px; background: var(--surface); color: var(--ink); box-shadow: 0 4px 0 var(--edge); font: 900 13px var(--sans); }
+	.carried[hidden] { display: none; }
+	@media (max-width: 640px) { .carried { padding: 6px 9px; font-size: 12px; } }
 
 	/* The three shards: empty rings until they're found, then their own colour (the only colour here). */
 	.shards { display: flex; gap: 6px; padding: 8px 10px; border-radius: 999px; background: var(--surface); box-shadow: 0 4px 0 var(--edge); }

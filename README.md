@@ -43,9 +43,10 @@ The page is `src/pages/island/index.astro` (HTML/CSS for the menus and prompts),
 | `interact.ts` | What E does: sources register offers |
 | `explore.ts`, `menu.ts` | Places found, the maps, the menu |
 | `fishing.ts`, `farm.ts`, `npc.ts`, `inventory.ts` | Things to do, and her bag |
-| `forge.ts` | The smithy: ore veins, smelting, and the upgrades made at the anvil |
+| `forge.ts` | The smithy: ore veins, smelting (iron, and ashen ore from the grey place), and the upgrades made at the anvil |
 | `machines.ts` | Sprinklers and Sprocket the clockwork helper, looking after the garden |
 | `rift.ts` | The grey rift at the standing stones, through to `/monochrome/` |
+| `lantern.ts` | The Grey Lantern at her shoulder, made at the forge |
 | `save.ts` | Every localStorage key the island uses |
 
 To add something she can do, register it with `interactions.add(() => ({ label, go }))`. To add a landmark, add a function to `landmarks.ts`.
@@ -54,7 +55,7 @@ The fish, garden, otter, sky ruin and forge models (and the grey place's walls a
 
 ## Monochrome
 
-The grey place through the rift. The rift opens between the island's standing stones at night, once Nixchan has opened the chest at the top of Cloudrest. Through it, everything is grey but her, and the place doesn't fit together the way a map would: a hall that runs on for ever, a wood that goes round, three cells round an obelisk where there ought to be four, a house bigger inside than out, and a tower it takes two laps to get round. Three colour shards are hidden in it; each one brings a little colour back, and they colour the rift and the altar crystal on the island once they're home. She can leave snowflakes on the floor (Q) to know a place again.
+The grey place through the rift. The rift opens between the island's standing stones at night, once Nixchan has opened the chest at the top of Cloudrest. Through it, everything is grey but her, and the place doesn't fit together the way a map would: a hall that runs on for ever, a wood that goes round, three cells round an obelisk where there ought to be four, a house bigger inside than out, and a tower it takes two laps to get round. Three colour shards are hidden in it; each one brings a little colour back, and they colour the rift and the altar crystal on the island once they're home. She can leave snowflakes on the floor (Q) to know a place again. Dark rocks here and there grow ashen ore, which she chips off and carries home: at the island's forge it smelts into ashen ingots, for a Rift Compass (whose needle then knows the way back to the Threshold from anywhere), a Grey Lantern, and, once all three shards are found, the Prism Glider.
 
 There's no map underneath it. The world is a graph of square cells, each side either walled or joined to a side of some other cell, turned any way. Each frame asks "which cell is she in, and where in it?": the cells round hers are laid out flat round her as far as the fog (where two ways round reach the same spot, the shorter wins), and when she steps over a side, the cell she steps into becomes the middle and everything shifts back by a cell.
 
@@ -64,7 +65,7 @@ The page is `src/pages/monochrome/index.astro`, and the code is in `src/lib/mono
 | --- | --- |
 | `world.ts` | The cells and how they're joined, and `place`, which lays them out round her |
 | `blocks.ts` | What each cell looks like (merged from the Blender pieces) and what in it is solid |
-| `game.ts` | Walking her from cell to cell, the camera, the shards, snowflakes and the compass |
+| `game.ts` | Walking her from cell to cell, the camera, the shards, ashen ore, snowflakes and the compass |
 | `rift.ts` | The rift's shader, shared with the island |
 
 ## Deployment

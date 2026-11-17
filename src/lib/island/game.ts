@@ -18,6 +18,7 @@
 //   forge              the smithy: ore to mine, ingots to smelt, tools to make better
 //   machines           sprinklers and Sprocket, made at the forge, looking after the garden
 //   rift               the grey rift at the standing stones, through to /monochrome
+//   lantern            the Grey Lantern, made at the forge, at her shoulder after dark
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
 import { createFollowCamera } from './camera';
@@ -25,7 +26,7 @@ import { createControls, type Orbit } from './controls';
 import { createExplore } from './explore';
 import { createFarm } from './farm';
 import { addFeature, groundAt, removeFeature, roomy } from './features';
-import { createForge, type Upgrade } from './forge';
+import { ASHEN_ORE, createForge, type Upgrade } from './forge';
 import { MAX_SPRINKLERS, createMachines } from './machines';
 import { createFishing, SPECIES } from './fishing';
 import { createInteractions } from './interact';
@@ -36,7 +37,9 @@ import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
+import { createLantern } from './lantern';
 import { createIslandRift, riftArrival } from './rift';
+import { loadJSON, saveJSON } from './save';
 import { scatter } from './scatter';
 import { createSkyIsle, skyWaterAt } from './skyisle';
 import { createSky } from './sky';
@@ -162,7 +165,8 @@ export async function startIsland() {
 		clip: () => forge.clip ?? farm.clip ?? fishing.clip,
 		carrying: () => machines.carrying,
 		// Remade at the forge, the glider flies faster and sinks slower.
-		glider: () => (forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
+		// Remade at the forge, the glider flies faster and sinks slower; the prism glider most of all.
+		glider: () => (forge.has('prism') ? { speed: 12, sink: 1.1 } : forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
 	});
 	const { figure, pos } = player;
 	let ready = false;
@@ -278,13 +282,17 @@ export async function startIsland() {
 		onUpgrade: (id) => showUpgrade(id),
 		more: (item) => item !== 'sprinkler' || machines.sprinklers() < MAX_SPRINKLERS,
 	});
-	/** What an upgrade looks like on her: a steel can, a sky-blue reel, a sky-blue glider. */
+	/** What an upgrade looks like on her: a steel can, a sky-blue reel, a sky-blue (or rainbow)
+	 * glider, a lantern at her shoulder. (The Rift Compass is for the grey place, which reads it there.) */
 	const showUpgrade = (id: Upgrade) => {
 		if (id === 'can') figure.tint('Can', '#c9d3e8');
 		if (id === 'rod') figure.tint('Reel', '#9fe3ff');
-		if (id === 'glider') player.paintGlider('#9fe3ff', '#fdfbff');
+		if (id === 'glider' && !forge.has('prism')) player.paintGlider('#9fe3ff', '#fdfbff');
+		if (id === 'prism') player.paintGlider('#ff7aa8', '#ffb36b', '#ffd84d', '#8fe08a', '#6fd0ff', '#b48cff');
 		if (id === 'helper') machines.helperArrived();
+		if (id === 'lantern') lantern.show();
 	};
+	const lantern = createLantern({ scene, toon, theme, pos, turn: () => player.turn });
 
 	// The garden's machines: sprinklers where four plots meet, and Sprocket by the harvest crate.
 	const machines = createMachines({
@@ -301,7 +309,7 @@ export async function startIsland() {
 		swimming: () => player.swimming,
 		closeMenu: () => menu.close(),
 	});
-	for (const id of ['can', 'rod', 'glider', 'helper'] as const) if (forge.has(id)) showUpgrade(id);
+	for (const id of ['can', 'rod', 'glider', 'helper', 'lantern', 'prism'] as const) if (forge.has(id)) showUpgrade(id);
 	farm.setMachines(machines.machines);
 	// Smithing comes first, so E strikes while she's at it; the sprinkler hint comes last.
 	interactions.add(forge.offer);
@@ -362,6 +370,20 @@ export async function startIsland() {
 	addFeature({ x: farm.keeperSpot.x, z: farm.keeperSpot.z, r: 0.4 });
 	inventory.render();
 
+	// Ashen ore she carried back from the grey place goes into her bag (as much as there's room
+	// for; the rest waits until there is).
+	const carried = loadJSON('monoCarried');
+	let broughtHome = 0;
+	if (typeof carried === 'number' && carried > 0) {
+		let left = Math.floor(carried);
+		while (left > 0 && inventory.add(ASHEN_ORE)) {
+			left--;
+			broughtHome++;
+		}
+		saveJSON('monoCarried', left);
+		inventory.render();
+	}
+
 	// ---------- exploring, and the menu ----------
 
 	const explore = createExplore(
@@ -421,6 +443,7 @@ export async function startIsland() {
 			if (!greeted) {
 				greeted = true;
 				explore.announce("Nixchan's Island", fromRift ? 'Back where there\u2019s colour' : 'Go wherever you like');
+				if (broughtHome) fishing.toast(`${broughtHome} ashen ore, carried home from the grey place.`);
 				if (menu.firstVisit) menu.open('help');
 			}
 			player.update(dt, time);
@@ -433,6 +456,7 @@ export async function startIsland() {
 		landmarks.update(time, dt);
 		skyIsle.update(time, dt);
 		rift.update(time, dt);
+		lantern.update(time, dt);
 		forge.update(time, dt);
 
 		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : forge.framing);

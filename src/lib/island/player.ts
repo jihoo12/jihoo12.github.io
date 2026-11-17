@@ -57,18 +57,18 @@ export function createPlayer(ctx: PlayerContext) {
 
 	// Her glider: a striped wing on two struts, which she opens in mid-air. Its stripes can be
 	// repainted, as when it's remade at the forge.
-	let paintGlider: (a: string, b: string) => void = () => {};
+	let paintGlider: (...stripes: string[]) => void = () => {};
 	const glider = (() => {
 		const rig = new THREE.Group();
 		const geo = new THREE.BoxGeometry(3.6, 0.06, 1.25, 16, 1, 1).toNonIndexed();
 		const p = geo.attributes.position;
 		for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) - (p.getX(i) / 1.8) ** 2 * 0.42);
 		const col = new THREE.BufferAttribute(new Float32Array(p.count * 3), 3);
-		paintGlider = (a, b) => {
-			const colors = [new THREE.Color(a), new THREE.Color(b)];
+		paintGlider = (...stripes) => {
+			const colors = stripes.map((c) => new THREE.Color(c));
 			for (let i = 0; i < p.count; i += 3) {
 				const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3;
-				const c = colors[Math.floor((x + 1.8) / 0.6) % 2];
+				const c = colors[Math.floor((x + 1.8) / 0.6) % colors.length];
 				for (let k = 0; k < 3; k++) col.setXYZ(i + k, c.r, c.g, c.b);
 			}
 			col.needsUpdate = true;
@@ -350,8 +350,8 @@ export function createPlayer(ctx: PlayerContext) {
 		get swimming() {
 			return swimming;
 		},
-		/** Repaints the glider's stripes. */
-		paintGlider: (a: string, b: string) => paintGlider(a, b),
+		/** Repaints the glider's stripes, in turn across the wing (six of them). */
+		paintGlider: (...stripes: string[]) => paintGlider(...stripes),
 		/** How far open her glider is, 0 … 1. */
 		get gliderOpen() {
 			return gliderOpen;

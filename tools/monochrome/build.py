@@ -24,6 +24,8 @@
 #   Tablet     an upright stone with something carved on it, its face towards +z
 #   RiftFrame  two jagged stones either side of a gap 2.4 wide, where the page hangs the rift
 #   Lamp       a post with a lantern on top; the lantern is "Glow"
+#   AshenRock  the dark rock ashen ore grows out of, which stays when the ore's chipped off
+#   AshenOre   the ore itself: pale, glassy shards, which grow back
 #
 # The page knows these sizes (to walk round them and keep the camera out of them), so if they
 # change here change them in src/lib/monochrome/blocks.ts too.
@@ -320,7 +322,39 @@ def lamp():
     return p.done()
 
 
-OBJECTS = [wall(), door_wall(), tall_wall(), post(), tall_post(), column(), obelisk(), arch(), stairs(), cube(), plinth(), tablet(), rift_frame(), lamp()]
+def lump(part, centre, radius, mat, squash=0.6, seed=0):
+    """A faceted lump of rock."""
+    verts = bmesh.ops.create_icosphere(part.bm, subdivisions=1, radius=radius)['verts']
+    for v in verts:
+        k = 0.85 + 0.25 * math.sin(v.co.x * 5.1 + seed) * math.cos(v.co.z * 4.3 - seed * 2)
+        v.co = Vector((v.co.x * k, v.co.y * squash * k, v.co.z * k)) + Vector(centre)
+    return part.paint(verts, mat)
+
+
+def ashen_rock():
+    p = Part('AshenRock')
+    lump(p, (0, 0.25, 0), 0.95, 'Black', squash=0.7, seed=1)
+    lump(p, (0.7, 0.1, 0.25), 0.5, 'Dark', squash=0.7, seed=4)
+    lump(p, (-0.55, 0.05, -0.4), 0.45, 'Dark', squash=0.7, seed=6)
+    return p.done()
+
+
+def ashen_ore():
+    p = Part('AshenOre')
+    # Shards of pale glass standing up out of the rock, leaning out every which way.
+    for k, (x, z, lean, turn, length, r) in enumerate(
+        ((0.0, 0.0, 0.1, 0.0, 1.0, 0.16), (0.3, 0.2, 0.45, 0.6, 0.75, 0.12), (-0.3, 0.25, 0.5, 2.2, 0.7, 0.12), (0.1, -0.35, 0.5, 4.0, 0.65, 0.11), (-0.25, -0.2, 0.6, 3.3, 0.55, 0.1), (0.45, -0.15, 0.7, 5.3, 0.5, 0.09))
+    ):
+        base = Vector((x, 0.55, z))
+        d = Vector((math.sin(lean) * math.cos(turn), math.cos(lean), math.sin(lean) * math.sin(turn)))
+        shaft = base + d * (length * 0.7)
+        mat = 'Pale' if k % 2 == 0 else 'Stone'
+        cylinder(p, base, shaft, r, r * 0.9, mat, 5)
+        cylinder(p, shaft, base + d * length, r * 0.9, 0.0, mat, 5)
+    return p.done()
+
+
+OBJECTS = [wall(), door_wall(), tall_wall(), post(), tall_post(), column(), obelisk(), arch(), stairs(), cube(), plinth(), tablet(), rift_frame(), lamp(), ashen_rock(), ashen_ore()]
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(
@@ -368,6 +402,8 @@ if PREVIEW:
         'Tablet': (8, 0),
         'RiftFrame': (13, 0),
         'Lamp': (18, 0),
+        'AshenRock': (21, 3),
+        'AshenOre': (21, 3),
     }
     for o in OBJECTS:
         x, y = layout[o.name]

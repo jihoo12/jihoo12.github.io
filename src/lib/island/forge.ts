@@ -3,7 +3,9 @@
 // grows back after a while); at the anvil she smelts it into ingots, and with ingots and the sky
 // shards from Cloudrest makes her tools better: a sturdier watering can, a sky rod that's kinder on
 // the line, and a sky glider that flies further. It makes the garden's machines too (machines.ts):
-// sprinklers, and Sprocket, the clockwork helper.
+// sprinklers, and Sprocket, the clockwork helper. And from the ashen ore she brings back from the
+// grey place through the rift (/monochrome), it makes a compass that knows the way there, a lantern
+// that lights her way at night, and (once she's found all three colour shards) a prism glider.
 //
 // Smithing is a little game of timing: a marker swings along a bar, and she strikes (E, or the
 // action button) when it's over the glowing part. Three strikes make the thing; three perfect ones
@@ -17,6 +19,7 @@ import type { Offer } from './interact';
 import type { Inventory } from './inventory';
 import type { Place } from './layout';
 import { glowTexture, type Toon } from './look';
+import { SHARDS } from '../monochrome/world';
 import { loadJSON, saveJSON } from './save';
 import { slopeUp, terrainAt } from './terrain';
 import type { Theme } from './theme';
@@ -47,12 +50,21 @@ export interface ForgeContext {
 	more?: (item: string) => boolean;
 }
 
-export type Upgrade = 'can' | 'rod' | 'glider' | 'helper';
-const UPGRADES: Upgrade[] = ['can', 'rod', 'glider', 'helper'];
+export type Upgrade = 'can' | 'rod' | 'glider' | 'helper' | 'compass' | 'lantern' | 'prism';
+const UPGRADES: Upgrade[] = ['can', 'rod', 'glider', 'helper', 'compass', 'lantern', 'prism'];
 
 const ORE = 'iron-ore';
 const INGOT = 'iron-ingot';
 const SHARD = 'sky-shard';
+/** From the grey place through the rift: carried home, and smelted here like iron. */
+export const ASHEN_ORE = 'ashen-ore';
+const ASHEN_INGOT = 'ashen-ingot';
+
+/** Whether she's found all three colour shards in the grey place. */
+const allShards = () => {
+	const saved = loadJSON('monoShards');
+	return Array.isArray(saved) && SHARDS.every((s) => saved.includes(s.id));
+};
 
 /** Something to make: an item for the bag (as many as she likes), or an upgrade (made once). */
 interface Recipe {
@@ -64,6 +76,8 @@ interface Recipe {
 	about: string;
 	needs: [string, number][];
 	color: string;
+	/** Something more it needs than what's in the bag, and what to say until it's met. */
+	unlock?: { met: () => boolean; hint: string };
 }
 
 const RECIPES: Recipe[] = [
@@ -73,6 +87,18 @@ const RECIPES: Recipe[] = [
 	{ id: 'glider', kind: 'upgrade', name: 'Sky Glider', about: 'Flies faster and sinks slower, so it carries her much further.', needs: [[INGOT, 2], [SHARD, 5]], color: '#7fb8ff' },
 	{ id: 'sprinkler', kind: 'item', item: 'sprinkler', name: 'Sprinkler', about: 'Set where four plots meet, it keeps them watered. There is room in the garden for four.', needs: [[INGOT, 2]], color: '#c97b4a' },
 	{ id: 'helper', kind: 'upgrade', name: 'Sprocket, a clockwork helper', about: 'Picks ripe crops into a crate by the garden, and plants the same again from your seeds.', needs: [[INGOT, 4], [SHARD, 4]], color: '#e8b84a' },
+	{ id: 'ashen-ingot', kind: 'item', item: ASHEN_INGOT, name: 'Ashen Ingot', about: 'Smelted from the ashen ore she brings back from the grey place.', needs: [[ASHEN_ORE, 2]], color: '#8e8e94' },
+	{ id: 'compass', kind: 'upgrade', name: 'Rift Compass', about: 'In the grey place, its needle always knows the way back to the Threshold, however far in she is.', needs: [[ASHEN_INGOT, 2], [INGOT, 2]], color: '#b8b8c0' },
+	{ id: 'lantern', kind: 'upgrade', name: 'Grey Lantern', about: 'A little lantern that floats at her shoulder and lights the way round her at night.', needs: [[ASHEN_INGOT, 3], [SHARD, 2]], color: '#fff1b8' },
+	{
+		id: 'prism',
+		kind: 'upgrade',
+		name: 'Prism Glider',
+		about: 'Every colour from the grey place, in its wing: it flies faster and further than any other.',
+		needs: [[ASHEN_INGOT, 2]],
+		color: '#ff7aa8',
+		unlock: { met: allShards, hint: 'Needs all three colour shards found in the grey place.' },
+	},
 ];
 
 // Sizes from tools/island-forge/build.py, in the smithy's own frame (its front towards +z).
@@ -256,6 +282,20 @@ export function createForge(ctx: ForgeContext) {
 				const o = make(name);
 				if (o) icons.set(id, thumbnail(ctx.renderer, o, new THREE.Vector3(0.6, 0.8, 1)));
 			}
+			// The ashen ore and ingot are the iron ones, in grey.
+			for (const [id, name, a, b] of [
+				[ASHEN_ORE, 'Ore', '#d6d6dc', '#9a9aa2'],
+				[ASHEN_INGOT, 'Ingot', '#9a9aa2', '#6e6e76'],
+			]) {
+				const o = models.get(name)?.clone(true);
+				if (!o) continue;
+				o.position.set(0, 0, 0);
+				let k = 0;
+				o.traverse((m) => {
+					if (m instanceof THREE.Mesh) m.material = toon({ color: k++ % 2 ? b : a });
+				});
+				icons.set(id, thumbnail(ctx.renderer, o, new THREE.Vector3(0.6, 0.8, 1)));
+			}
 			ctx.inventory.render();
 			render();
 		},
@@ -380,6 +420,24 @@ export function createForge(ctx: ForgeContext) {
 		icon: () => icons.get(ORE) ?? null,
 	});
 	ctx.inventory.register({
+		id: ASHEN_ORE,
+		name: 'Ashen Ore',
+		kind: 'material',
+		description: 'Pale, glassy shards chipped from the rocks in the grey place, cold to the touch however long she holds them. Two smelt into an ingot at the forge.',
+		color: '#b4b4ba',
+		sell: 10,
+		icon: () => icons.get(ASHEN_ORE) ?? null,
+	});
+	ctx.inventory.register({
+		id: ASHEN_INGOT,
+		name: 'Ashen Ingot',
+		kind: 'material',
+		description: 'A bar of ashen metal, smelted at the forge. It has no colour of its own, and seems to take on a little of whatever is near it.',
+		color: '#8e8e94',
+		sell: 45,
+		icon: () => icons.get(ASHEN_INGOT) ?? null,
+	});
+	ctx.inventory.register({
 		id: INGOT,
 		name: 'Iron Ingot',
 		kind: 'material',
@@ -399,7 +457,7 @@ export function createForge(ctx: ForgeContext) {
 	}
 	const save = () => saveJSON('forge', { made: [...made] });
 	const done = (r: Recipe) => (r.kind === 'upgrade' ? made.has(r.id as Upgrade) : r.item !== undefined && ctx.more?.(r.item) === false);
-	const can = (r: Recipe) => r.needs.every(([id, n]) => ctx.inventory.count(id) >= n) && !done(r);
+	const can = (r: Recipe) => r.needs.every(([id, n]) => ctx.inventory.count(id) >= n) && !done(r) && (r.unlock?.met() ?? true);
 
 	// ---------- the list at the anvil ----------
 
@@ -411,7 +469,7 @@ export function createForge(ctx: ForgeContext) {
 				const li = document.createElement('li');
 				const pic = document.createElement('span');
 				pic.className = 'shop-picture';
-				const icon = r.id === 'ingot' ? icons.get(INGOT) : null;
+				const icon = r.id === 'ingot' ? icons.get(INGOT) : r.id === 'ashen-ingot' ? icons.get(ASHEN_INGOT) : null;
 				if (icon) pic.style.backgroundImage = `url(${icon})`;
 				else pic.style.backgroundColor = r.color;
 				const text = document.createElement('span');
@@ -420,7 +478,8 @@ export function createForge(ctx: ForgeContext) {
 				strong.textContent = r.name;
 				const small = document.createElement('small');
 				const needs = r.needs.map(([id, n]) => `${n} ${ctx.inventory.def(id)?.name ?? id} (have ${ctx.inventory.count(id)})`).join(', ');
-				small.textContent = `${r.about} Needs ${needs}.`;
+				const locked = r.unlock && !r.unlock.met() ? ` ${r.unlock.hint}` : '';
+				small.textContent = `${r.about} Needs ${needs}.${locked}`;
 				text.append(strong, small);
 				const b = document.createElement('button');
 				b.type = 'button';
@@ -509,14 +568,15 @@ export function createForge(ctx: ForgeContext) {
 		const r = s.recipe;
 		if (r.kind === 'item' && r.item) {
 			// Done perfectly, smelting makes two ingots for one.
-			const n = perfect && r.item === INGOT ? 2 : 1;
+			const smelting = r.item === INGOT || r.item === ASHEN_INGOT;
+			const n = perfect && smelting ? 2 : 1;
 			if (!ctx.inventory.add(r.item, n)) {
 				// No room: what went into it goes back, rather than being lost.
 				for (const [id, k] of r.needs) ctx.inventory.add(id, k);
 				ctx.toast(`Her bag's too full for the ${r.name.toLowerCase()}, so she keeps what it was made from.`);
 				return;
 			}
-			ctx.toast(r.item === INGOT ? (perfect ? 'Flawless! The ore made two ingots.' : 'An iron ingot, still warm.') : perfect ? `A ${r.name.toLowerCase()}, made flawlessly!` : `A ${r.name.toLowerCase()}, ready to set up.`);
+			ctx.toast(smelting ? (perfect ? 'Flawless! The ore made two ingots.' : `An ${r.name.toLowerCase()}, still warm.`) : perfect ? `A ${r.name.toLowerCase()}, made flawlessly!` : `A ${r.name.toLowerCase()}, ready to set up.`);
 		} else {
 			made.add(r.id as Upgrade);
 			save();

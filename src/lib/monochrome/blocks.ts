@@ -31,8 +31,10 @@ export interface Spot {
 	x: number;
 	z: number;
 	reach: number;
-	kind: 'tablet' | 'shard' | 'home' | 'back';
+	kind: 'tablet' | 'shard' | 'home' | 'back' | 'vein';
 	text?: string;
+	/** For a vein: which one, as it's remembered when it's been chipped. */
+	id?: string;
 }
 
 export interface CellModel {
@@ -237,6 +239,20 @@ export async function loadBlocks(url: string, toon: Toon) {
 					solids.push({ box: false, x: p.x, z: p.z, r: 0.75, y1: 2.1 });
 					const [x, z] = at(p.x, p.z, p.yaw, 0, 1.1);
 					spots.push({ x, z, reach: 1.6, kind: 'tablet', text: p.text });
+					break;
+				}
+				case 'vein': {
+					// The rock stays; the ore on it is its own, to hide while it grows back.
+					const yaw = p.x * 1.3 + p.z * 0.7;
+					piece('AshenRock', p.x, 0, p.z, yaw);
+					const ore = new THREE.Group();
+					for (const part of pieces.get('AshenOre') ?? []) ore.add(new THREE.Mesh(part.geo, matFor(cell.region, part.mat === 'Stone' ? 'Stone' : 'Pale')));
+					ore.position.set(p.x, 0, p.z);
+					ore.rotation.y = yaw;
+					ore.name = `vein:${p.id}`;
+					loose.push(ore);
+					solids.push({ box: false, x: p.x, z: p.z, r: 0.95, y1: 1.6 });
+					spots.push({ x: p.x, z: p.z, reach: 2.1, kind: 'vein', id: p.id });
 					break;
 				}
 				case 'obelisk': {

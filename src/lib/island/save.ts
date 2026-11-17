@@ -22,6 +22,10 @@ export const SAVE_KEYS = {
 	monoShards: 'monochrome-shards',
 	monoMarks: 'monochrome-marks',
 	monoHelpSeen: 'monochrome-help-seen',
+	// Ashen ore: when each rock in the grey place was last chipped, and how much she's carrying
+	// that hasn't reached the island's bag yet (it goes in when she's back through the rift).
+	monoVeins: 'monochrome-veins',
+	monoCarried: 'monochrome-carried',
 } as const;
 
 export type SaveKey = keyof typeof SAVE_KEYS;

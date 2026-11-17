@@ -1,8 +1,9 @@
 // The grey place through the rift: Nixchan, the only colour in it, walking a world that doesn't add
 // up. The shape of it is in world.ts (a graph of cells, not a map); this file lays the cells out
 // round her, walks her through them, keeps the camera out of the walls, and looks after what
-// there is to do: three colour shards to find, stones with things carved on them, and snowflakes
-// she can leave on the floor (her snow magic, from /skills) to know a place again.
+// there is to do: three colour shards to find, ashen ore to chip from the rocks and carry home for
+// the forge, stones with things carved on them, and snowflakes she can leave on the floor (her snow
+// magic, from /skills) to know a place again.
 //
 // Everything is worked out in the laid-out frame: her cell is in the middle, at (0, 0). When she
 // steps over into the next cell, that cell becomes the middle, everything she's carrying (where she
@@ -16,7 +17,7 @@ import { makeToon } from '../island/look';
 import { loadJSON, loadText, saveJSON, saveText } from '../island/save';
 import { clamp, damp, noise } from '../island/util';
 import { loadBlocks, type CellModel, type Solid, type Spot } from './blocks';
-import { CELL, HALF, REGION_NAMES, SHARDS, START, cellById, place, turn, type Cell, type Placed, type ShardId } from './world';
+import { CELL, DIRS, HALF, REGION_NAMES, SHARDS, START, cellById, place, turn, type Cell, type Placed, type ShardId, type Side } from './world';
 
 const WALK = 3;
 const RUN = 7.5;
@@ -34,6 +35,8 @@ const CAMERA_LIFTS = [0, 0.3, 0.6, 0.95];
 const CAMERA_SWINGS = [0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3];
 /** How many snowflakes stay on the floor; past that, the oldest melts. */
 const MAX_MARKS = 30;
+/** How long ashen ore takes to grow back on its rock. */
+const REGROW_MS = 10 * 60 * 1000;
 
 interface Mark {
 	cell: string;
@@ -63,6 +66,7 @@ export async function startMonochrome() {
 		bannerNote: $('[data-banner-note]'),
 		toast: $('[data-toast]'),
 		shards: $('[data-shards]'),
+		carried: $('[data-carried]'),
 		needle: $('[data-needle]'),
 		compass: $('[data-compass]'),
 		help: $('[data-help]'),
@@ -117,6 +121,24 @@ export async function startMonochrome() {
 				if (m && typeof m === 'object' && cellById(String(m.cell)) && [m.x, m.z, m.a].every((v) => typeof v === 'number' && Math.abs(v) <= HALF + 1)) marks.push({ cell: m.cell, x: m.x, z: m.z, a: m.a });
 	}
 
+	// Ashen ore: when each rock was last chipped, and how much she's carrying home.
+	const chipped: Record<string, number> = {};
+	{
+		const saved = loadJSON('monoVeins');
+		if (saved && typeof saved === 'object') for (const [k, v] of Object.entries(saved)) if (typeof v === 'number') chipped[k] = v;
+	}
+	let carried = 0;
+	{
+		const saved = loadJSON('monoCarried');
+		if (typeof saved === 'number' && saved > 0) carried = Math.floor(saved);
+	}
+	const ripe = (id: string) => chipped[id] === undefined || Date.now() - chipped[id] >= REGROW_MS;
+	// Made at the island's forge, the Rift Compass knows the way back to the Threshold from anywhere.
+	const riftCompass = (() => {
+		const saved = loadJSON('forge');
+		return !!saved && typeof saved === 'object' && Array.isArray((saved as { made?: unknown }).made) && (saved as { made: unknown[] }).made.includes('compass');
+	})();
+
 	// ---------- Nixchan ----------
 
 	const her = new THREE.Group();
@@ -153,8 +175,10 @@ export async function startMonochrome() {
 		while (list.length <= n) {
 			const g = model(cell).group.clone(true);
 			g.userData.cubes = [] as THREE.Object3D[];
+			g.userData.veins = [] as THREE.Object3D[];
 			g.traverse((o) => {
 				if (o.name === 'cube') g.userData.cubes.push(o);
+				if (o.name.startsWith('vein:')) g.userData.veins.push(o);
 				if (o.name === 'shard') g.userData.shard = o;
 				if (o.name === 'back') g.userData.back = o;
 			});
@@ -196,6 +220,10 @@ export async function startMonochrome() {
 		}
 	};
 
+	const showVeins = () => {
+		for (const { group } of shown) for (const o of group.userData.veins as THREE.Object3D[]) o.visible = ripe(o.name.slice(5));
+	};
+
 	const relayout = () => {
 		layout = place(root, rootRot);
 		for (const s of shown) s.group.visible = false;
@@ -211,6 +239,7 @@ export async function startMonochrome() {
 			shown.push({ group: g, cell: p.cell });
 		}
 		showShards();
+		showVeins();
 		solidsNear = [];
 		cameraBoxes = [];
 		spotsNear = [];
@@ -283,6 +312,8 @@ export async function startMonochrome() {
 	let heading = SPAWN_YAW;
 	let turnTo = heading;
 	let casting = 0;
+	/** What she's doing while `casting`: a spell, or chipping at a rock with her hammer. */
+	let castClip: NixClip = 'Summon';
 	let nextBlink = 2;
 	const orbit: Orbit = { yaw: SPAWN_YAW, pitch: 0.3, distance: 8 };
 	const camLook = new THREE.Vector3(pos.x, 1.3, pos.z);
@@ -345,8 +376,7 @@ export async function startMonochrome() {
 		saveJSON('monoMarks', marks.map((m) => ({ ...m, x: +m.x.toFixed(2), z: +m.z.toFixed(2), a: +m.a.toFixed(2) })));
 		freshMark = mark;
 		freshAge = 0;
-		casting = 0.7;
-		figure.play('Summon');
+		cast('Summon', 0.7);
 	}
 
 	// ---------- moving her, and stepping from cell to cell ----------
@@ -508,9 +538,11 @@ export async function startMonochrome() {
 		turnTo += Math.atan2(Math.sin(heading - turnTo), Math.cos(heading - turnTo)) * (1 - Math.exp(-10 * dt));
 		figure.group.rotation.y = turnTo;
 
+		const wasCasting = casting > 0;
 		casting = Math.max(0, casting - dt);
+		if (wasCasting && casting === 0 && castClip === 'Smith') figure.setProp('Hammer', false);
 		let clip: NixClip = planar > 3 ? 'Run' : planar > 0.25 ? 'Walk' : 'Idle';
-		if (casting > 0) clip = 'Summon';
+		if (casting > 0) clip = castClip;
 		const pace = clip === 'Run' ? clamp(planar / 4.2, 0.8, 2.4) : clip === 'Walk' ? clamp(planar / 1.5, 0.6, 2.6) : 1;
 		figure.play(clip, pace);
 		const airborne = !grounded;
@@ -614,10 +646,45 @@ export async function startMonochrome() {
 			}
 			case 'back':
 				return { label: 'Step through, back to the Threshold', go: () => fadeThrough(toThreshold) };
-			case 'home':
-				return { label: found.size === SHARDS.length ? 'Take the colour home to the island' : 'Step back through to the island', go: leave };
+			case 'home': {
+				const label = found.size === SHARDS.length ? 'Take the colour home to the island' : 'Step back through to the island';
+				return { label: carried ? `${label}, with ${carried} ashen ore` : label, go: leave };
+			}
+			case 'vein': {
+				const id = s.id!;
+				if (!ripe(id)) return { label: `Chipped bare. It grows back in about ${Math.max(1, Math.ceil((REGROW_MS - (Date.now() - chipped[id])) / 60000))} min` };
+				return { label: 'Chip off some ashen ore', go: () => chip(id, s) };
+			}
 		}
 	});
+
+	/** She plays `clip` for `seconds`, standing still. */
+	function cast(clip: NixClip, seconds: number) {
+		castClip = clip;
+		casting = seconds;
+		figure.setProp('Hammer', clip === 'Smith');
+		figure.play(clip);
+	}
+
+	/** One strike of her hammer, and a shard or two of ashen ore comes away. */
+	const chip = (id: string, at: { x: number; z: number }) => {
+		heading = Math.atan2(at.x - pos.x, at.z - pos.z);
+		cast('Smith', 0.9);
+		const n = Math.random() < 0.3 ? 2 : 1;
+		carried += n;
+		chipped[id] = Date.now();
+		saveJSON('monoVeins', chipped);
+		saveJSON('monoCarried', carried);
+		showVeins();
+		showCarried();
+		toast(n > 1 ? 'Two pieces of ashen ore came away!' : 'A piece of ashen ore came away, cold as glass.');
+	};
+	const showCarried = () => {
+		if (!ui.carried) return;
+		ui.carried.hidden = carried === 0;
+		ui.carried.textContent = `Ashen ore \u00d7 ${carried}`;
+	};
+	showCarried();
 
 	const fadeThrough = (then: () => void) => {
 		ui.fade?.classList.add('show');
@@ -635,8 +702,7 @@ export async function startMonochrome() {
 		const def = SHARDS.find((d) => d.id === id)!;
 		showShards();
 		paint();
-		casting = 0.7;
-		figure.play('Summon');
+		cast('Summon', 0.7);
 		if (found.size === SHARDS.length) toast(`The ${def.name}! That's all three. Take them home through the rift at the Threshold.`, 6);
 		else toast(`The ${def.name}. A little colour comes back to the grey. (${found.size} of ${SHARDS.length})`, 5);
 	};
@@ -670,6 +736,24 @@ export async function startMonochrome() {
 	paint();
 
 	// ---------- the compass, which only knows the way when the rift's close ----------
+	// (Once she's made the Rift Compass at the forge, it always knows: for each cell, the side to
+	// leave by on the shortest way back to the Threshold, worked out once, from the Threshold out.)
+
+	const homeward = new Map<Cell, Side>();
+	{
+		const queue: Cell[] = [START];
+		const seen = new Set<Cell>([START]);
+		while (queue.length) {
+			const c = queue.shift()!;
+			c.links.forEach((link) => {
+				if (!link || seen.has(link.to)) return;
+				seen.add(link.to);
+				// Back the way it was reached: out of `link.to` by the side it was come into by.
+				homeward.set(link.to, link.side);
+				queue.push(link.to);
+			});
+		}
+	}
 
 	const compass = (time: number) => {
 		let best = Infinity;
@@ -683,6 +767,16 @@ export async function startMonochrome() {
 				best = d;
 				bx = x - pos.x;
 				bz = z - pos.z;
+			}
+		}
+		if (best === Infinity && riftCompass) {
+			const side = homeward.get(root);
+			if (side !== undefined) {
+				const view = (side + rootRot) % 4;
+				const d = DIRS[view];
+				bx = d[0] * HALF - pos.x;
+				bz = d[1] * HALF - pos.z;
+				best = Math.hypot(bx, bz);
 			}
 		}
 		let angle: number;
@@ -735,6 +829,7 @@ export async function startMonochrome() {
 
 	const zero = new THREE.Vector2();
 	let time = 0;
+	let veinClock = 2;
 	let last = performance.now();
 	renderer.setAnimationLoop((now) => {
 		const dt = Math.min(0.05, (now - last) / 1000);
@@ -766,6 +861,12 @@ export async function startMonochrome() {
 		blocks.riftMat.uniforms.uTime.value = time;
 		freshAge += dt;
 		drawFlakes();
+		// Ore grows back on its rock while she's about.
+		veinClock -= dt;
+		if (veinClock <= 0) {
+			veinClock = 2;
+			showVeins();
+		}
 
 		toastClock -= dt;
 		if (toastClock <= 0) ui.toast?.classList.remove('show');

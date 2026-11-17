@@ -53,7 +53,9 @@ export type Prop =
 	| { kind: 'column' | 'lamp' | 'cube' | 'plinth'; x: number; z: number }
 	| { kind: 'arch' | 'stairs' | 'riftframe'; x: number; z: number; yaw: number }
 	| { kind: 'tablet'; x: number; z: number; yaw: number; text: string }
-	| { kind: 'obelisk'; corner: 0 | 1 | 2 | 3 };
+	| { kind: 'obelisk'; corner: 0 | 1 | 2 | 3 }
+	/** A rock of ashen ore, which grows back after it's chipped off. `id` is what's remembered. */
+	| { kind: 'vein'; x: number; z: number; id: string };
 
 export interface Link {
 	to: Cell;
@@ -251,6 +253,23 @@ prop('tA5', { kind: 'plinth', x: 0, z: 0 }, { kind: 'tablet', x: 2.5, z: 3, yaw:
 get('tB5').shard = 'gold';
 get('tB4').note = 'Wasn’t there a way in here?';
 prop('tA4', { kind: 'tablet', x: 3, z: -3.5, yaw: 0, text: 'Twice round the tower to come back where you started.' });
+
+// Ashen ore, in rocks here and there: a little near the Threshold, more the further in she goes
+// (in the little house, and round the tower's second ring).
+for (const [id, x, z] of [
+	['a4', -3.5, -0.5],
+	['h1', 3, 1.5],
+	['w3', 4, 4],
+	['w6', -3, -1],
+	['k3', -3.5, 2],
+	['yc', 3, -3],
+	['r0', -3, -3],
+	['r2', 3, -3],
+	['r6', -3, 3],
+	['tB1', -3, -3],
+	['tB7', 2.5, 3],
+] as [string, number, number][])
+	prop(id, { kind: 'vein', x, z, id: `${id}-ore` });
 
 export const START = get('a1');
 export const CELLS = [...cells.values()];
