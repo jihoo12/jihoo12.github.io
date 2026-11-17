@@ -23,7 +23,9 @@ export interface Facts {
 	seeds: number;
 	garden: { planted: number; thirsty: string | null; ripe: string | null; coins: number };
 	/** Whether she's made this at the forge. */
-	forged: (id: 'can' | 'rod' | 'glider') => boolean;
+	forged: (id: 'can' | 'rod' | 'glider' | 'helper') => boolean;
+	/** How many sprinklers she has, set up or not. */
+	sprinklers: number;
 }
 
 export interface NpcContext {
@@ -52,6 +54,8 @@ const TIPS: { id: string; when: (f: Facts) => boolean; say: (f: Facts) => string
 	{ id: 'moonfish', when: (f) => f.night && !f.hasCaught('moonfish'), say: () => 'On a night like this the Moonfish come up from the deep. Biggest fish there is!' },
 	{ id: 'snapper', when: (f) => !f.night && !f.hasCaught('snapper'), say: () => 'Sunny Snappers love deep water while the sun is up. Try the end of the pier.' },
 	{ id: 'forge', when: (f) => !f.found('forge'), say: () => "There's an old forge past the garden that nobody's used in years. Iron ore crops out of the rocks up in the hills, if you fancy having a go!" },
+	{ id: 'sprinkler', when: (f) => f.found('forge') && f.garden.planted > 0 && f.sprinklers === 0, say: () => "Tired of all that watering? The forge can make sprinklers, two iron ingots apiece. Set one where four plots meet and it waters the lot!" },
+	{ id: 'sprocket', when: (f) => f.sprinklers >= 2 && !f.forged('helper'), say: () => "I've heard a clever smith can build a little clockwork helper that picks the crops for you. It'd want sky shards, mind." },
 	{ id: 'skyglider', when: (f) => f.found('forge') && f.found('sky') && !f.forged('glider'), say: () => 'With a few sky shards, that forge could make your glider fly ever so much further. Just a thought!' },
 	{ id: 'sky', when: (f) => !f.found('sky'), say: () => "Ever looked up past the summit? There are islands floating up there! The wind at the Windspout blows straight up. Open your glider in it and hold on." },
 	{ id: 'spire', when: (f) => f.found('sky') && !f.found('spire'), say: () => "Been up to Cloudrest? There's a second wind up there, by the temple, that goes higher still. Something's waiting at the top of the spire." },

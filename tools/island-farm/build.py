@@ -14,6 +14,11 @@
 #   Turnip, Carrot, Strawberry, Pumpkin     the crops, as they're held up and shown in the bag
 #   Packet                                  a packet of seeds
 #   Stall, Barrel, Can                      the market stand, the water barrel, the watering can
+#   Sprinkler, SprinklerHead                a sprinkler on its stake, and the head that spins on
+#                                           top of it (its origin at the hub, SPRINKLER_TOP up)
+#   Helper, HelperKey                       Sprocket, the clockwork garden helper, and the key in
+#                                           its back that turns as it goes (origin at its axle)
+#   HarvestCrate                            the crate Sprocket picks crops into
 import math
 import os
 import sys
@@ -53,6 +58,11 @@ COLORS = {
     'Water': '#6fc3e8',
     'Can': '#5fb0e8',
     'Crate': '#c99a64',
+    'Brass': '#e8b84a',
+    'Copper': '#c97b4a',
+    'Teal': '#5fc7c0',
+    'Eye': '#2c2a52',
+    'Bulb': '#ff7a6b',
 }
 
 
@@ -392,6 +402,94 @@ def can(name='Can'):
     return p.done()
 
 
+# ---------- the garden's machines, made at the forge ----------
+
+SPRINKLER_TOP = 0.62
+
+
+def sprinkler():
+    p = Part('Sprinkler')
+    cylinder(p, (0, -0.15, 0), (0, 0.02, 0), 0.02, 0.06, 'WoodDark', 8)
+    cylinder(p, (0, 0.0, 0), (0, 0.05, 0), 0.09, 0.08, 'Copper', 12)
+    cylinder(p, (0, 0.05, 0), (0, SPRINKLER_TOP - 0.04, 0), 0.025, 0.022, 'Copper', 10)
+    # A tap half way up, and the pipe coming in from the side.
+    ball(p, (0.0, 0.25, 0.03), 0.04, 'Brass', seg=(10, 6))
+    box(p, (0.0, 0.25, 0.08), (0.12, 0.025, 0.02), 'Awning')
+    cylinder(p, (0, 0.03, 0), (0.3, 0.02, 0), 0.018, 0.018, 'Metal', 8)
+    return p.done(smooth=False)
+
+
+def sprinkler_head():
+    p = Part('SprinklerHead')
+    ball(p, (0, 0.0, 0), 0.06, 'Brass', seg=(12, 8))
+    for k in range(3):
+        a = k * TAU / 3
+        tip = Vector((math.sin(a) * 0.2, 0.03, math.cos(a) * 0.2))
+        cylinder(p, (0, 0, 0), tip, 0.016, 0.014, 'Copper', 8)
+        # The nozzle, bent round so the water flings out as it spins.
+        side = Vector((math.cos(a), 0, -math.sin(a)))
+        cylinder(p, tip, tip + side * 0.06 + Vector((0, 0.02, 0)), 0.02, 0.012, 'Brass', 8)
+    return p.done(smooth=False)
+
+
+HELPER_KEY = (0, 0.4, -0.21)
+
+
+def helper():
+    """Sprocket: a round clockwork helper about knee high to her, facing +z, with a basket in its arms."""
+    p = Part('Helper')
+    # Stubby legs and round feet.
+    for side in (-1, 1):
+        cylinder(p, (side * 0.08, 0.06, 0), (side * 0.08, 0.2, 0), 0.035, 0.035, 'Metal', 8)
+        ball(p, (side * 0.08, 0.04, 0.03), 0.06, 'Copper', scale=(1, 0.6, 1.3), seg=(12, 8))
+    # The body, a brass ball with a copper band round its middle and rivets on the band.
+    ball(p, (0, 0.38, 0), 0.21, 'Brass', scale=(1, 0.92, 0.95), seg=(20, 14))
+    cylinder(p, (0, 0.35, 0), (0, 0.41, 0), 0.215, 0.215, 'Copper', 20)
+    for k in range(10):
+        a = k * TAU / 10
+        ball(p, (math.sin(a) * 0.218, 0.38, math.cos(a) * 0.205), 0.014, 'Metal', seg=(6, 4))
+    # Its head: a dome with a round window face, two big eyes and a little antenna with a bulb.
+    ball(p, (0, 0.64, 0), 0.15, 'Brass', scale=(1, 0.85, 1), seg=(18, 12))
+    ball(p, (0, 0.63, 0.1), 0.11, 'Teal', scale=(1, 0.85, 0.55), seg=(16, 10))
+    for side in (-1, 1):
+        ball(p, (side * 0.045, 0.645, 0.158), 0.026, 'Eye', scale=(1, 1.25, 0.5), seg=(10, 8))
+        ball(p, (side * 0.045 + 0.008, 0.66, 0.17), 0.008, 'Flower', seg=(6, 4))
+    cylinder(p, (0, 0.76, 0), (0.03, 0.88, -0.02), 0.008, 0.006, 'Metal', 6)
+    ball(p, (0.03, 0.9, -0.02), 0.03, 'Bulb', seg=(10, 6))
+    # Arms reaching forwards round a little basket.
+    for side in (-1, 1):
+        cylinder(p, (side * 0.19, 0.42, 0.02), (side * 0.14, 0.3, 0.2), 0.022, 0.02, 'Copper', 8)
+        ball(p, (side * 0.14, 0.3, 0.2), 0.03, 'Metal', seg=(8, 6))
+    cylinder(p, (0, 0.2, 0.24), (0, 0.32, 0.24), 0.11, 0.13, 'Crate', 12)
+    cylinder(p, (0, 0.31, 0.24), (0, 0.33, 0.24), 0.135, 0.135, 'WoodDark', 12)
+    return p.done(smooth=False)
+
+
+def helper_key():
+    p = Part('HelperKey')
+    cylinder(p, (0, 0, 0), (0, 0, -0.08), 0.015, 0.015, 'Metal', 8)
+    for side in (-1, 1):
+        ball(p, (side * 0.055, 0, -0.09), 0.045, 'Brass', scale=(1, 0.75, 0.3), seg=(12, 8))
+    return p.done(smooth=False)
+
+
+def harvest_crate():
+    p = Part('HarvestCrate')
+    W, D, H = 0.9, 0.6, 0.45
+    box(p, (0, 0.03, 0), (W, 0.06, D), 'WoodDark')
+    # The slats stop just inside the corner posts, so no two faces lie flush.
+    for z in (-D / 2 + 0.03, D / 2 - 0.03):
+        for y in (0.13, 0.3):
+            box(p, (0, y, z), (W - 0.04, 0.12, 0.04), 'Crate')
+    for x in (-W / 2 + 0.03, W / 2 - 0.03):
+        for y in (0.13, 0.3):
+            box(p, (x, y, 0), (0.04, 0.12, D - 0.08), 'Crate')
+    for x in (-W / 2 + 0.03, W / 2 - 0.03):
+        for z in (-D / 2 + 0.03, D / 2 - 0.03):
+            box(p, (x, H / 2, z), (0.07, H, 0.07), 'WoodDark')
+    return p.done(smooth=False)
+
+
 OBJECTS = [
     sprout(),
     turnip_leaves(),
@@ -406,6 +504,11 @@ OBJECTS = [
     stall(),
     barrel(),
     can(),
+    sprinkler(),
+    sprinkler_head(),
+    helper(),
+    helper_key(),
+    harvest_crate(),
 ]
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -443,12 +546,20 @@ if PREVIEW:
         o.scale = (1.4, 1.4, 1.4)
     OBJECTS[10].location = (-1.6, 0, -1)
     OBJECTS[11].location = (1.6, 0, -1)
+    # The machines, in a row of their own nearer the camera: the head and the key put in place.
+    sprinkler_obj, head_obj, helper_obj, key_obj, crate_obj = OBJECTS[13:18]
+    sprinkler_obj.location = (-0.9, 0, 3)
+    head_obj.location = (-0.9, SPRINKLER_TOP, 3)
+    helper_obj.location = (0, 0, 3)
+    key_obj.location = Vector((0, 0, 3)) + Vector(HELPER_KEY)
+    key_obj.rotation_euler = (0, 0, 0.5)
+    crate_obj.location = (1.1, 0, 3)
     cam = bpy.data.objects.new('Cam', bpy.data.cameras.new('Cam'))
     cam.data.type = 'ORTHO'
     cam.data.ortho_scale = 6.6
     scene.collection.objects.link(cam)
     scene.camera = cam
-    for name, location, target, scale in (('front', (0, 1.6, 8), (0, 0.6, 0), 6.6), ('above', (0, 6, 6), (0, 0.6, 0), 6.6), ('stall', (1.2, 3.4, 4), (-1.6, 1.5, -1), 6)):
+    for name, location, target, scale in (('front', (0, 1.6, 8), (0, 0.6, 0), 6.6), ('above', (0, 6, 6), (0, 0.6, 0), 6.6), ('stall', (1.2, 3.4, 4), (-1.6, 1.5, -1), 6), ('machines', (1.5, 1.4, 6), (0, 0.4, 3), 2.6), ('machines-back', (-1.2, 1.2, 0.5), (0, 0.4, 3), 2.6)):
         target = Vector(target)
         cam.data.ortho_scale = scale
         back = (Vector(location) - target).normalized()

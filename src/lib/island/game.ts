@@ -16,6 +16,7 @@
 //   explore, menu      places found, the maps, and the menu over the game
 //   fishing, farm, npc, inventory   the things to do
 //   forge              the smithy: ore to mine, ingots to smelt, tools to make better
+//   machines           sprinklers and Sprocket, made at the forge, looking after the garden
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
 import { createFollowCamera } from './camera';
@@ -24,6 +25,7 @@ import { createExplore } from './explore';
 import { createFarm } from './farm';
 import { addFeature, groundAt, roomy } from './features';
 import { createForge, type Upgrade } from './forge';
+import { MAX_SPRINKLERS, createMachines } from './machines';
 import { createFishing, SPECIES } from './fishing';
 import { createInteractions } from './interact';
 import { createInventory } from './inventory';
@@ -261,17 +263,34 @@ export async function startIsland() {
 		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !menu.isOpen && !npc.talking,
 		toast: (text) => fishing.toast(text),
 		onUpgrade: (id) => showUpgrade(id),
+		more: (item) => item !== 'sprinkler' || machines.sprinklers() < MAX_SPRINKLERS,
 	});
 	/** What an upgrade looks like on her: a steel can, a sky-blue reel, a sky-blue glider. */
 	const showUpgrade = (id: Upgrade) => {
 		if (id === 'can') figure.tint('Can', '#c9d3e8');
 		if (id === 'rod') figure.tint('Reel', '#9fe3ff');
 		if (id === 'glider') player.paintGlider('#9fe3ff', '#fdfbff');
+		if (id === 'helper') machines.helperArrived();
 	};
-	for (const id of ['can', 'rod', 'glider'] as const) if (forge.has(id)) showUpgrade(id);
-	// Smithing comes first, so E strikes while she's at it.
+
+	// The garden's machines: sprinklers where four plots meet, and Sprocket by the harvest crate.
+	const machines = createMachines({
+		inventory,
+		garden: farm.garden,
+		groundAt,
+		addFeature,
+		scene,
+		pos,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
+		toast: (text) => fishing.toast(text),
+	});
+	for (const id of ['can', 'rod', 'glider', 'helper'] as const) if (forge.has(id)) showUpgrade(id);
+	farm.setMachines(machines.machines);
+	// Smithing comes first, so E strikes while she's at it; the sprinkler hint comes last.
 	interactions.add(forge.offer);
+	interactions.add(machines.offer);
 	interactions.add(farm.offer);
+	interactions.add(machines.hint);
 
 	// Cloudrest, up in the sky: crystals to gather (E), and a chest at the top of the spire.
 	const skyIsle = createSkyIsle({ scene, toon, theme, inventory, pos, addFeature, modelUrl: canvas.dataset.skyModel ?? '', toast: (text) => fishing.toast(text) });
@@ -309,6 +328,7 @@ export async function startIsland() {
 				seeds,
 				garden: farm.summary(),
 				forged: forge.has,
+				sprinklers: machines.sprinklers(),
 			};
 		},
 	});
@@ -379,6 +399,7 @@ export async function startIsland() {
 			player.update(dt, time);
 			fishing.update(dt, time);
 			farm.update(dt);
+			machines.update(dt, time);
 			npc.update(dt);
 			interactions.update();
 		}

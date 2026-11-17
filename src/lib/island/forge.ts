@@ -2,7 +2,8 @@
 // and smoking all day and night. Iron ore crops out of rocks in the hills (mined with her hammer, it
 // grows back after a while); at the anvil she smelts it into ingots, and with ingots and the sky
 // shards from Cloudrest makes her tools better: a sturdier watering can, a sky rod that's kinder on
-// the line, and a sky glider that flies further.
+// the line, and a sky glider that flies further. It makes the garden's machines too (machines.ts):
+// sprinklers, and Sprocket, the clockwork helper.
 //
 // Smithing is a little game of timing: a marker swings along a bar, and she strikes (E, or the
 // action button) when it's over the glowing part. Three strikes make the thing; three perfect ones
@@ -40,18 +41,25 @@ export interface ForgeContext {
 	pos: THREE.Vector3;
 	canAct: () => boolean;
 	toast: (text: string) => void;
-	/** Something's been made better: the page puts it to use. */
+	/** Something's been made better (or Sprocket's been made): the page puts it to use. */
 	onUpgrade: (id: Upgrade) => void;
+	/** Whether another of this item may be made (there's only room for so many sprinklers). */
+	more?: (item: string) => boolean;
 }
 
-export type Upgrade = 'can' | 'rod' | 'glider';
+export type Upgrade = 'can' | 'rod' | 'glider' | 'helper';
+const UPGRADES: Upgrade[] = ['can', 'rod', 'glider', 'helper'];
 
 const ORE = 'iron-ore';
 const INGOT = 'iron-ingot';
 const SHARD = 'sky-shard';
 
+/** Something to make: an item for the bag (as many as she likes), or an upgrade (made once). */
 interface Recipe {
-	id: 'ingot' | Upgrade;
+	id: string;
+	kind: 'item' | 'upgrade';
+	/** The item it makes, for an item. */
+	item?: string;
 	name: string;
 	about: string;
 	needs: [string, number][];
@@ -59,10 +67,12 @@ interface Recipe {
 }
 
 const RECIPES: Recipe[] = [
-	{ id: 'ingot', name: 'Iron Ingot', about: 'Smelted from ore. Everything else here starts with these.', needs: [[ORE, 2]], color: '#7d86a8' },
-	{ id: 'can', name: 'Sturdy Watering Can', about: 'Holds 12 waterings instead of 5.', needs: [[INGOT, 3]], color: '#c9d3e8' },
-	{ id: 'rod', name: 'Sky Rod', about: 'More room in the green when reeling, and fish come in quicker.', needs: [[INGOT, 2], [SHARD, 3]], color: '#9fe3ff' },
-	{ id: 'glider', name: 'Sky Glider', about: 'Flies faster and sinks slower, so it carries her much further.', needs: [[INGOT, 2], [SHARD, 5]], color: '#7fb8ff' },
+	{ id: 'ingot', kind: 'item', item: INGOT, name: 'Iron Ingot', about: 'Smelted from ore. Everything else here starts with these.', needs: [[ORE, 2]], color: '#7d86a8' },
+	{ id: 'can', kind: 'upgrade', name: 'Sturdy Watering Can', about: 'Holds 12 waterings instead of 5.', needs: [[INGOT, 3]], color: '#c9d3e8' },
+	{ id: 'rod', kind: 'upgrade', name: 'Sky Rod', about: 'More room in the green when reeling, and fish come in quicker.', needs: [[INGOT, 2], [SHARD, 3]], color: '#9fe3ff' },
+	{ id: 'glider', kind: 'upgrade', name: 'Sky Glider', about: 'Flies faster and sinks slower, so it carries her much further.', needs: [[INGOT, 2], [SHARD, 5]], color: '#7fb8ff' },
+	{ id: 'sprinkler', kind: 'item', item: 'sprinkler', name: 'Sprinkler', about: 'Set where four plots meet, it keeps them watered. There is room in the garden for four.', needs: [[INGOT, 2]], color: '#c97b4a' },
+	{ id: 'helper', kind: 'upgrade', name: 'Sprocket, a clockwork helper', about: 'Picks ripe crops into a crate by the garden, and plants the same again from your seeds.', needs: [[INGOT, 4], [SHARD, 4]], color: '#e8b84a' },
 ];
 
 // Sizes from tools/island-forge/build.py, in the smithy's own frame (its front towards +z).
@@ -385,10 +395,11 @@ export function createForge(ctx: ForgeContext) {
 	{
 		const saved = loadJSON('forge');
 		if (saved && typeof saved === 'object' && Array.isArray((saved as { made?: unknown }).made))
-			for (const id of (saved as { made: unknown[] }).made) if (id === 'can' || id === 'rod' || id === 'glider') made.add(id);
+			for (const id of (saved as { made: unknown[] }).made) if (UPGRADES.includes(id as Upgrade)) made.add(id as Upgrade);
 	}
 	const save = () => saveJSON('forge', { made: [...made] });
-	const can = (r: Recipe) => r.needs.every(([id, n]) => ctx.inventory.count(id) >= n) && !(r.id !== 'ingot' && made.has(r.id));
+	const done = (r: Recipe) => (r.kind === 'upgrade' ? made.has(r.id as Upgrade) : r.item !== undefined && ctx.more?.(r.item) === false);
+	const can = (r: Recipe) => r.needs.every(([id, n]) => ctx.inventory.count(id) >= n) && !done(r);
 
 	// ---------- the list at the anvil ----------
 
@@ -413,8 +424,7 @@ export function createForge(ctx: ForgeContext) {
 				text.append(strong, small);
 				const b = document.createElement('button');
 				b.type = 'button';
-				const done = r.id !== 'ingot' && made.has(r.id);
-				b.textContent = done ? 'Made' : 'Forge';
+				b.textContent = done(r) ? (r.kind === 'upgrade' ? 'Made' : 'No room') : 'Forge';
 				b.disabled = !can(r);
 				b.addEventListener('click', () => start(r));
 				li.append(pic, text, b);
@@ -499,19 +509,20 @@ export function createForge(ctx: ForgeContext) {
 		if (ui.game) ui.game.hidden = true;
 		const perfect = s.strikes.every((k) => k === 'perfect');
 		const r = s.recipe;
-		if (r.id === 'ingot') {
-			const n = perfect ? 2 : 1;
-			if (!ctx.inventory.add(INGOT, n)) {
-				// No room: the ore goes back rather than being lost.
-				ctx.inventory.add(ORE, 2);
-				ctx.toast("Her bag's too full for the ingot, so she keeps the ore.");
+		if (r.kind === 'item' && r.item) {
+			// Done perfectly, smelting makes two ingots for one.
+			const n = perfect && r.item === INGOT ? 2 : 1;
+			if (!ctx.inventory.add(r.item, n)) {
+				// No room: what went into it goes back, rather than being lost.
+				for (const [id, k] of r.needs) ctx.inventory.add(id, k);
+				ctx.toast(`Her bag's too full for the ${r.name.toLowerCase()}, so she keeps what it was made from.`);
 				return;
 			}
-			ctx.toast(perfect ? 'Flawless! The ore made two ingots.' : 'An iron ingot, still warm.');
+			ctx.toast(r.item === INGOT ? (perfect ? 'Flawless! The ore made two ingots.' : 'An iron ingot, still warm.') : perfect ? `A ${r.name.toLowerCase()}, made flawlessly!` : `A ${r.name.toLowerCase()}, ready to set up.`);
 		} else {
-			made.add(r.id);
+			made.add(r.id as Upgrade);
 			save();
-			ctx.onUpgrade(r.id);
+			ctx.onUpgrade(r.id as Upgrade);
 			ctx.toast(perfect ? `The ${r.name}, made flawlessly!` : `The ${r.name} is ready!`);
 		}
 		ctx.inventory.render();

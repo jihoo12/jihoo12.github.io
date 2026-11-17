@@ -16,6 +16,7 @@ export const SAVE_KEYS = {
 	skyCrystals: 'island-sky-crystals',
 	forge: 'island-forge',
 	ore: 'island-ore',
+	machines: 'island-machines',
 } as const;
 
 export type SaveKey = keyof typeof SAVE_KEYS;

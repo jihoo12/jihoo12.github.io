@@ -4,6 +4,11 @@
 // the soil is wet, so it wants watering again after each one. It grows by the clock, so the garden
 // carries on while the page is closed. Crops and fish sell at the stand for coins, which buy more
 // seeds. The crops, the stand, the barrel and the can are Blender models (tools/island-farm).
+//
+// The garden can look after itself, given the machines made at the forge (machines.ts): sprinklers
+// that water the plots round them, and a clockwork helper that picks what's ripe and plants the
+// same again. Growing is worked out event by event from the clock, so all of it carries on while
+// the page is closed too, and catches up when it's opened.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { NixClip, NixFigure } from '../experimental/nix-figure';
@@ -14,7 +19,7 @@ import { loadJSON, saveJSON } from './save';
 import { thumbnail } from './thumbnail';
 import { clamp, damp } from './util';
 
-interface Crop {
+export interface Crop {
 	id: string;
 	name: string;
 	/** The models: its leaves as it grows, and the crop itself. */
@@ -48,13 +53,30 @@ const CAN_HOLDS = 5;
 /** The crops are modelled true to size; grown up a bit, they read better from where the camera is. */
 const PLANT_SCALE = 1.7;
 
-interface Plot {
+export interface Plot {
 	crop: string | null;
 	/** 0 seed, 1 sprout, 2 leaves, 3 ripe. */
 	stage: number;
 	wet: boolean;
-	/** When it was last watered (ms since the epoch). */
+	/** When it was last watered, or got to the stage it's at, or was planted or cleared (ms since the epoch). */
 	since: number;
+	/** What it last grew, for the helper to plant again once it's picked. */
+	last?: string;
+}
+
+/** What looks after the garden besides her: told about by the machines (machines.ts). */
+export interface GardenMachines {
+	/** From when plot i is kept watered by a sprinkler, or null if it isn't. */
+	wateredFrom(i: number): number | null;
+	/** From when the helper picks ripe crops and plants again, or null if there's no helper. */
+	tendedFrom(): number | null;
+	/** It's time for plot i to be picked (at t; `live` if that's just now, while she's here to see).
+	 * The machines pick it themselves, now or once the helper has walked over; false leaves it be. */
+	pick(i: number, t: number, live: boolean): boolean;
+	/** The same for planting plot i again with seeds of `c`. False if it can't (no seeds). */
+	sow(i: number, c: Crop, t: number, live: boolean): boolean;
+	/** A sprinkler has just watered plot i (to show it, if it's live). */
+	watered(i: number, live: boolean): void;
 }
 interface Saved {
 	plots: Plot[];
@@ -111,7 +133,14 @@ export function createFarm(ctx: FarmContext) {
 			const s = fresh();
 			if (saved && Array.isArray(saved.plots))
 				saved.plots.slice(0, s.plots.length).forEach((p, i) => {
-					if (p && (p.crop === null || CROPS.some((c) => c.id === p.crop))) s.plots[i] = { crop: p.crop, stage: clamp(Math.floor(p.stage) || 0, 0, 3), wet: !!p.wet, since: Number(p.since) || 0 };
+					if (p && (p.crop === null || CROPS.some((c) => c.id === p.crop)))
+						s.plots[i] = {
+							crop: p.crop,
+							stage: clamp(Math.floor(p.stage) || 0, 0, 3),
+							wet: !!p.wet,
+							since: Number(p.since) || 0,
+							...(CROPS.some((c) => c.id === p.last) ? { last: p.last } : {}),
+						};
 				});
 			if (saved) {
 				// (Not clamped to what the can holds: that asks the forge, which isn't built yet.)
@@ -148,6 +177,8 @@ export function createFarm(ctx: FarmContext) {
 	// ---------- the models ----------
 
 	const models = new Map<string, THREE.Object3D>();
+	/** Who's waiting for the models (the machines, to put theirs out). */
+	const onModels: (() => void)[] = [];
 	const ink = new THREE.MeshBasicMaterial({ color: '#1d1b3a', side: THREE.BackSide });
 	ink.onBeforeCompile = (shader) => {
 		shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normal * 0.012;');
@@ -317,20 +348,75 @@ export function createFarm(ctx: FarmContext) {
 		}
 	};
 
-	/** Move each watered plant on a stage if it's had long enough; the soil dries out as it does. */
+	/** Work the garden forward to now, one thing at a time in the order they happen: a watered plant
+	 * moves on a stage once it's had long enough (and its soil dries out); a sprinkler waters a dry
+	 * plot round it; the helper picks what's ripe and plants the same again. One at a time, so that
+	 * hours with the page closed come out the same as if she'd watched. */
+	let machines: GardenMachines | null = null;
+	/** Plots the machines are seeing to (the helper on its way over), left alone till they're done. */
+	const pending = new Set<number>();
+	const LIVE_MS = 4000;
 	const grow = () => {
 		const now = Date.now();
 		let changed = false;
-		state.plots.forEach((p, i) => {
+		const stuck = new Set<number>();
+		const next = (p: Plot, i: number): { t: number; kind: 'grow' | 'water' | 'pick' | 'sow' } | null => {
+			if (pending.has(i) || stuck.has(i)) return null;
 			const c = crop(p.crop);
-			if (c && p.stage < 3 && p.wet && now - p.since >= stageMs(c)) {
-				p.stage++;
-				p.wet = false;
-				changed = true;
+			if (c) {
+				if (p.stage < 3 && p.wet) return { t: p.since + stageMs(c), kind: 'grow' };
+				const from = p.stage < 3 ? machines?.wateredFrom(i) : machines?.tendedFrom();
+				if (from === null || from === undefined) return null;
+				return { t: Math.max(p.since, from), kind: p.stage < 3 ? 'water' : 'pick' };
 			}
-			drawPlot(i);
-		});
+			const from = machines?.tendedFrom();
+			return p.last && from !== null && from !== undefined ? { t: Math.max(p.since, from), kind: 'sow' } : null;
+		};
+		for (let guard = 0; guard < 5000; guard++) {
+			let best = -1;
+			let at: { t: number; kind: 'grow' | 'water' | 'pick' | 'sow' } | null = null;
+			state.plots.forEach((p, i) => {
+				const e = next(p, i);
+				if (e && e.t <= now && (!at || e.t < at.t)) {
+					best = i;
+					at = e;
+				}
+			});
+			if (!at || best < 0) break;
+			const e = at as { t: number; kind: 'grow' | 'water' | 'pick' | 'sow' };
+			const p = state.plots[best];
+			const live = now - e.t < LIVE_MS;
+			if (e.kind === 'grow') {
+				Object.assign(p, { stage: p.stage + 1, wet: false, since: e.t });
+			} else if (e.kind === 'water') {
+				Object.assign(p, { wet: true, since: e.t });
+				machines?.watered(best, live);
+			} else if (e.kind === 'pick') {
+				if (!machines?.pick(best, e.t, live)) stuck.add(best);
+			} else if (!machines?.sow(best, crop(p.last!)!, e.t, live)) stuck.add(best);
+			changed = true;
+		}
+		state.plots.forEach((_, i) => drawPlot(i));
 		if (changed) save();
+	};
+
+	/** Picks plot i as she would, at t: the crop comes away (to `into`), and it fruits again or is cleared. */
+	const pickPlot = (i: number, t: number) => {
+		const p = state.plots[i];
+		const c = crop(p.crop);
+		if (!c || p.stage !== 3) return null;
+		if (c.regrow) Object.assign(p, { stage: 2, wet: false, since: t, last: c.id });
+		else Object.assign(p, { crop: null, stage: 0, wet: false, since: t, last: c.id });
+		save();
+		drawPlot(i);
+		return c;
+	};
+	/** Plants plot i with `c` at t (the seed's already been taken from the bag). */
+	const sowPlot = (i: number, c: Crop, t: number) => {
+		Object.assign(state.plots[i], { crop: c.id, stage: 0, wet: false, since: t });
+		save();
+		plots[i].rise = 0;
+		drawPlot(i);
 	};
 
 	// ---------- the stand and the barrel ----------
@@ -356,6 +442,7 @@ export function createFarm(ctx: FarmContext) {
 	new GLTFLoader().loadAsync(ctx.modelUrl).then(
 		(gltf) => {
 			for (const child of [...gltf.scene.children]) models.set(child.name, child);
+			for (const cb of onModels) cb();
 			placeFixtures();
 			grow();
 			inv.render();
@@ -569,7 +656,7 @@ export function createFarm(ctx: FarmContext) {
 			if (!fire('sow', true)) return;
 			seedMesh.visible = false;
 			if (!inv.remove(`seed-${seed.id}`)) return;
-			Object.assign(p, { crop: seed.id, stage: 0, wet: false, since: 0 });
+			Object.assign(p, { crop: seed.id, stage: 0, wet: false, since: Date.now() });
 			save();
 			view.rise = 0;
 			drawPlot(i);
@@ -659,6 +746,7 @@ export function createFarm(ctx: FarmContext) {
 		const p = state.plots[i];
 		const view = plots[i];
 		const c = crop(p.crop);
+		if (pending.has(i)) return { label: 'Sprocket is on its way to this one' };
 		if (!c) {
 			const seed = heldSeed();
 			if (!seed) return { label: 'No seeds: buy some at the stand' };
@@ -678,10 +766,7 @@ export function createFarm(ctx: FarmContext) {
 								return;
 							}
 							inv.add(`crop-${c.id}`, c.yield);
-							if (c.regrow) Object.assign(p, { stage: 2, wet: false, since: 0 });
-							else Object.assign(p, { crop: null, stage: 0, wet: false, since: 0 });
-							save();
-							drawPlot(i);
+							pickPlot(i, Date.now());
 							ctx.toast(c.yield > 1 ? `${c.yield} ${c.name.toLowerCase()}s, into the bag!` : `A ${c.name.toLowerCase()}, into the bag!`);
 							// Then she holds it up to show it off, turned round to face the camera.
 							const shown = make(c.item, { inked: true });
@@ -695,6 +780,7 @@ export function createFarm(ctx: FarmContext) {
 			};
 		}
 		if (p.wet) return { label: `${c.name}: next stage in ${fmt(stageMs(c) - (Date.now() - p.since))}` };
+		if (machines?.wateredFrom(i) != null) return { label: `The sprinkler will water the ${c.name.toLowerCase()}` };
 		if (!inv.has('tool-can')) return { label: `The ${c.name.toLowerCase()} needs water` };
 		if (state.water <= 0) return { label: 'The can is empty: fill it at the barrel' };
 		return { label: `Water the ${c.name.toLowerCase()} (can ${state.water}/${holds()})`, go: () => atPlot(i, waterJob(i)) };
@@ -862,9 +948,64 @@ export function createFarm(ctx: FarmContext) {
 		});
 	};
 
+	/** Where plot i is, in the garden's own frame (x across, z towards the front). */
+	const plotLocal = (i: number) => ({ lx: (-(COLS - 1) / 2 + (i % COLS)) * GAP, lz: (-(ROWS - 1) / 2 + Math.floor(i / COLS)) * GAP + 0.6 });
+
 	return {
 		/** What pressing E would do in the garden right now, for the island's interactions. */
 		offer: option,
+		/** For the machines (machines.ts): the plots, and what can be done to them. */
+		garden: {
+			rows: ROWS,
+			cols: COLS,
+			gap: GAP,
+			plots: state.plots,
+			world,
+			angle: ctx.angle,
+			plotLocal,
+			crop,
+			/** Picks plot i at t, as she would: returns the crop that came away. */
+			pick: (i: number, t: number) => {
+				pending.delete(i);
+				return pickPlot(i, t);
+			},
+			sow: (i: number, c: Crop, t: number) => {
+				pending.delete(i);
+				sowPlot(i, c, t);
+			},
+			/** Leaves plot i alone (the helper's on its way to it), or stops. */
+			hold: (i: number) => pending.add(i),
+			release: (i: number) => pending.delete(i),
+			/** Water flung from `from` to land on `to`. */
+			spray(from: THREE.Vector3, to: THREE.Vector3, flight = 0.55) {
+				vel.subVectors(to, from).divideScalar(flight);
+				vel.y += 0.5 * 9.8 * flight;
+				vel.x += (Math.random() - 0.5) * 0.6;
+				vel.z += (Math.random() - 0.5) * 0.6;
+				spawn('water', from, vel, flight + 0.4, 0.03 + Math.random() * 0.015);
+			},
+			/** Clods and dust thrown up at `at`, as when digging. */
+			dig(at: THREE.Vector3) {
+				for (let k = 0; k < 6; k++) {
+					const a = Math.random() * Math.PI * 2;
+					spawn('dirt', at, vel.set(Math.cos(a) * 0.7, 1.3 + Math.random(), Math.sin(a) * 0.7), 1.1, 0.022 + Math.random() * 0.015);
+				}
+				for (let k = 0; k < 4; k++) {
+					const a = Math.random() * Math.PI * 2;
+					spawn('dust', at, vel.set(Math.cos(a) * 0.5, 0.3, Math.sin(a) * 0.5), 0.6, 0.03);
+				}
+			},
+			/** A copy of one of the garden's models, in toon materials, once they're in. */
+			make: (name: string) => make(name),
+			onModels: (cb: () => void) => (models.size ? cb() : onModels.push(cb)),
+			/** Works the garden forward to now (after a machine's been put in). */
+			grow,
+		},
+		/** The machines that help look after the garden, once there are any. */
+		setMachines(m: GardenMachines) {
+			machines = m;
+			grow();
+		},
 		update,
 		openShop,
 		closeShop,
