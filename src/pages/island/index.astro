@@ -4,6 +4,7 @@ import BaseHead from '../../components/BaseHead.astro';
 import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
 import fishModel from '../../assets/island/fish.glb?url';
 import farmModel from '../../assets/island/farm.glb?url';
+import otterModel from '../../assets/island/otter.glb?url';
 
 const title = "Nixchan's island (experimental)";
 const description = "Roam a little toon island with Nixchan: climb, swim, glide, fish, grow a garden and find what's out there.";
@@ -15,7 +16,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<meta name="robots" content="noindex" />
 	</head>
 	<body class="isle">
-		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} aria-label="Nixchan on her island"></canvas>
+		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} aria-label="Nixchan on her island"></canvas>
 
 		<header class="bar">
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
@@ -50,6 +51,12 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 			<p class="catch-note" data-catch-note hidden></p>
 		</div>
 		<p class="fish-toast" data-fish-toast aria-live="polite"></p>
+		<p class="bubble" data-bubble hidden aria-live="polite"></p>
+		<div class="talk" data-talk hidden role="dialog" aria-label="Talking with Pebble">
+			<p class="talk-name">Pebble</p>
+			<p class="talk-text" data-talk-text aria-live="polite"></p>
+			<div class="talk-choices" data-talk-choices></div>
+		</div>
 
 		<div class="stick" data-stick hidden aria-hidden="true"><div class="knob" data-knob></div></div>
 		<button class="jump" type="button" data-jump aria-label="Jump">⤒</button>
@@ -109,7 +116,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 							<li>Nixchan's garden is a short walk inland from the beach where you start. The first time you get there, a watering can and some turnip seeds are waiting.</li>
 							<li>Stand on a plot of soil and press <kbd class="keys">E</kbd><span class="touch">the action button</span> to plant a seed, water it, and harvest it when it's ripe.</li>
 							<li>A crop grows one stage at a time (sprout, leaves, ripe), and only while the soil is wet, so water it again after each stage. Fill the can at the barrel.</li>
-							<li>Sell fish and crops at the market stand for coins, and buy more seeds there. Pumpkins take longest and fetch the most; strawberries keep fruiting.</li>
+							<li>Pebble the otter keeps the market stand. Talk to her there to sell fish and crops for coins and buy more seeds, or ask her for a tip. Pumpkins take longest and fetch the most; strawberries keep fruiting.</li>
 						</ol>
 						<p>The garden keeps growing while you're away.</p>
 					</section>
@@ -130,7 +137,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		</div>
 		<div class="atlas shop" data-shop hidden role="dialog" aria-modal="true" aria-labelledby="shop-title">
 			<div class="atlas-card">
-				<h2 id="shop-title" class="shop-title">Market stand</h2>
+				<h2 id="shop-title" class="shop-title">Pebble's stand</h2>
 				<p class="coins" data-coins>0 coins</p>
 				<div class="shop-columns">
 					<section>
@@ -366,6 +373,36 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		font: 900 22px var(--sans); color: #fdfbff; text-shadow: 0 2px 0 #2c2a52; opacity: 0; transition: opacity 0.4s;
 	}
 	.fish-toast.show { opacity: 1; }
+
+	/* Pebble's speech: a bubble over her head as Nixchan comes by, and a box along the bottom to chat. */
+	.bubble {
+		position: fixed; z-index: 36; left: 0; top: 0; margin: 0; padding: 7px 13px; border-radius: 14px; pointer-events: none;
+		max-width: 220px; background: var(--surface); color: var(--ink); font: 800 14px var(--sans); text-align: center;
+		box-shadow: 0 4px 0 var(--edge);
+	}
+	.bubble::after {
+		content: ''; position: absolute; left: 50%; bottom: -7px; margin-left: -7px;
+		border: 7px solid transparent; border-bottom: 0; border-top-color: var(--surface);
+	}
+	.bubble[hidden] { display: none; }
+	.talk {
+		position: fixed; z-index: 28; left: 50%; bottom: 24px; transform: translateX(-50%);
+		width: min(620px, calc(100% - 32px)); padding: 26px 20px 16px; border-radius: 16px;
+		background: color-mix(in srgb, var(--surface) 94%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 5px 0 var(--edge);
+	}
+	.talk[hidden] { display: none; }
+	.talk-name {
+		position: absolute; top: -14px; left: 18px; margin: 0; padding: 3px 14px; border-radius: 999px;
+		background: #9a6a43; color: #fdfbff; font-family: var(--display); font-size: 18px;
+	}
+	.talk-text { margin: 0; min-height: 3em; color: var(--ink); font-size: 16px; font-weight: 700; line-height: 1.5; }
+	.talk-choices { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+	.talk-choices :global(button) {
+		border: 0; border-radius: 10px; padding: 8px 14px; background: var(--bg); color: var(--ink);
+		font: 800 14px var(--sans); box-shadow: 0 3px 0 var(--edge); cursor: pointer;
+	}
+	.talk-choices :global(button[aria-pressed='true']) { background: var(--star); color: #1c1a3e; }
 
 	.tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
 	.tabs button {

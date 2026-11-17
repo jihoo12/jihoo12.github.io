@@ -81,6 +81,10 @@ export interface FarmContext {
 	/** Whether she's free to garden: on her feet, not fishing, no menu open. */
 	canAct: () => boolean;
 	toast: (text: string) => void;
+	/** Who keeps the stand: talking to them is how she gets to the market (without, it just opens). */
+	keeper?: { name: string; talk: () => void };
+	/** Something bought or sold at the stand. */
+	onTrade?: () => void;
 }
 
 
@@ -652,7 +656,8 @@ export function createFarm(ctx: FarmContext) {
 					}),
 			};
 		}
-		if (Math.hypot(STALL_FRONT.x - ctx.pos.x, STALL_FRONT.z - ctx.pos.z) < 1.8) return { label: 'Open the market stand', go: () => openShop() };
+		if (Math.hypot(STALL_FRONT.x - ctx.pos.x, STALL_FRONT.z - ctx.pos.z) < 1.8)
+			return ctx.keeper ? { label: `Talk to ${ctx.keeper.name}`, go: ctx.keeper.talk } : { label: 'Open the market stand', go: () => openShop() };
 		const i = nearestPlot();
 		if (i < 0) return null;
 		const p = state.plots[i];
@@ -742,6 +747,7 @@ export function createFarm(ctx: FarmContext) {
 								save();
 								renderShop();
 								inv.render();
+								ctx.onTrade?.();
 							},
 						],
 					]);
@@ -760,6 +766,7 @@ export function createFarm(ctx: FarmContext) {
 						save();
 						renderShop();
 						inv.render();
+						ctx.onTrade?.();
 					};
 					return row(def!.icon?.() ?? null, def!.color, `${def!.name} ×${n}`, `${each} coins each`, [
 						['Sell 1', true, sell(1)],
@@ -886,7 +893,17 @@ export function createFarm(ctx: FarmContext) {
 	return {
 		press,
 		update,
+		openShop,
 		closeShop,
+		/** Behind the stand's counter, where its keeper stands, facing the plots. */
+		keeperSpot: { ...world(0, -5.2), angle: ctx.angle },
+		/** How the garden's doing, for the keeper to talk about. */
+		summary() {
+			const growing = state.plots.filter((p) => p.crop);
+			const thirsty = growing.find((p) => p.stage < 3 && !p.wet);
+			const ripe = growing.find((p) => p.stage === 3);
+			return { planted: growing.length, thirsty: thirsty ? crop(thirsty.crop)!.name : null, ripe: ripe ? crop(ripe.crop)!.name : null, coins: state.coins };
+		},
 		get shopOpen() {
 			return shopOpen;
 		},

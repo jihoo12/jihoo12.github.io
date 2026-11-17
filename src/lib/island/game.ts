@@ -9,6 +9,7 @@ import { buildNixFigure, type NixClip } from '../experimental/nix-figure';
 import { createFishing, SPECIES } from './fishing';
 import { createInventory } from './inventory';
 import { createFarm } from './farm';
+import { createNpc } from './npc';
 
 const TAU = Math.PI * 2;
 const clamp = THREE.MathUtils.clamp;
@@ -1231,6 +1232,12 @@ export async function startIsland() {
 		const target = e.target instanceof Element ? e.target : null;
 		if (target?.closest('input, textarea, select, [contenteditable]')) return;
 		const key = e.key.toLowerCase();
+		// Talking with Pebble, the keys work the conversation.
+		if (npc.talking) {
+			if (key === ' ' || key.startsWith('arrow') || key === 'enter') e.preventDefault();
+			if (!e.repeat) npc.key(key);
+			return;
+		}
 		// With the menu open, only the keys that work the menu do anything.
 		if (atlasOpen && !['m', 'i', 'h', '?', 'escape'].includes(key)) return;
 		if (farm.shopOpen && key !== 'escape') return;
@@ -1423,7 +1430,7 @@ export async function startIsland() {
 		groundAt,
 		ripple,
 		pos,
-		canStand: () => ready && grounded && !swimming && !farm.busy && !farm.shopOpen && Math.hypot(vel.x, vel.z) < 0.6,
+		canStand: () => ready && grounded && !swimming && !farm.busy && !farm.shopOpen && !npc.talking && Math.hypot(vel.x, vel.z) < 0.6,
 		heading: () => heading,
 		towardCamera: () => Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z),
 		waters: (x, z) => ({
@@ -1448,9 +1455,47 @@ export async function startIsland() {
 		addFeature,
 		pos,
 		towardCamera: () => Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z),
-		canAct: () => ready && grounded && !swimming && !fishing.active && !atlasOpen,
+		canAct: () => ready && grounded && !swimming && !fishing.active && !atlasOpen && !npc.talking,
 		toast: (text) => fishing.toast(text),
+		keeper: { name: 'Pebble', talk: () => npc.open() },
+		onTrade: () => npc.cheer(),
 	});
+
+	// Pebble, who keeps the stand, behind its counter.
+	const npc = createNpc({
+		scene,
+		camera,
+		toon,
+		modelUrl: canvas.dataset.otterModel ?? '',
+		spot: farm.keeperSpot,
+		groundAt,
+		pos,
+		openShop: () => farm.openShop(),
+		facts: () => {
+			const sellable = { count: 0, value: 0, name: null as string | null };
+			let seeds = 0;
+			for (const [id, n] of inventory.entries()) {
+				const def = inventory.def(id);
+				if (def?.sell) {
+					sellable.count += n;
+					sellable.value += def.sell * n;
+					sellable.name ??= def.name;
+				}
+				if (def?.kind === 'seed') seeds += n;
+			}
+			return {
+				night: document.documentElement.dataset.time === 'night',
+				caughtKinds: fishing.caughtKinds(),
+				fishKinds: SPECIES.length,
+				hasCaught: fishing.hasCaught,
+				found: (id: string) => discovered.has(id),
+				sellable,
+				seeds,
+				garden: farm.summary(),
+			};
+		},
+	});
+	addFeature({ x: farm.keeperSpot.x, z: farm.keeperSpot.z, r: 0.4 });
 	inventory.render();
 
 	const steer = new THREE.Vector3();
@@ -1470,6 +1515,14 @@ export async function startIsland() {
 		let moving = steer.lengthSq() > 0.01;
 		// Fishing keeps her on the spot, facing the water: walking off (or jumping) puts the rod
 		// away, except with a fish on the line.
+		// So does chatting with Pebble, facing her.
+		if (npc.talking) {
+			steer.set(0, 0, 0);
+			moving = false;
+			jumpQueued = false;
+			waveQueued = false;
+			heading = npc.facing;
+		}
 		// So does tending the garden, until she's done.
 		if (farm.busy) {
 			steer.set(0, 0, 0);
@@ -1948,6 +2001,7 @@ export async function startIsland() {
 			figure.tick(dt, time, { airborne, look: zero, still: false, jump: flight, landed: !swimming });
 			fishing.update(dt, time);
 			farm.update(dt);
+			npc.update(dt);
 			nextBlink -= dt;
 			if (nextBlink < 0) {
 				const closed = nextBlink > -0.13;
@@ -1959,9 +2013,17 @@ export async function startIsland() {
 
 		// The camera swings round behind her, and never dips under the ground or the sea.
 		// Under the glider it hangs back a little, to show more of where she's heading.
-		camLook.x = damp(camLook.x, pos.x, 10, dt);
+		// Chatting with Pebble, it swings round to the side and closes in, to show the two of them.
+		const chat = npc.talking ? npc.spot : null;
+		if (chat) {
+			const want = npc.facing + Math.PI + 0.9;
+			orbitYaw += Math.atan2(Math.sin(want - orbitYaw), Math.cos(want - orbitYaw)) * (1 - Math.exp(-3 * dt));
+			orbitPitch = damp(orbitPitch, 0.22, 3, dt);
+			orbitDistance = damp(orbitDistance, 5.5, 3, dt);
+		}
+		camLook.x = damp(camLook.x, chat ? THREE.MathUtils.lerp(pos.x, chat.x, 0.45) : pos.x, chat ? 4 : 10, dt);
 		camLook.y = damp(camLook.y, pos.y + 1.2, 6, dt);
-		camLook.z = damp(camLook.z, pos.z, 10, dt);
+		camLook.z = damp(camLook.z, chat ? THREE.MathUtils.lerp(pos.z, chat.z, 0.45) : pos.z, chat ? 4 : 10, dt);
 		orbitDir.set(Math.sin(orbitYaw) * Math.cos(orbitPitch), Math.sin(orbitPitch), Math.cos(orbitYaw) * Math.cos(orbitPitch));
 		camPos.copy(camLook).addScaledVector(orbitDir, orbitDistance * (1 + gliderOpen * 0.35));
 		camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z) + 0.7, 0.6);

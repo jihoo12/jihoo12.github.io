@@ -478,6 +478,9 @@ export function createFishing(ctx: FishingContext) {
 	};
 
 	return {
+		/** Whether she's ever landed one of this kind, and how many kinds she has. */
+		hasCaught: (id: string) => best.has(id),
+		caughtKinds: () => best.size,
 		iconFor,
 		toast,
 		press,
