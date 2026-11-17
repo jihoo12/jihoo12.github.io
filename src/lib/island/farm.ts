@@ -114,7 +114,8 @@ export function createFarm(ctx: FarmContext) {
 					if (p && (p.crop === null || CROPS.some((c) => c.id === p.crop))) s.plots[i] = { crop: p.crop, stage: clamp(Math.floor(p.stage) || 0, 0, 3), wet: !!p.wet, since: Number(p.since) || 0 };
 				});
 			if (saved) {
-				s.water = clamp(Number(saved.water) || 0, 0, holds());
+				// (Not clamped to what the can holds: that asks the forge, which isn't built yet.)
+				s.water = Math.max(0, Math.floor(Number(saved.water) || 0));
 				s.coins = Math.max(0, Math.floor(Number(saved.coins) || 0));
 				s.gifted = !!saved.gifted;
 				s.seed = typeof saved.seed === 'string' ? saved.seed : null;
