@@ -19,8 +19,10 @@
 //   machines           sprinklers and Sprocket, made at the forge, looking after the garden
 //   rift               the grey rift at the standing stones, through to /monochrome
 //   lantern            the Grey Lantern, made at the forge, at her shoulder after dark
+//   blocks             stone blocks, made at the forge, that she builds with out on the island
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
+import { createBlocks } from './blocks';
 import { createFollowCamera } from './camera';
 import { createControls, type Orbit } from './controls';
 import { createExplore } from './explore';
@@ -119,6 +121,8 @@ export async function startIsland() {
 		},
 		command(key, e) {
 			if (key === 'escape') {
+				// With nothing open to close, Esc puts her blocks away.
+				if (!menu.isOpen && !farm.shopOpen && !forge.dialogOpen) blocks.stop();
 				menu.close();
 				farm.closeShop();
 				forge.closeDialog();
@@ -128,6 +132,8 @@ export async function startIsland() {
 			if (key === 'e') {
 				if (!interactions.press()) controls.state.waveQueued = true;
 			} else if (key === 'f') fishing.press();
+			else if (key === 'b') blocks.toggle();
+			else if (key === 'q') blocks.take();
 			else if (key === 'm') menu.toggle('map');
 			else if (key === 'i') menu.toggle('bag');
 			else if (key === 'h' || key === '?') menu.toggle('help');
@@ -163,7 +169,7 @@ export async function startIsland() {
 			return held;
 		},
 		clip: () => forge.clip ?? farm.clip ?? fishing.clip,
-		carrying: () => machines.carrying,
+		carrying: () => machines.carrying || blocks.on,
 		// Remade at the forge, the glider flies faster and sinks slower.
 		// Remade at the forge, the glider flies faster and sinks slower; the prism glider most of all.
 		glider: () => (forge.has('prism') ? { speed: 12, sink: 1.1 } : forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
@@ -228,7 +234,7 @@ export async function startIsland() {
 		waterAt: (x, z) => (skyIsle.aboard ? skyWaterAt(x, z, pos.y) : groundAt(x, z) < -0.5 ? 0 : null),
 		ripple: water.ripple,
 		pos,
-		canStand: () => ready && player.grounded && !player.swimming && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
+		canStand: () => ready && player.grounded && !player.swimming && !blocks.on && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
 		rod: () => (forge.has('rod') ? { lo: 0.15, hi: 0.9, speed: 1.45 } : { lo: 0.25, hi: 0.85, speed: 1 }),
 		heading: () => player.heading,
 		towardCamera,
@@ -309,13 +315,30 @@ export async function startIsland() {
 		swimming: () => player.swimming,
 		closeMenu: () => menu.close(),
 	});
+	// Stone blocks to build with: anywhere out on the island but the places that are kept clear.
+	const keptClear = layout.places.filter((p) => ['lighthouse', 'camp', 'stones', 'garden', 'forge', 'windspout'].includes(p.id));
+	const blocks = createBlocks({
+		scene,
+		toon,
+		inventory,
+		figure,
+		pos,
+		canAct: () =>
+			ready && player.grounded && !player.swimming && !skyIsle.aboard && !machines.carrying && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
+		open: (x, z) => roomy(x, z, 0.7) && keptClear.every((p) => Math.hypot(p.x - x, p.z - z) > p.r + 1),
+		toast: (text) => fishing.toast(text),
+		closeMenu: () => menu.close(),
+	});
 	for (const id of ['can', 'rod', 'glider', 'helper', 'lantern', 'prism'] as const) if (forge.has(id)) showUpgrade(id);
 	farm.setMachines(machines.machines);
 	// Smithing comes first, so E strikes while she's at it; the sprinkler hint comes last.
+	// Building comes first, so E sets a block while she has them out.
+	interactions.add(() => blocks.offer());
 	interactions.add(forge.offer);
 	interactions.add(machines.offer);
 	interactions.add(farm.offer);
 	interactions.add(machines.hint);
+	interactions.add(() => blocks.hint());
 
 	// Cloudrest, up in the sky: crystals to gather (E), and a chest at the top of the spire.
 	const skyIsle = createSkyIsle({ scene, toon, theme, inventory, pos, addFeature, modelUrl: canvas.dataset.skyModel ?? '', toast: (text) => fishing.toast(text) });
@@ -451,6 +474,9 @@ export async function startIsland() {
 			farm.update(dt);
 			machines.update(dt, time);
 			npc.update(dt);
+			// Her arms can hold a sprinkler or a block, not both.
+			if (machines.carrying) blocks.stop();
+			blocks.update(time);
 			interactions.update();
 		}
 		landmarks.update(time, dt);

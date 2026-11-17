@@ -3,7 +3,7 @@
 // grows back after a while); at the anvil she smelts it into ingots, and with ingots and the sky
 // shards from Cloudrest makes her tools better: a sturdier watering can, a sky rod that's kinder on
 // the line, and a sky glider that flies further. It makes the garden's machines too (machines.ts):
-// sprinklers, and Sprocket, the clockwork helper. And from the ashen ore she brings back from the
+// sprinklers, and Sprocket, the clockwork helper; and stone blocks to build with (blocks.ts). And from the ashen ore she brings back from the
 // grey place through the rift (/monochrome), it makes a compass that knows the way there, a lantern
 // that lights her way at night, and (once she's found all three colour shards) a prism glider.
 //
@@ -76,6 +76,8 @@ interface Recipe {
 	about: string;
 	needs: [string, number][];
 	color: string;
+	/** How many it makes at once, for an item (one, unless it says). */
+	makes?: number;
 	/** Something more it needs than what's in the bag, and what to say until it's met. */
 	unlock?: { met: () => boolean; hint: string };
 }
@@ -86,6 +88,7 @@ const RECIPES: Recipe[] = [
 	{ id: 'rod', kind: 'upgrade', name: 'Sky Rod', about: 'More room in the green when reeling, and fish come in quicker.', needs: [[INGOT, 2], [SHARD, 3]], color: '#9fe3ff' },
 	{ id: 'glider', kind: 'upgrade', name: 'Sky Glider', about: 'Flies faster and sinks slower, so it carries her much further.', needs: [[INGOT, 2], [SHARD, 5]], color: '#7fb8ff' },
 	{ id: 'sprinkler', kind: 'item', item: 'sprinkler', name: 'Sprinkler', about: 'Set where four plots meet, it keeps them watered. There is room in the garden for four.', needs: [[INGOT, 2]], color: '#c97b4a' },
+	{ id: 'blocks', kind: 'item', item: 'stone-block', name: 'Stone Blocks', about: 'Six blocks of dressed stone from one ore (eight if it goes perfectly), to build with out on the island.', needs: [[ORE, 1]], color: '#d8c9a8', makes: 6 },
 	{ id: 'helper', kind: 'upgrade', name: 'Sprocket, a clockwork helper', about: 'Picks ripe crops into a crate by the garden, and plants the same again from your seeds.', needs: [[INGOT, 4], [SHARD, 4]], color: '#e8b84a' },
 	{ id: 'ashen-ingot', kind: 'item', item: ASHEN_INGOT, name: 'Ashen Ingot', about: 'Smelted from the ashen ore she brings back from the grey place.', needs: [[ASHEN_ORE, 2]], color: '#8e8e94' },
 	{ id: 'compass', kind: 'upgrade', name: 'Rift Compass', about: 'In the grey place, its needle always knows the way back to the Threshold, however far in she is.', needs: [[ASHEN_INGOT, 2], [INGOT, 2]], color: '#b8b8c0' },
@@ -569,14 +572,15 @@ export function createForge(ctx: ForgeContext) {
 		if (r.kind === 'item' && r.item) {
 			// Done perfectly, smelting makes two ingots for one.
 			const smelting = r.item === INGOT || r.item === ASHEN_INGOT;
-			const n = perfect && smelting ? 2 : 1;
+			const n = r.makes ? r.makes + (perfect ? 2 : 0) : perfect && smelting ? 2 : 1;
 			if (!ctx.inventory.add(r.item, n)) {
 				// No room: what went into it goes back, rather than being lost.
 				for (const [id, k] of r.needs) ctx.inventory.add(id, k);
 				ctx.toast(`Her bag's too full for the ${r.name.toLowerCase()}, so she keeps what it was made from.`);
 				return;
 			}
-			ctx.toast(smelting ? (perfect ? 'Flawless! The ore made two ingots.' : `An ${r.name.toLowerCase()}, still warm.`) : perfect ? `A ${r.name.toLowerCase()}, made flawlessly!` : `A ${r.name.toLowerCase()}, ready to set up.`);
+			if (r.makes) ctx.toast(`${n} ${r.name.toLowerCase()}${perfect ? ', made flawlessly' : ''}! B takes them out to build with.`);
+			else ctx.toast(smelting ? (perfect ? 'Flawless! The ore made two ingots.' : `An ${r.name.toLowerCase()}, still warm.`) : perfect ? `A ${r.name.toLowerCase()}, made flawlessly!` : `A ${r.name.toLowerCase()}, ready to set up.`);
 		} else {
 			made.add(r.id as Upgrade);
 			save();

@@ -40,6 +40,10 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<p class="fish-prompt act-prompt" data-act-prompt hidden><kbd>E</kbd><span data-act-text></span></p>
 		<button class="act" type="button" data-act hidden>Do</button>
 		<button class="fish" type="button" data-fish aria-label="Fish">Fish</button>
+		<div class="build" data-build hidden>
+			<button type="button" data-build-take>Take</button>
+			<button type="button" data-build-done>Done</button>
+		</div>
 		<p class="bite" data-bite hidden aria-hidden="true">!</p>
 		<div class="reel" data-reel hidden role="status">
 			<p class="reel-note" data-reel-note>Keep it steady…</p>
@@ -101,6 +105,8 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 							<dt><kbd>Space</kbd> again</dt><dd>Open the glider in mid-air, and once more to fold it</dd>
 							<dt>Drag</dt><dd>Look around; the scroll wheel zooms</dd>
 							<dt><kbd>E</kbd></dt><dd>Plant, water, harvest or use what's in front of you; otherwise wave</dd>
+							<dt><kbd>B</kbd></dt><dd>Take out stone blocks to build with, or put them away</dd>
+							<dt><kbd>Q</kbd></dt><dd>Take back the block in front of you</dd>
 						</dl>
 						<dl class="touch">
 							<dt>Left thumb</dt><dd>Walk; push far to run</dd>
@@ -137,6 +143,15 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 							<li>The forge makes machines for the garden too. Set a sprinkler where four plots meet and it keeps them watered; four cover the whole garden. Sprocket, the clockwork helper, picks what's ripe into the crate by the garden and plants the same again from your seeds. Collect the crate with <kbd class="keys">E</kbd><span class="touch">the action button</span>.</li>
 							<li>Ashen ore from the grey place beyond the standing stones smelts into ashen ingots, for a Rift Compass that always knows the way back to the Threshold, a Grey Lantern that lights the way at night, and (once all three colour shards are found) the Prism Glider.</li>
 						</ol>
+					</section>
+					<section>
+						<h3>Building</h3>
+						<ol>
+							<li>The forge makes stone blocks from iron ore, six at a time.</li>
+							<li>Press <kbd class="keys">B</kbd><span class="touch">Build with them, in the bag,</span> to hold one. A see-through block shows where it will go, in front of you; <kbd class="keys">E</kbd><span class="touch">the action button</span> sets it there, on the ground or on top of the stack.</li>
+							<li><kbd class="keys">Q</kbd><span class="touch">Take</span> puts the top block in front of you back in the bag. <kbd class="keys">B</kbd><span class="touch">Done</span> puts them away.</li>
+						</ol>
+						<p>One block is just low enough to jump onto, so build stairs to go higher. The garden, the forge, the stones, the lighthouse, the campfire and the Windspout are kept clear.</p>
 					</section>
 					<section>
 						<h3>The standing stones</h3>
@@ -318,6 +333,15 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 	}
 	.act[hidden] { display: none !important; }
 	.act:active { transform: translateY(3px); box-shadow: 0 2px 0 #c99a2e; }
+
+	/* Building, on a touch screen: take a block back, or put them away. (Keys do it otherwise.) */
+	.build { display: none; position: fixed; z-index: 25; right: 24px; bottom: 344px; gap: 8px; }
+	.build[hidden] { display: none !important; }
+	.build button {
+		height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface); color: var(--ink);
+		font: 900 15px var(--sans); box-shadow: 0 4px 0 var(--edge); touch-action: none;
+	}
+	.build button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--edge); }
 
 	/* The market stand: seeds to buy on one side, what she has to sell on the other. */
 	.shop .atlas-card { width: min(720px, 100%); }
@@ -546,6 +570,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		.help span.touch { display: inline; }
 		.fish { display: block; }
 		.act { display: block; }
+		.build { display: flex; }
 		.act-prompt:not([hidden]) { display: block !important; bottom: 18px; }
 		.act-prompt kbd { display: none; }
 		.fish-prompt { display: none !important; }

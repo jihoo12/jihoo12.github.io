@@ -2,6 +2,7 @@
 // of cells so each frame only looks at the few nearby. With the terrain, the pier and the sky island
 // they answer the one question movement asks: how high is what she'd stand on here? Under the sky
 // island that depends on how high she is, so movement asks it with her height.
+import { blockGround } from './blocks';
 import { STAND, skyCeiling, skyGround } from './skyisle';
 import { deckAt, terrainAt } from './terrain';
 
@@ -64,10 +65,10 @@ export function roomy(x: number, z: number, gap: number) {
 	return true;
 }
 
-/** The height of whatever she'd stand on at (x, z): the ground, the pier, the top of a rock, or
- * the sky island. Without `y` (how high she is) it's what's down on the ground, ignoring the sky. */
+/** The height of whatever she'd stand on at (x, z): the ground, the pier, the top of a rock, a
+ * stack of her blocks, or the sky island. Without `y` (how high she is) it's what's down on the ground, ignoring the sky. */
 export function groundAt(x: number, z: number, y?: number) {
-	let g = Math.max(terrainAt(x, z), deckAt(x, z));
+	let g = Math.max(terrainAt(x, z), deckAt(x, z), blockGround(x, z));
 	if (y !== undefined) g = Math.max(g, skyGround(x, z, y));
 	for (const f of nearby(x, z)) {
 		if (!within(f, y)) continue;
