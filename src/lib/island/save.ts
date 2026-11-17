@@ -19,6 +19,8 @@ export const SAVE_KEYS = {
 	machines: 'island-machines',
 	// The stone blocks she's built with: each column as [cell x, cell z, how many].
 	blocks: 'island-blocks',
+	// Windmills (where each stands) and drills (which vein, and what's in its bin).
+	power: 'island-power',
 	// The grey place through the rift (/monochrome): the colour shards she's found there, and the
 	// snowflakes she's left to find her way.
 	monoShards: 'monochrome-shards',

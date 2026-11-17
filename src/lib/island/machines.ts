@@ -621,6 +621,8 @@ export function createMachines(ctx: MachinesContext) {
 			showHelper();
 			garden.grow();
 		},
+		/** Puts the sprinkler she's carrying back in the bag. */
+		stop: stopCarrying,
 		/** Whether she has a sprinkler in her arms. */
 		get carrying() {
 			return carry.on;

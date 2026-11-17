@@ -3,7 +3,8 @@
 // grows back after a while); at the anvil she smelts it into ingots, and with ingots and the sky
 // shards from Cloudrest makes her tools better: a sturdier watering can, a sky rod that's kinder on
 // the line, and a sky glider that flies further. It makes the garden's machines too (machines.ts):
-// sprinklers, and Sprocket, the clockwork helper; and stone blocks to build with (blocks.ts). And from the ashen ore she brings back from the
+// sprinklers, and Sprocket, the clockwork helper; stone blocks to build with (blocks.ts); and windmills,
+// and drills that mine the veins by themselves (power.ts). And from the ashen ore she brings back from the
 // grey place through the rift (/monochrome), it makes a compass that knows the way there, a lantern
 // that lights her way at night, and (once she's found all three colour shards) a prism glider.
 //
@@ -48,12 +49,14 @@ export interface ForgeContext {
 	onUpgrade: (id: Upgrade) => void;
 	/** Whether another of this item may be made (there's only room for so many sprinklers). */
 	more?: (item: string) => boolean;
+	/** Whether a vein has a drill on it (power.ts), which mines it instead of her. */
+	drilled?: (vein: string) => boolean;
 }
 
 export type Upgrade = 'can' | 'rod' | 'glider' | 'helper' | 'compass' | 'lantern' | 'prism';
 const UPGRADES: Upgrade[] = ['can', 'rod', 'glider', 'helper', 'compass', 'lantern', 'prism'];
 
-const ORE = 'iron-ore';
+export const ORE = 'iron-ore';
 const INGOT = 'iron-ingot';
 const SHARD = 'sky-shard';
 /** From the grey place through the rift: carried home, and smelted here like iron. */
@@ -89,6 +92,8 @@ const RECIPES: Recipe[] = [
 	{ id: 'glider', kind: 'upgrade', name: 'Sky Glider', about: 'Flies faster and sinks slower, so it carries her much further.', needs: [[INGOT, 2], [SHARD, 5]], color: '#7fb8ff' },
 	{ id: 'sprinkler', kind: 'item', item: 'sprinkler', name: 'Sprinkler', about: 'Set where four plots meet, it keeps them watered. There is room in the garden for four.', needs: [[INGOT, 2]], color: '#c97b4a' },
 	{ id: 'blocks', kind: 'item', item: 'stone-block', name: 'Stone Blocks', about: 'Six blocks of dressed stone from one ore (eight if it goes perfectly), to build with out on the island.', needs: [[ORE, 1]], color: '#d8c9a8', makes: 6 },
+	{ id: 'windmill', kind: 'item', item: 'windmill', name: 'Windmill', about: 'Set up on high ground, where the wind blows, it powers the machines round it.', needs: [[INGOT, 3]], color: '#b07a4f' },
+	{ id: 'drill', kind: 'item', item: 'drill', name: 'Drill', about: 'Set over an ore vein near a windmill, it mines the ore each time it grows back, and keeps it for you.', needs: [[INGOT, 4], [SHARD, 2]], color: '#4f5675' },
 	{ id: 'helper', kind: 'upgrade', name: 'Sprocket, a clockwork helper', about: 'Picks ripe crops into a crate by the garden, and plants the same again from your seeds.', needs: [[INGOT, 4], [SHARD, 4]], color: '#e8b84a' },
 	{ id: 'ashen-ingot', kind: 'item', item: ASHEN_INGOT, name: 'Ashen Ingot', about: 'Smelted from the ashen ore she brings back from the grey place.', needs: [[ASHEN_ORE, 2]], color: '#8e8e94' },
 	{ id: 'compass', kind: 'upgrade', name: 'Rift Compass', about: 'In the grey place, its needle always knows the way back to the Threshold, however far in she is.', needs: [[ASHEN_INGOT, 2], [INGOT, 2]], color: '#b8b8c0' },
@@ -664,7 +669,7 @@ export function createForge(ctx: ForgeContext) {
 			if (mining || dialogOpen || !ctx.canAct()) return null;
 			if (Math.hypot(ctx.pos.x - anvil.x, ctx.pos.z - anvil.z) < 1.8 && Math.abs(ctx.pos.y - floorY) < 1) return { label: 'Use the anvil', go: openDialog };
 			for (const v of veins) {
-				if (Math.hypot(ctx.pos.x - v.x, ctx.pos.z - v.z) > 2.3 || Math.abs(ctx.pos.y - v.y) > 2) continue;
+				if (Math.hypot(ctx.pos.x - v.x, ctx.pos.z - v.z) > 2.3 || Math.abs(ctx.pos.y - v.y) > 2 || ctx.drilled?.(v.id)) continue;
 				if (!ripe(v)) return { label: `Mined out for now (about ${Math.ceil((REGROW_MS - (Date.now() - mined[v.id])) / 60000)} min)` };
 				if (!ctx.inventory.fits(ORE)) return { label: 'Your bag is too full' };
 				return {
@@ -700,6 +705,17 @@ export function createForge(ctx: ForgeContext) {
 		},
 		/** Where the ore is, for Pebble's tips. */
 		veinsLeft: () => veins.filter(ripe).length,
+		/** The veins, for the drills that can be set over them (power.ts). */
+		veinSource: {
+			veins: () => veins.map(({ id, x, y, z }) => ({ id, x, y, z })),
+			ripeAt: (id: string) => (mined[id] === undefined ? -Infinity : mined[id] + REGROW_MS),
+			take(id: string, t: number) {
+				mined[id] = t;
+				saveJSON('ore', mined);
+				veinClock = 0;
+			},
+			regrowMs: REGROW_MS,
+		},
 		update(time: number, dt: number) {
 			for (const tick of ticks) tick(time, dt);
 		},

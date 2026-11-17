@@ -47,11 +47,12 @@ The page is `src/pages/island/index.astro` (HTML/CSS for the menus and prompts),
 | `machines.ts` | Sprinklers and Sprocket the clockwork helper, looking after the garden |
 | `rift.ts` | The grey rift at the standing stones, through to `/monochrome/` |
 | `lantern.ts` | The Grey Lantern at her shoulder, made at the forge |
+| `power.ts` | Windmills, and the drills they power on the ore veins: power is only ever on or off |
 | `save.ts` | Every localStorage key the island uses |
 
 To add something she can do, register it with `interactions.add(() => ({ label, go }))`. To add a landmark, add a function to `landmarks.ts`.
 
-The fish, garden, otter, sky ruin and forge models (and the grey place's walls and pieces, `tools/monochrome/`) are made in Blender by the scripts in `tools/` (`nix develop .#blender -c blender -b -P tools/<name>/build.py -- <out.glb>`).
+The fish, garden, otter, sky ruin, forge and power models (and the grey place's walls and pieces, `tools/monochrome/`) are made in Blender by the scripts in `tools/` (`nix develop .#blender -c blender -b -P tools/<name>/build.py -- <out.glb>`).
 
 ## Monochrome
 
@@ -79,7 +80,7 @@ All the artwork is Nixchan, drawn and modelled by jihoo for this site:
 - **Illustrations** — `src/assets/nixchan/*.png`, used across the site and optimized at build time by `astro:assets`.
 - **Live Nixchan** — `src/assets/nixchan/live/`, the parts (body, eyes, legs) of the Nixchan who perches on cards on the home and 404 pages.
 - **3D Nixchan** — `src/assets/nixchan/nixchan-3d.glb`, built by `tools/nixchan-3d/build.py`, for `/experimental/` and the island.
-- **Island models** — `src/assets/island/` (fish, garden, market stand and the garden's machines, Pebble the otter, the ruins on Cloudrest, the forge), built by the scripts in `tools/island-*/`.
+- **Island models** — `src/assets/island/` (fish, garden, market stand and the garden's machines, Pebble the otter, the ruins on Cloudrest, the forge, the windmill and the drill), built by the scripts in `tools/island-*/`.
 - **Monochrome models** — `src/assets/monochrome/` (walls, posts, columns, the obelisk and the rest of the grey place), built by `tools/monochrome/build.py`.
 
 ## License

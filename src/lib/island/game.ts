@@ -20,15 +20,16 @@
 //   rift               the grey rift at the standing stones, through to /monochrome
 //   lantern            the Grey Lantern, made at the forge, at her shoulder after dark
 //   blocks             stone blocks, made at the forge, that she builds with out on the island
+//   power              windmills, made at the forge, and the drills they power on the ore veins
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
-import { createBlocks } from './blocks';
+import { blockGround, createBlocks } from './blocks';
 import { createFollowCamera } from './camera';
 import { createControls, type Orbit } from './controls';
 import { createExplore } from './explore';
 import { createFarm } from './farm';
 import { addFeature, groundAt, removeFeature, roomy } from './features';
-import { ASHEN_ORE, createForge, type Upgrade } from './forge';
+import { ASHEN_ORE, ORE, createForge, type Upgrade } from './forge';
 import { MAX_SPRINKLERS, createMachines } from './machines';
 import { createFishing, SPECIES } from './fishing';
 import { createInteractions } from './interact';
@@ -39,6 +40,7 @@ import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
+import { MAX_WINDMILLS, createPower } from './power';
 import { createLantern } from './lantern';
 import { createIslandRift, riftArrival } from './rift';
 import { loadJSON, saveJSON } from './save';
@@ -122,7 +124,10 @@ export async function startIsland() {
 		command(key, e) {
 			if (key === 'escape') {
 				// With nothing open to close, Esc puts her blocks away.
-				if (!menu.isOpen && !farm.shopOpen && !forge.dialogOpen) blocks.stop();
+				if (!menu.isOpen && !farm.shopOpen && !forge.dialogOpen) {
+					blocks.stop();
+					power.stop();
+				}
 				menu.close();
 				farm.closeShop();
 				forge.closeDialog();
@@ -169,7 +174,7 @@ export async function startIsland() {
 			return held;
 		},
 		clip: () => forge.clip ?? farm.clip ?? fishing.clip,
-		carrying: () => machines.carrying || blocks.on,
+		carrying: () => machines.carrying || blocks.on || power.carrying,
 		// Remade at the forge, the glider flies faster and sinks slower.
 		// Remade at the forge, the glider flies faster and sinks slower; the prism glider most of all.
 		glider: () => (forge.has('prism') ? { speed: 12, sink: 1.1 } : forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
@@ -286,7 +291,9 @@ export async function startIsland() {
 		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !menu.isOpen && !npc.talking,
 		toast: (text) => fishing.toast(text),
 		onUpgrade: (id) => showUpgrade(id),
-		more: (item) => item !== 'sprinkler' || machines.sprinklers() < MAX_SPRINKLERS,
+		more: (item) =>
+			item === 'sprinkler' ? machines.sprinklers() < MAX_SPRINKLERS : item === 'windmill' ? power.windmills() < MAX_WINDMILLS : item === 'drill' ? power.drills() < power.veinCount : true,
+		drilled: (vein) => power.drilled(vein),
 	});
 	/** What an upgrade looks like on her: a steel can, a sky-blue reel, a sky-blue (or rainbow)
 	 * glider, a lantern at her shoulder. (The Rift Compass is for the grey place, which reads it there.) */
@@ -329,16 +336,43 @@ export async function startIsland() {
 		toast: (text) => fishing.toast(text),
 		closeMenu: () => menu.close(),
 	});
+	// Windmills up in the hills, and the drills they power on the ore veins.
+	const power = createPower({
+		renderer,
+		scene,
+		toon,
+		inventory,
+		figure,
+		modelUrl: canvas.dataset.powerModel ?? '',
+		ore: { id: ORE, color: '#c0703f' },
+		veins: forge.veinSource,
+		groundAt,
+		addFeature,
+		removeFeature,
+		pos,
+		canAct: () =>
+			ready && player.grounded && !player.swimming && !skyIsle.aboard && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
+		canCarry: () => !player.swimming && !skyIsle.aboard,
+		// Clear of trees and rocks, of her blocks, and of the places that are kept clear.
+		open: (x, z) =>
+			roomy(x, z, 1) &&
+			[[0, 0], [0.9, 0], [-0.9, 0], [0, 0.9], [0, -0.9]].every(([dx, dz]) => blockGround(x + dx, z + dz) === -Infinity) &&
+			keptClear.every((p) => Math.hypot(p.x - x, p.z - z) > p.r + 2),
+		toast: (text) => fishing.toast(text),
+		closeMenu: () => menu.close(),
+	});
 	for (const id of ['can', 'rod', 'glider', 'helper', 'lantern', 'prism'] as const) if (forge.has(id)) showUpgrade(id);
 	farm.setMachines(machines.machines);
 	// Smithing comes first, so E strikes while she's at it; the sprinkler hint comes last.
 	// Building comes first, so E sets a block while she has them out.
 	interactions.add(() => blocks.offer());
+	interactions.add(power.offer);
 	interactions.add(forge.offer);
 	interactions.add(machines.offer);
 	interactions.add(farm.offer);
 	interactions.add(machines.hint);
 	interactions.add(() => blocks.hint());
+	interactions.add(power.hint);
 
 	// Cloudrest, up in the sky: crystals to gather (E), and a chest at the top of the spire.
 	const skyIsle = createSkyIsle({ scene, toon, theme, inventory, pos, addFeature, modelUrl: canvas.dataset.skyModel ?? '', toast: (text) => fishing.toast(text) });
@@ -456,6 +490,7 @@ export async function startIsland() {
 	let last = performance.now();
 	let mapClock = 0;
 	let greeted = false;
+	let held = { sprinkler: false, blocks: false, power: false };
 
 	renderer.setAnimationLoop((now) => {
 		const dt = Math.min(0.05, (now - last) / 1000);
@@ -473,9 +508,21 @@ export async function startIsland() {
 			fishing.update(dt, time);
 			farm.update(dt);
 			machines.update(dt, time);
+			power.update(dt, time);
 			npc.update(dt);
-			// Her arms can hold a sprinkler or a block, not both.
-			if (machines.carrying) blocks.stop();
+			// Her arms hold one thing at a time: whatever she's just taken up, the rest go away.
+			const holding = { sprinkler: machines.carrying, blocks: blocks.on, power: power.carrying };
+			if (holding.sprinkler && !held.sprinkler) {
+				blocks.stop();
+				power.stop();
+			} else if (holding.power && !held.power) {
+				blocks.stop();
+				machines.stop();
+			} else if (holding.blocks && !held.blocks) {
+				machines.stop();
+				power.stop();
+			}
+			held = { sprinkler: machines.carrying, blocks: blocks.on, power: power.carrying };
 			blocks.update(time);
 			interactions.update();
 		}

@@ -7,6 +7,7 @@ import farmModel from '../../assets/island/farm.glb?url';
 import otterModel from '../../assets/island/otter.glb?url';
 import skyModel from '../../assets/island/sky.glb?url';
 import forgeModel from '../../assets/island/forge.glb?url';
+import powerModel from '../../assets/island/power.glb?url';
 
 const title = "Nixchan's island (experimental)";
 const description = "Roam a little toon island with Nixchan: climb, swim, glide, fish, grow a garden and find what's out there.";
@@ -18,7 +19,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<meta name="robots" content="noindex" />
 	</head>
 	<body class="isle">
-		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} data-sky-model={skyModel} data-forge-model={forgeModel} aria-label="Nixchan on her island"></canvas>
+		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} data-sky-model={skyModel} data-forge-model={forgeModel} data-power-model={powerModel} aria-label="Nixchan on her island"></canvas>
 
 		<header class="bar">
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
@@ -152,6 +153,14 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 							<li><kbd class="keys">Q</kbd><span class="touch">Take</span> puts the top block in front of you back in the bag. <kbd class="keys">B</kbd><span class="touch">Done</span> puts them away.</li>
 						</ol>
 						<p>One block is just low enough to jump onto, so build stairs to go higher. The garden, the forge, the stones, the lighthouse, the campfire and the Windspout are kept clear.</p>
+					</section>
+					<section>
+						<h3>Power</h3>
+						<ol>
+							<li>The forge makes windmills and drills. Take one out of the bag (Carry it) and <kbd class="keys">E</kbd><span class="touch">the action button</span> sets it down where the see-through one shows.</li>
+							<li>A windmill wants wind, so it only goes up on high ground. Machines within 8 metres of it have power; green dots show how far, while you carry one.</li>
+							<li>Set a drill over an ore vein. With power, it mines the ore each time it grows back, even while you're away, and keeps up to 12 in its bin. Collect it with <kbd class="keys">E</kbd><span class="touch">the action button</span>.</li>
+						</ol>
 					</section>
 					<section>
 						<h3>The standing stones</h3>
