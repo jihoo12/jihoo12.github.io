@@ -1,7 +1,7 @@
 // Fishing on Nixchan's island. Standing at the water's edge (or on the pier) facing the sea, F casts
 // a bobber out; when it dunks under, F again hooks the fish, and then holding F reels it in, keeping
 // the line taut without letting it snap. What bites depends on where she fishes and the time of day,
-// and everything she lands goes in her fish book. The fish are Blender models (tools/island-fish),
+// and everything she lands goes in her bag and her fish book. The fish are Blender models (tools/island-fish),
 // one body shape to a few kinds of fish, coloured here.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -11,7 +11,7 @@ const clamp = THREE.MathUtils.clamp;
 const damp = (from: number, to: number, rate: number, dt: number) => THREE.MathUtils.lerp(from, to, 1 - Math.exp(-rate * dt));
 
 type Shape = 'Sardine' | 'Bream' | 'Puffer' | 'Moonfish';
-interface Species {
+export interface Species {
 	id: string;
 	name: string;
 	shape: Shape;
@@ -31,20 +31,23 @@ interface Species {
 	pier?: boolean;
 	/** What the fish book says before she's caught one. */
 	hint: string;
+	/** What the bag says about one. */
+	blurb: string;
 }
 
-const SPECIES: Species[] = [
-	{ id: 'sardine', name: 'Silver Sardine', shape: 'Sardine', body: '#86aee0', belly: '#eef3ff', fin: '#5b84b8', size: [12, 22], pull: 0.55, tough: 1, weight: 10, hint: 'Bites just about anywhere.' },
-	{ id: 'lantern', name: 'Lantern Sardine', shape: 'Sardine', body: '#4fd1c5', belly: '#d9fffa', fin: '#2a9d94', size: [10, 18], pull: 0.7, tough: 1.1, weight: 7, when: 'night', hint: 'Comes up to the surface at night.' },
-	{ id: 'bream', name: 'Coral Bream', shape: 'Bream', body: '#f28a8a', belly: '#ffe6e0', fin: '#e0606b', size: [22, 40], pull: 1, tough: 1.3, weight: 6, pier: true, hint: 'Likes to lurk round the pier.' },
-	{ id: 'snapper', name: 'Sunny Snapper', shape: 'Bream', body: '#ffd84d', belly: '#fff6d0', fin: '#f2a65a', size: [25, 48], pull: 1.25, tough: 1.5, weight: 4, when: 'day', deep: true, hint: 'Out in deep water, while the sun is up.' },
-	{ id: 'puffer', name: 'Puff Puffer', shape: 'Puffer', body: '#e8c27a', belly: '#fff3d6', fin: '#9a6a43', size: [15, 28], pull: 0.8, tough: 1.2, weight: 4, hint: 'Nibbles in the shallows now and then.' },
-	{ id: 'starpuffer', name: 'Starlight Puffer', shape: 'Puffer', body: '#b9a6ff', belly: '#f1ecff', fin: '#7d6ad8', size: [15, 30], pull: 1.1, tough: 1.6, weight: 2, when: 'night', hint: 'A rare one, out under the stars.' },
-	{ id: 'angelfish', name: 'Islet Angelfish', shape: 'Moonfish', body: '#5f9be8', belly: '#ffe066', fin: '#ffd84d', size: [20, 35], pull: 1.3, tough: 1.7, weight: 6, islet: true, hint: 'Only lives in the waters round the islet.' },
-	{ id: 'moonfish', name: 'Moonfish', shape: 'Moonfish', body: '#dfe4f5', belly: '#ffffff', fin: '#ff9ec7', size: [40, 75], pull: 1.6, tough: 2.2, weight: 1.5, when: 'night', deep: true, hint: 'Deep water, late at night. The biggest of them all.' },
+export const SPECIES: Species[] = [
+	{ id: 'sardine', name: 'Silver Sardine', shape: 'Sardine', body: '#86aee0', belly: '#eef3ff', fin: '#5b84b8', size: [12, 22], pull: 0.55, tough: 1, weight: 10, hint: 'Bites just about anywhere.', blurb: 'Small, quick and shiny. The island is full of them.' },
+	{ id: 'lantern', name: 'Lantern Sardine', shape: 'Sardine', body: '#4fd1c5', belly: '#d9fffa', fin: '#2a9d94', size: [10, 18], pull: 0.7, tough: 1.1, weight: 7, when: 'night', hint: 'Comes up to the surface at night.', blurb: 'Its fins glow a soft teal, like a lamp in the dark water.' },
+	{ id: 'bream', name: 'Coral Bream', shape: 'Bream', body: '#f28a8a', belly: '#ffe6e0', fin: '#e0606b', size: [22, 40], pull: 1, tough: 1.3, weight: 6, pier: true, hint: 'Likes to lurk round the pier.', blurb: 'A pink bream that hides in the shade under the pier.' },
+	{ id: 'snapper', name: 'Sunny Snapper', shape: 'Bream', body: '#ffd84d', belly: '#fff6d0', fin: '#f2a65a', size: [25, 48], pull: 1.25, tough: 1.5, weight: 4, when: 'day', deep: true, hint: 'Out in deep water, while the sun is up.', blurb: 'Bright as noon and strong on the line.' },
+	{ id: 'puffer', name: 'Puff Puffer', shape: 'Puffer', body: '#e8c27a', belly: '#fff3d6', fin: '#9a6a43', size: [15, 28], pull: 0.8, tough: 1.2, weight: 4, hint: 'Nibbles in the shallows now and then.', blurb: 'Puffs itself up when it is cross. Handle with care.' },
+	{ id: 'starpuffer', name: 'Starlight Puffer', shape: 'Puffer', body: '#b9a6ff', belly: '#f1ecff', fin: '#7d6ad8', size: [15, 30], pull: 1.1, tough: 1.6, weight: 2, when: 'night', hint: 'A rare one, out under the stars.', blurb: 'Lavender spines that catch the starlight.' },
+	{ id: 'angelfish', name: 'Islet Angelfish', shape: 'Moonfish', body: '#5f9be8', belly: '#ffe066', fin: '#ffd84d', size: [20, 35], pull: 1.3, tough: 1.7, weight: 6, islet: true, hint: 'Only lives in the waters round the islet.', blurb: 'Blue and gold, and found nowhere but the islet.' },
+	{ id: 'moonfish', name: 'Moonfish', shape: 'Moonfish', body: '#dfe4f5', belly: '#ffffff', fin: '#ff9ec7', size: [40, 75], pull: 1.6, tough: 2.2, weight: 1.5, when: 'night', deep: true, hint: 'Deep water, late at night. The biggest of them all.', blurb: 'A great silver disc that rises with the moon.' },
 ];
 
 export interface FishingContext {
+	renderer: THREE.WebGLRenderer;
 	scene: THREE.Scene;
 	camera: THREE.Camera;
 	figure: NixFigure;
@@ -60,6 +63,10 @@ export interface FishingContext {
 	heading: () => number;
 	towardCamera: () => number;
 	waters: (x: number, z: number) => { deep: boolean; islet: boolean; pier: boolean };
+	/** A fish landed: false if there was no room in the bag for it. */
+	onCatch: (s: Species, cm: number) => boolean;
+	/** The fish's pictures are ready, for anything showing them to draw again. */
+	onIcons: () => void;
 }
 
 type State = 'off' | 'cast' | 'wait' | 'bite' | 'reel' | 'show';
@@ -111,7 +118,9 @@ export function createFishing(ctx: FishingContext) {
 				li.className = caught === undefined ? 'unknown' : '';
 				const swatch = document.createElement('span');
 				swatch.className = 'swatch';
-				swatch.style.background = caught === undefined ? '' : `linear-gradient(180deg, ${s.body} 55%, ${s.belly} 55%)`;
+				const url = caught === undefined ? null : iconFor(s.id);
+				if (url) swatch.style.backgroundImage = `url(${url})`;
+				else if (caught !== undefined) swatch.style.background = `linear-gradient(180deg, ${s.body} 55%, ${s.belly} 55%)`;
 				const name = document.createElement('strong');
 				name.textContent = caught === undefined ? '???' : s.name;
 				const note = document.createElement('span');
@@ -121,17 +130,64 @@ export function createFishing(ctx: FishingContext) {
 			}),
 		);
 	};
-	renderBook();
 
 	// ---------- the fish models ----------
 
 	const shapes = new Map<Shape, THREE.Object3D>();
+	const icons = new Map<string, string>();
+	/** A side-on picture of a fish, drawn once from its model, for the bag and the fish book. */
+	function iconFor(id: string): string | null {
+		const cached = icons.get(id);
+		if (cached) return cached;
+		const s = SPECIES.find((q) => q.id === id);
+		const model = s && fishModel(s);
+		if (!model) return null;
+		const SIZE = 128;
+		const stage = new THREE.Scene();
+		stage.add(new THREE.AmbientLight('#ffffff', 1.4), new THREE.DirectionalLight('#ffffff', 2.2).translateX(1).translateY(2).translateZ(3));
+		const box = new THREE.Box3().setFromObject(model);
+		const centre = box.getCenter(new THREE.Vector3());
+		const span = Math.max(box.max.z - box.min.z, box.max.y - box.min.y) * 0.62;
+		const camera = new THREE.OrthographicCamera(-span, span, span, -span, 0.1, 10);
+		// Looking at its left side, nose to the right, tipped a touch towards the camera.
+		camera.position.set(centre.x + 3, centre.y + 0.6, centre.z);
+		camera.up.set(0, 1, 0);
+		camera.lookAt(centre);
+		stage.add(model);
+		const target = new THREE.WebGLRenderTarget(SIZE, SIZE, { samples: 4 });
+		target.texture.colorSpace = THREE.SRGBColorSpace;
+		const { renderer } = ctx;
+		const before = renderer.getRenderTarget();
+		const clear = renderer.getClearColor(new THREE.Color());
+		const alpha = renderer.getClearAlpha();
+		renderer.setRenderTarget(target);
+		renderer.setClearColor(0x000000, 0);
+		renderer.clear();
+		renderer.render(stage, camera);
+		const pixels = new Uint8Array(SIZE * SIZE * 4);
+		renderer.readRenderTargetPixels(target, 0, 0, SIZE, SIZE, pixels);
+		renderer.setRenderTarget(before);
+		renderer.setClearColor(clear, alpha);
+		target.dispose();
+		// The render target is upside down to a canvas.
+		const canvas = document.createElement('canvas');
+		canvas.width = canvas.height = SIZE;
+		const c2d = canvas.getContext('2d')!;
+		const img = c2d.createImageData(SIZE, SIZE);
+		for (let y = 0; y < SIZE; y++) img.data.set(pixels.subarray((SIZE - 1 - y) * SIZE * 4, (SIZE - y) * SIZE * 4), y * SIZE * 4);
+		c2d.putImageData(img, 0, 0);
+		const url = canvas.toDataURL('image/png');
+		icons.set(id, url);
+		return url;
+	}
 	new GLTFLoader().loadAsync(ctx.modelUrl).then(
 		(gltf) => {
 			for (const name of ['Sardine', 'Bream', 'Puffer', 'Moonfish'] as const) {
 				const shape = gltf.scene.getObjectByName(name);
 				if (shape) shapes.set(name, shape);
 			}
+			renderBook();
+			ctx.onIcons();
 		},
 		() => {
 			// No models: she still catches them, she just can't show them off.
@@ -157,6 +213,7 @@ export function createFishing(ctx: FishingContext) {
 		}
 		return model;
 	};
+	renderBook();
 
 	// ---------- the bobber and the line ----------
 
@@ -276,9 +333,16 @@ export function createFishing(ctx: FishingContext) {
 		setState('show');
 		if (ui.cardName) ui.cardName.textContent = s.name;
 		if (ui.cardSize) ui.cardSize.textContent = `${cm} cm`;
+		const kept = ctx.onCatch(s, cm);
 		if (ui.cardNote) {
-			ui.cardNote.textContent = before === undefined ? 'New to the fish book!' : cm > before ? 'Your biggest yet!' : '';
-			ui.cardNote.hidden = !ui.cardNote.textContent;
+			ui.cardNote.textContent = !kept
+				? 'Your bag is full, so back it goes.'
+				: before === undefined
+					? 'New to the fish book!'
+					: cm > before
+						? 'Your biggest yet!'
+						: 'Into the bag it goes.';
+			ui.cardNote.hidden = false;
 		}
 		ui.card?.classList.add('show');
 		shown = fishModel(s);
@@ -444,6 +508,8 @@ export function createFishing(ctx: FishingContext) {
 	};
 
 	return {
+		iconFor,
+		toast,
 		press,
 		release,
 		update,

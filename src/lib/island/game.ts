@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildNixFigure, type NixClip } from '../experimental/nix-figure';
-import { createFishing } from './fishing';
+import { createFishing, SPECIES } from './fishing';
+import { createInventory } from './inventory';
 
 const TAU = Math.PI * 2;
 const clamp = THREE.MathUtils.clamp;
@@ -371,6 +372,9 @@ export async function startIsland() {
 		atlasMap: document.querySelector<HTMLCanvasElement>('[data-atlas-map]'),
 		atlasCount: document.querySelector<HTMLElement>('[data-atlas-count]'),
 		atlasClose: document.querySelector<HTMLButtonElement>('[data-atlas-close]'),
+		bag: document.querySelector<HTMLElement>('[data-bag]'),
+		bagDetail: document.querySelector<HTMLElement>('[data-bag-detail]'),
+		bagSummary: document.querySelector<HTMLElement>('[data-bag-summary]'),
 		stick: document.querySelector<HTMLElement>('[data-stick]'),
 		knob: document.querySelector<HTMLElement>('[data-knob]'),
 		jump: document.querySelector<HTMLButtonElement>('[data-jump]'),
@@ -1216,6 +1220,8 @@ export async function startIsland() {
 		const target = e.target instanceof Element ? e.target : null;
 		if (target?.closest('input, textarea, select, [contenteditable]')) return;
 		const key = e.key.toLowerCase();
+		// With the menu open, only the keys that work the menu do anything.
+		if (atlasOpen && !['m', 'i', 'h', '?', 'escape'].includes(key)) return;
 		if (MOVE_KEYS.includes(key)) {
 			keys.add(key);
 			if (key.startsWith('arrow')) e.preventDefault();
@@ -1228,9 +1234,13 @@ export async function startIsland() {
 		} else if (key === 'f') {
 			if (!e.repeat) fishing.press();
 		} else if (key === 'm' && !e.repeat) {
-			toggleAtlas();
+			toggleMenu('map');
+		} else if (key === 'i' && !e.repeat) {
+			toggleMenu('bag');
+		} else if ((key === 'h' || key === '?') && !e.repeat) {
+			toggleMenu('help');
 		} else if (key === 'escape') {
-			toggleAtlas(false);
+			closeMenu();
 		}
 	});
 	addEventListener('keyup', (e) => {
@@ -1360,7 +1370,28 @@ export async function startIsland() {
 		}
 	};
 
+	// Her bag. Only fish go in it so far; farming will bring seeds and crops.
+	const inventory = createInventory({ slots: 24, storageKey: 'island-bag', grid: ui.bag, detail: ui.bagDetail, summary: ui.bagSummary });
+	for (const s of SPECIES)
+		inventory.register({
+			id: `fish-${s.id}`,
+			name: s.name,
+			kind: 'fish',
+			description: s.blurb,
+			color: s.body,
+			icon: () => fishing.iconFor(s.id),
+			actions: [
+				{
+					label: 'Let one go',
+					run: (id) => {
+						if (inventory.remove(id)) fishing.toast(`The ${s.name} swims off.`);
+					},
+				},
+			],
+		});
+
 	const fishing = createFishing({
+		renderer,
 		scene,
 		camera,
 		figure,
@@ -1378,7 +1409,10 @@ export async function startIsland() {
 			islet: Math.hypot(x - ISLET.x, z - ISLET.z) < 48,
 			pier: deckAt(pos.x, pos.z) > -Infinity,
 		}),
+		onCatch: (s) => inventory.add(`fish-${s.id}`),
+		onIcons: () => inventory.render(),
 	});
+	inventory.render();
 
 	const steer = new THREE.Vector3();
 	const zero = new THREE.Vector2();
@@ -1765,24 +1799,63 @@ export async function startIsland() {
 		const px = Math.round(ui.atlasMap.clientWidth * Math.min(devicePixelRatio, 2));
 		if (px && ui.atlasMap.width !== px) ui.atlasMap.width = ui.atlasMap.height = px;
 	};
-	function toggleAtlas(open = !atlasOpen) {
-		if (!ui.atlas || open === atlasOpen) return;
-		atlasOpen = open;
-		ui.atlas.hidden = !open;
-		if (open) {
-			keys.clear();
+	// ---------- the menu: her bag, the map, the fish book and help, a tab each ----------
+
+	type Tab = 'bag' | 'map' | 'fish' | 'help';
+	let menuTab: Tab = 'map';
+	const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+	const panels = [...document.querySelectorAll<HTMLElement>('[data-panel]')];
+	const showTab = (tab: Tab) => {
+		menuTab = tab;
+		for (const t of tabs) t.setAttribute('aria-selected', String(t.dataset.tab === tab));
+		for (const panel of panels) panel.hidden = panel.dataset.panel !== tab;
+		if (tab === 'map') {
 			sizeAtlas();
 			drawAtlas();
-			ui.atlasClose?.focus();
-		} else {
-			ui.atlasClose?.blur();
 		}
+	};
+	const openMenu = (tab: Tab) => {
+		if (!ui.atlas) return;
+		atlasOpen = true;
+		ui.atlas.hidden = false;
+		keys.clear();
+		fishing.release();
+		showTab(tab);
+		tabs.find((t) => t.dataset.tab === tab)?.focus();
+	};
+	function closeMenu() {
+		if (!ui.atlas || !atlasOpen) return;
+		atlasOpen = false;
+		ui.atlas.hidden = true;
+		(document.activeElement as HTMLElement | null)?.blur();
 	}
-	ui.map?.addEventListener('click', () => toggleAtlas(true));
-	ui.atlasClose?.addEventListener('click', () => toggleAtlas(false));
+	/** Opens the menu at a tab, or closes it if it's already showing that tab. */
+	function toggleMenu(tab: Tab) {
+		if (atlasOpen && menuTab === tab) closeMenu();
+		else openMenu(tab);
+	}
+	for (const t of tabs) t.addEventListener('click', () => showTab(t.dataset.tab as Tab));
+	for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open]'))
+		button.addEventListener('click', () => {
+			toggleMenu(button.dataset.open as Tab);
+			if (!atlasOpen) button.blur();
+		});
+	ui.map?.addEventListener('click', () => openMenu('map'));
+	ui.atlasClose?.addEventListener('click', closeMenu);
 	ui.atlas?.addEventListener('click', (e) => {
-		if (e.target === ui.atlas) toggleAtlas(false);
+		if (e.target === ui.atlas) closeMenu();
 	});
+	// Help opens by itself the first time she arrives.
+	const HELP_KEY = 'island-help-seen';
+	const firstVisit = (() => {
+		try {
+			if (localStorage.getItem(HELP_KEY)) return false;
+			localStorage.setItem(HELP_KEY, '1');
+		} catch {
+			// Can't tell; show it.
+		}
+		return true;
+	})();
 
 	// ---------- the loop ----------
 
@@ -1820,6 +1893,7 @@ export async function startIsland() {
 			if (!greeted) {
 				greeted = true;
 				announce("Nixchan's Island", 'Go wherever you like');
+				if (firstVisit) openMenu('help');
 			}
 			const { flight, airborne, swimming } = step(dt);
 			// Dropping into the water isn't a landing, so no bending of the knees.
@@ -1872,7 +1946,7 @@ export async function startIsland() {
 			checkPlaces();
 			reveal();
 			drawMap();
-			if (atlasOpen) drawAtlas();
+			if (atlasOpen && menuTab === 'map') drawAtlas();
 		}
 		renderer.render(scene, camera);
 	});
