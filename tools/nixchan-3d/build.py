@@ -730,10 +730,14 @@ def hat_ring(polar_of, r, squash):
     return [BEANIE_TILT @ squashed(cap_point(a, polar_of(a), r), squash) for a in (2 * math.pi * s / 64 for s in range(64))]
 
 
-def brim(bm, reach, droop, thick, mat, squash, start=0.0):
-    """A brim out from the hat's edge: `reach` out and `droop` down at its outer edge, `thick` thick."""
+def brim(bm, reach, droop, thick, mat, squash, start=0.0, knee=None):
+    """A brim out from the hat's edge: `reach` out and `droop` down at its outer edge, `thick` thick.
+    With a `knee` (out, down), it runs out to there first and only then turns down, so it clears the
+    hair that flares out below the hat."""
+    top = [(0, 0)] + ([knee] if knee else []) + [(reach, droop)]
+    profile = [(o, -d + thick / 2) for o, d in top] + [(o, -d - thick / 2) for o, d in reversed(top)]
     rings = []
-    for o, d in ((0, thick / 2), (reach, -droop + thick / 2), (reach, -droop - thick / 2), (0, -thick / 2)):
+    for o, d in profile:
         ring = []
         for s in range(64):
             a = 2 * math.pi * s / 64
@@ -766,7 +770,8 @@ def crown(bm, squash, flat_top=None, mat=0):
 def band(bm, squash, height, mat):
     """A thick band round the bottom of the crown, rolled out as far as the beanie's is, so it covers
     the bangs where they ride up over her forehead."""
-    rows = [(height + 0.02, 1.01), (height, 1.1), (0.02, 1.11), (0.0, 1.01)]
+    # Its foot tucks in under the top of the brim, so there's no gap between them for hair to show in.
+    rows = [(height + 0.02, 1.01), (height, 1.1), (0.0, 1.11), (-0.06, 1.06), (-0.08, 1.0)]
     grid(bm, [hat_ring(lambda a, d=d: rim(a) - d, CAP_R * r, squash) for d, r in rows], mat=mat)
 
 
@@ -793,7 +798,7 @@ smooth(straw)
 BUCKET_SQUASH = 0.92
 bm = bmesh.new()
 crown(bm, BUCKET_SQUASH, flat_top=0.6, mat=0)
-brim(bm, 0.2, 0.15, 0.03, 0, BUCKET_SQUASH, start=-0.02)
+brim(bm, 0.22, 0.13, 0.03, 0, BUCKET_SQUASH, start=-0.02, knee=(0.1, 0.02))
 band(bm, BUCKET_SQUASH, 0.16, 1)
 bucket = mesh_object('BucketHat', bm, ['Bucket', 'BucketTrim'], parent=head)
 smooth(bucket)
@@ -1595,6 +1600,9 @@ if PREVIEW:
         ('back', (-3.5, 1.4, -6), target),
         ('head-left', (-2.8, 2.6, 3.8), HEAD),
         ('head-right', (2.8, 2.6, 3.8), HEAD),
+        ('head-back', (-1.5, 2.8, -4.5), HEAD),
+        ('head-side', (4.6, 1.6, BODY_Z), HEAD),
+        ('head-front', (0, 1.9, 4.6), HEAD),
     )
     only = os.environ.get('NIX_PREVIEW_VIEWS')
     # The clips' NLA tracks would otherwise pose her over the top of these stills.

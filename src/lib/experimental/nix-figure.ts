@@ -222,6 +222,12 @@ const LANDS_STANDING: NixJump[] = ['JumpDown', 'JumpStand'];
 /** Swimming tips her forwards, so her head tips back up to look where she's going. */
 const HEAD_LIFT: Partial<Record<NixClip, number>> = { Swim: -0.55, Tread: -0.08 };
 /** How far her long hair streams back behind her in each clip. */
+/** Where her long hair swings about, from the middle of her head (in the model's metres): at the back
+ * of it, a little below the middle. */
+const HAIR_PIVOT = new THREE.Vector3(0, -0.08, -0.52);
+/** How far her hair streams back under a hat with a brim (the straw hat, the bucket hat), of how far
+ * it does under the beanie. */
+const BRIM_STREAM = 0.45;
 const HAIR_STREAM: Partial<Record<NixClip, number>> = { Run: 0.3, Walk: 0.1, Swim: 0.45, Tread: 0.12, Dash: 0.35, Charge: 0.08 };
 
 export interface NixFigure {
@@ -327,7 +333,10 @@ export function buildNixFigure(url: string): NixFigure {
 				if (part) part.visible = propShown[prop];
 			}
 	};
-	const rest = { head: new THREE.Quaternion(), hair: new THREE.Quaternion() };
+	const rest = { head: new THREE.Quaternion(), hair: new THREE.Quaternion(), hairAt: new THREE.Vector3() };
+	/** Where the long hair swings about, in its bone's frame (scaled as the bone is). */
+	const hairPivot = new THREE.Vector3();
+	const swung = new THREE.Vector3();
 
 	const ready = new GLTFLoader().loadAsync(url).then((gltf) => {
 		const model = gltf.scene;
@@ -371,7 +380,20 @@ export function buildNixFigure(url: string): NixFigure {
 		head = model.getObjectByName('Head') ?? null;
 		longHair = model.getObjectByName('Hair') ?? null;
 		if (head) rest.head.copy(head.quaternion);
-		if (longHair) rest.hair.copy(longHair.quaternion);
+		if (longHair) {
+			rest.hair.copy(longHair.quaternion);
+			rest.hairAt.copy(longHair.position);
+			// The long hair swings back (running, dashing) about the back of her head, just under where a
+			// hat's brim comes, not about the bone at her chest it hangs from. Anything swung back rises
+			// behind where it turns about, so swung about the chest, the hair up at the back of her head
+			// rose up through the brim of a sun hat; this way only the hair below it lifts.
+			const pivot = model.getObjectByName('HeadPivot');
+			if (pivot) {
+				model.updateMatrixWorld(true);
+				const at = pivot.getWorldPosition(new THREE.Vector3()).add(HAIR_PIVOT);
+				hairPivot.copy(longHair.worldToLocal(at)).multiply(longHair.scale);
+			}
+		}
 		mixer = new THREE.AnimationMixer(model);
 		for (const animation of gltf.animations) {
 			const action = mixer.clipAction(animation);
@@ -493,12 +515,18 @@ export function buildNixFigure(url: string): NixFigure {
 			// She glances towards the pointer, and her hair streams back when she runs or lifts in the air.
 			yaw = damp(yaw, THREE.MathUtils.clamp(pointer.x, -1, 1) * 0.28, 4);
 			pitch = damp(pitch, THREE.MathUtils.clamp(-pointer.y, -1, 1) * 0.12, 4);
-			const stream = HAIR_STREAM[clip] ?? 0;
+			// Under a brim, her hair swings back less, so it stays under it.
+			const stream = (HAIR_STREAM[clip] ?? 0) * (hat === 'beanie' ? 1 : BRIM_STREAM);
 			lift = damp(lift, HEAD_LIFT[clip] ?? 0, 5);
 			flow = damp(flow, airborne ? -0.2 : stream + (still ? 0 : Math.sin(time * 1.7) * 0.02), airborne ? 6 : 3);
 			head.quaternion.copy(rest.head).multiply(look.setFromEuler(euler.set(pitch + lift, yaw, still ? 0 : Math.sin(time * 0.8) * 0.03)));
 			// The long hair hangs from her shoulders and is only half as stiff, so it trails a turn of the head.
-			longHair.quaternion.copy(rest.hair).multiply(look.setFromEuler(euler.set(flow, yaw * 0.55, 0)));
+			look.setFromEuler(euler.set(flow, yaw * 0.55, 0));
+			longHair.quaternion.copy(rest.hair).multiply(look);
+			// Turned about hairPivot rather than the bone's own origin: move the bone by where the pivot
+			// would otherwise have gone.
+			swung.copy(hairPivot).applyQuaternion(look).negate().add(hairPivot).applyQuaternion(rest.hair);
+			longHair.position.copy(rest.hairAt).add(swung);
 		},
 	};
 	return figure;
