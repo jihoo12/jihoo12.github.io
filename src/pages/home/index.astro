@@ -1,0 +1,139 @@
+---
+// Inside Nixchan's house, reached through the front door of her house on /island (and back out of
+// it). The room and everything in it is drawn by src/lib/home/room.ts.
+import BaseHead from '../../components/BaseHead.astro';
+import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
+import roomModel from '../../assets/home/room.glb?url';
+
+const title = "Nixchan's house (experimental)";
+const description = "Inside Nixchan's house on her island: her room, her bed, and a nap.";
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={title} description={description} />
+		<meta name="robots" content="noindex" />
+	</head>
+	<body class="home">
+		<canvas class="stage" data-room data-model={nixModel} data-room-model={roomModel} aria-label="Inside Nixchan's house"></canvas>
+
+		<header class="bar">
+			<a class="brand" href="/">jihoo<span class="period">.</span></a>
+			<span class="badge">home · experimental</span>
+			<span class="spacer"></span>
+			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
+		</header>
+
+		<p class="act-prompt" data-act-prompt hidden><kbd>E</kbd><span data-act-text></span></p>
+		<button class="act" type="button" data-act hidden>Do</button>
+		<p class="keyhint" aria-hidden="true">
+			<span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk · <kbd>Shift</kbd> run · or click the floor</span>
+			<span class="touch">Tap the floor to walk there</span>
+		</p>
+		<p class="zzz" data-zzz hidden aria-hidden="true"><span>z</span><span>z</span><span>Z</span></p>
+		<p class="toast" data-toast hidden role="status"></p>
+		<div class="dim" data-dim aria-hidden="true"></div>
+		<p class="loading" data-loading>Nixchan is coming in…</p>
+		<noscript><p class="loading">Nixchan's house needs JavaScript (and WebGL) to come in.</p></noscript>
+	</body>
+</html>
+
+<script>
+	import { startRoom } from '../../lib/home/room';
+
+	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
+	button?.addEventListener('click', () => {
+		const next = document.documentElement.dataset.time === 'night' ? 'day' : 'night';
+		document.documentElement.dataset.time = next;
+		try {
+			localStorage.setItem('time', next);
+		} catch {
+			// The choice just won't be remembered.
+		}
+		window.dispatchEvent(new Event('site-time'));
+		button.blur();
+	});
+
+	startRoom();
+</script>
+
+<style>
+	:global(html:has(body.home)), :global(body.home) { overflow: hidden; height: 100%; }
+	:global(body.home::before), :global(body.home::after) { display: none; }
+	:global(body.home) { background: var(--bg); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+	.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+	.bar {
+		position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+		display: flex; align-items: center; gap: 12px; padding: 16px clamp(16px, 4vw, 40px);
+		pointer-events: none;
+	}
+	.bar > * { pointer-events: auto; }
+	.brand { font-family: var(--display); font-size: 28px; line-height: 1; color: var(--ink); }
+	.badge { background: var(--star); color: #1c1a3e; font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px; transform: rotate(-3deg); }
+	.spacer { flex: 1; }
+	.pill {
+		border: 0; border-radius: 9px; padding: 8px 15px; background: var(--surface); color: var(--ink);
+		font: 800 15px var(--sans); box-shadow: 0 4px 0 var(--edge); cursor: pointer;
+	}
+	.pill:hover { transform: translateY(-2px); }
+	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }
+	:global([data-time='night']) .clock .moon { display: inline; }
+
+	kbd {
+		display: inline-block; min-width: 1.6em; margin-right: 2px; padding: 1px 5px; border-radius: 5px;
+		background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--edge);
+		font: 900 12px var(--sans); text-align: center;
+	}
+	.act-prompt, .keyhint, .toast, .loading {
+		position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); margin: 0;
+		padding: 8px 14px; border-radius: 12px; pointer-events: none; white-space: nowrap;
+		background: color-mix(in srgb, var(--surface) 86%, transparent);
+		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+		color: var(--ink); font-size: 14px; font-weight: 800;
+	}
+	.act-prompt { bottom: 64px; }
+	.act-prompt kbd { margin-right: 8px; }
+	.act-prompt[hidden], .toast[hidden], .loading[hidden], .zzz[hidden], .act[hidden] { display: none; }
+	.keyhint { bottom: 18px; color: var(--muted); font-size: 13px; }
+	.keyhint .touch { display: none; }
+	.loading { top: 50%; transform: translate(-50%, -50%); }
+	.toast { top: 84px; opacity: 0; }
+	.toast:global(.show) { animation: toast 3.2s ease forwards; }
+	@keyframes toast { 0% { opacity: 0; } 10%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+	.act {
+		position: fixed; z-index: 20; right: 22px; bottom: 64px; display: none;
+		border: 0; border-radius: 999px; padding: 14px 20px; cursor: pointer;
+		background: var(--btn-bg); color: var(--btn-ink); box-shadow: 0 4px 0 var(--btn-edge);
+		font: 900 15px var(--sans);
+	}
+
+	/* Zzz drifting up over her while she sleeps, one letter after another. */
+	.zzz { position: fixed; z-index: 15; left: 0; top: 0; margin: 0; pointer-events: none; }
+	.zzz span {
+		position: absolute; left: 0; bottom: 0; color: #fdfbff; font: 400 26px var(--display);
+		text-shadow: 0 2px 0 #1d1b3a; opacity: 0; animation: zzz 3s ease-in-out infinite;
+	}
+	.zzz span:nth-child(2) { animation-delay: 1s; font-size: 32px; }
+	.zzz span:nth-child(3) { animation-delay: 2s; font-size: 40px; }
+	@keyframes zzz {
+		0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+		25% { opacity: 1; }
+		100% { opacity: 0; transform: translate(36px, -70px) scale(1); }
+	}
+
+	/* The room dims while she sleeps, and fades right out as she goes out of the door. */
+	.dim { position: fixed; inset: 0; z-index: 12; pointer-events: none; background: #120f24; opacity: 0; }
+	.dim:global(.out) { opacity: 1 !important; transition: opacity 0.5s; z-index: 60; background: #2a1f2e; }
+
+	@media (pointer: coarse) {
+		.keyhint .keys { display: none; }
+		.keyhint .touch { display: inline; }
+		.act:not([hidden]) { display: block; }
+		.act-prompt kbd { display: none; }
+	}
+	@media (max-width: 700px) { .badge { display: none; } }
+	@media (prefers-reduced-motion: reduce) { .zzz span { animation: none; opacity: 1; position: static; } }
+</style>

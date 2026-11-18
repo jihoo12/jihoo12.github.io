@@ -14,6 +14,7 @@
 # garden clips are Tend (crouched, patting the soil) and Water. Her smithing hammer ("Hammer") is in
 # that hand too, for Smith, a loop of strikes on the anvil in front of her.
 # Carry and CarryWalk hold something in both arms in front of her (the page puts it there).
+# Sleep curls her up on her side, lying down, for her bed on /home.
 # Her other hats (StrawHat and BucketHat) sit on her head beside the beanie's parts (Beanie...),
 # and the page shows one hat at a time; with none, it swaps HairShell (open where a hat covers it)
 # for HairShellBare (whole) and shows HairCrownLocks over it.
@@ -1288,6 +1289,30 @@ CARRY = lambda side: Vector((side * 0.23, 0.52, BODY_Z + 0.42))
 CARRY_POLE = lambda side: (side, -1, -0.4)
 
 
+SLEEP_TILT = math.pi / 2 - 0.35
+# How far towards -x her head lies from her figure's origin, asleep.
+SLEEP_HEAD = (HEAD.y - HIP_Y) * math.sin(SLEEP_TILT)
+
+
+def sleep(t):
+    """Asleep in bed (on /home): curled up on her side facing out, her knees drawn up and her hands
+    tucked under her chin, breathing slowly. She's turned about her hips so her head lies towards -x,
+    her head end raised a little (her head's so much bigger than the rest of her that lying flat, her
+    body would float over the bed), with the side of her head at y = 0 (SLEEP_HEAD out from where her
+    hips were, which is where the page lays her on the pillow from)."""
+    p = new_pose()
+    breathe = math.sin(TAU * t)
+    p['Hips'][1] = euler(0, 0, SLEEP_TILT)
+    p['Hips'][0] = Vector((0, HEAD_R * 1.08 - (HEAD.y - HIP_Y) * math.cos(SLEEP_TILT) - HIP_Y, 0))
+    p['Chest'][1] = euler(0.12 + 0.03 * breathe, 0, 0.06)
+    # Her head lies flatter on the pillow than her body does.
+    p['Head'][1] = euler(0.1, 0, 0.25)
+    for side, s in SIDES:
+        legs(p, s, -1.15 + 0.05 * side, 1.5, -0.25, roll=side * 0.04)
+        reach(p, s, Vector((side * 0.05, 0.86, BODY_Z + 0.32)), (side, -0.5, -0.4))
+    return p
+
+
 def carry(t):
     p = new_pose()
     breathe = math.sin(TAU * t)
@@ -1563,7 +1588,7 @@ dash = keyed([
 FPS = 30
 CLIPS = {'Sit': (72, sit), 'Idle': (72, idle), 'Walk': (30, walk), 'Run': (18, run), 'Wave': (48, wave), 'Land': (13, land), 'Swim': (30, swim), 'Tread': (60, tread)}
 CLIPS.update({'Cast': (24, cast), 'Fish': (72, fish), 'Reel': (24, reel_in), 'Show': (40, show), 'Water': (54, water), 'Tend': (30, tend), 'Plant': (72, plant), 'Smith': (36, smith)})
-CLIPS.update({'Carry': (60, carry), 'CarryWalk': (30, carry_walk)})
+CLIPS.update({'Carry': (60, carry), 'CarryWalk': (30, carry_walk), 'Sleep': (120, sleep)})
 CLIPS.update({'Ready': (40, ready), 'Charge': (24, charge), 'Shot': (27, shot), 'Slam': (42, slam), 'Summon': (90, summon), 'Dash': (27, dash)})
 CLIPS.update({name: (30, keyed(keys)) for name, keys in JUMPS.items()})
 # The page turns the head and the long hair itself.
@@ -1679,7 +1704,7 @@ if PREVIEW:
     # One still from each clip, from the front and from her left.
     standing = Vector((0, 1.15, BODY_Z))
     only_clips = os.environ.get('NIX_PREVIEW_CLIPS')
-    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74), ('Smith', 0.4), ('Smith', 0.62), ('Ready', 0), ('Charge', 0), ('Shot', 0.15), ('Shot', 0.3), ('Slam', 0.32), ('Slam', 0.55), ('Summon', 0.3), ('Summon', 0.55), ('Dash', 0.2), ('Dash', 0.4), ('Carry', 0), ('CarryWalk', 0), ('CarryWalk', 0.25)):
+    for clip, t in (('JumpStand', 0), ('JumpStand', 0.15), ('JumpStand', 0.45), ('JumpStand', 1.0), ('Land', 0.3), ('JumpDown', 0.45), ('Swim', 0), ('Swim', 0.25), ('Swim', 0.5), ('Tread', 0), ('Tread', 0.25), ('Fish', 0), ('Cast', 0.38), ('Cast', 0.6), ('Reel', 0), ('Reel', 0.5), ('Show', 0), ('Water', 0.16), ('Water', 0.3), ('Water', 0.55), ('Plant', 0.22), ('Plant', 0.3), ('Plant', 0.56), ('Plant', 0.74), ('Smith', 0.4), ('Smith', 0.62), ('Ready', 0), ('Charge', 0), ('Shot', 0.15), ('Shot', 0.3), ('Slam', 0.32), ('Slam', 0.55), ('Summon', 0.3), ('Summon', 0.55), ('Dash', 0.2), ('Dash', 0.4), ('Carry', 0), ('CarryWalk', 0), ('CarryWalk', 0.25), ('Sleep', 0)):
         if only_clips and clip not in only_clips.split(','):
             continue
         apply_pose(CLIPS[clip][1](t))
@@ -1690,7 +1715,9 @@ if PREVIEW:
         # The swimming clips float her at the water line, lower down and stretched out.
         afloat_clip = clip in ('Swim', 'Tread')
         look = Vector((0, -0.3, BODY_Z + 0.2)) if afloat_clip else standing
-        for view, at in (('front', (0, 1.4, 8)), ('side', (6, 1.6, 5))):
+        # (NIX_PREVIEW_ABOVE adds two more: from straight above, and from up in front, as /home looks at her bed.)
+        extra = (('above', (0, 9, 0.5)), ('room', (0, 4.5, 7))) if os.environ.get('NIX_PREVIEW_ABOVE') else ()
+        for view, at in (('front', (0, 1.4, 8)), ('side', (6, 1.6, 5))) + extra:
             pos = look + (Vector(at) - standing) * (1.25 if afloat_clip else 1)
             cam.matrix_world = facing(pos - look, pos)
             scene.render.filepath = os.path.join(PREVIEW, f'{clip.lower()}-{t}-{view}.png')

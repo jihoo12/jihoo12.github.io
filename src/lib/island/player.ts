@@ -433,6 +433,10 @@ export function createPlayer(ctx: PlayerContext) {
 		get heading() {
 			return heading;
 		},
+		/** Turns her to face `angle` at once (as when she steps out of a door). */
+		face(angle: number) {
+			heading = turn = angle;
+		},
 		/** Which way she's turned to, easing after `heading`. */
 		get turn() {
 			return turn;

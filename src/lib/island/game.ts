@@ -365,6 +365,14 @@ export async function startIsland() {
 		toast: (text) => fishing.toast(text),
 	});
 	interactions.add(house.offer);
+	// Back out of the house (/home): on the porch, just out of the door, facing out, with the camera
+	// out in front of her (and a little to one side), looking back at her and the house.
+	if (new URLSearchParams(location.search).get('from') === 'home') {
+		pos.set(house.doorStep.x, house.doorStep.y, house.doorStep.z);
+		player.face(house.outward);
+		orbit.yaw = house.outward + 0.6;
+		history.replaceState(null, '', location.pathname);
+	}
 
 	// The garden's machines: sprinklers where four plots meet, and Sprocket by the harvest crate.
 	const machines = createMachines({

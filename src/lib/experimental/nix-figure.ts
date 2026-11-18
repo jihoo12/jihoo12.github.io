@@ -195,6 +195,8 @@ function faceUVs(geometry: THREE.BufferGeometry) {
 export type NixClip = 'Sit' | 'Idle' | 'Walk' | 'Run' | 'Wave' | 'Swim' | 'Tread' | 'Cast' | 'Fish' | 'Reel' | 'Show' | 'Water' | 'Tend' | 'Plant' | 'Smith'
 	// Carrying something in both arms (the page puts it between her hands), standing and walking.
 	| 'Carry' | 'CarryWalk'
+	// Asleep in bed, curled up on her side (on /home).
+	| 'Sleep'
 	// The snow magic on /skills: a fighting stance, holding a spell, and the spells themselves.
 	| 'Ready' | 'Charge' | 'Shot' | 'Slam' | 'Summon' | 'Dash';
 /** Clips that play once through from the top each time they're played, and hold their last pose. */

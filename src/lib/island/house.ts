@@ -5,8 +5,8 @@
 // while she's near). What she wears is saved (experimental/outfit.ts) and goes with her everywhere.
 //
 // The house itself is made in Blender (tools/island-house); the sizes it's built to are here too, to
-// walk round its walls and onto its porch. The house's story is still to come: for now it's simply
-// hers, and the door stays shut.
+// walk round its walls and onto its porch. E at the front door takes her inside: that's a page of its
+// own (/home, lib/home/room.ts), which brings her back out here (?from=home) when she leaves.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
@@ -272,6 +272,25 @@ export function createHouse(ctx: HouseContext) {
 	ui.done?.addEventListener('click', close);
 
 	const stand = world(STAND.x, STAND.z);
+	/** Where she stands to go in at the door, and to come back out of it, facing out. */
+	const doorStep = world(0, FRONT + 0.9);
+	const outward = site.yaw;
+	let entering = false;
+	const enter = () => {
+		if (entering) return;
+		entering = true;
+		const fade = document.createElement('div');
+		fade.style.cssText = 'position:fixed;inset:0;z-index:60;background:#2a1f2e;opacity:0;transition:opacity .5s;pointer-events:none';
+		document.body.append(fade);
+		requestAnimationFrame(() => (fade.style.opacity = '1'));
+		setTimeout(() => location.assign('/home/'), matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550);
+	};
+	// Back here with the browser's back button, the page comes back faded out: clear it.
+	addEventListener('pageshow', (e) => {
+		if (!e.persisted || !entering) return;
+		entering = false;
+		document.querySelectorAll<HTMLElement>('body > div[style*="z-index:60"]').forEach((d) => d.remove());
+	});
 	const mirror = world(MIRROR.x, MIRROR.z);
 	const lookFrom = world(LOOK_FROM.x, LOOK_FROM.z);
 	/** The way she faces at the mirror: straight into it (so in it, the camera sees her face). */
@@ -314,12 +333,19 @@ export function createHouse(ctx: HouseContext) {
 
 	return {
 		update,
-		/** E at the mirror. */
+		/** E at the mirror, or at the door. */
 		offer: (): Offer | null => {
-			if (dressing || !ctx.canAct()) return null;
-			if (Math.hypot(ctx.pos.x - stand.x, ctx.pos.z - stand.z) > 1.4 || Math.abs(ctx.pos.y - floorY) > 0.6) return null;
-			return { label: 'Change clothes', go: open };
+			if (dressing || entering || !ctx.canAct() || Math.abs(ctx.pos.y - floorY) > 0.6) return null;
+			// The mirror and the door are close together: whichever she's nearer.
+			const toMirror = Math.hypot(ctx.pos.x - stand.x, ctx.pos.z - stand.z);
+			const toDoor = Math.hypot(ctx.pos.x - doorStep.x, ctx.pos.z - doorStep.z);
+			if (toMirror < 1.1 && toMirror <= toDoor) return { label: 'Change clothes', go: open };
+			if (toDoor < 1.0) return { label: 'Go inside', go: enter };
+			return null;
 		},
+		/** Where she comes back out of the door, and the way she faces then. */
+		doorStep: { ...doorStep, y: floorY },
+		outward,
 		get dressing() {
 			return dressing;
 		},
