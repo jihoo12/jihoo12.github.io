@@ -4,6 +4,7 @@
 // Her origin is where she sits: y = 0 is the surface, z = 0 is its front edge, and she faces +z.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { drawLogo, type LogoId } from './logos';
 import { loadOutfit, wear, type HatId } from './outfit';
 
 const NAVY = '#2c2a52';
@@ -201,13 +202,17 @@ const ONCE: NixClip[] = ['Water', 'Plant', 'Shot', 'Slam', 'Summon', 'Dash'];
 /** The things she can hold, each hidden until she's using it. */
 export type NixProp = 'Rod' | 'Can' | 'Hammer';
 const PROP_PARTS: Record<NixProp, string[]> = { Rod: ['Rod', 'Reel'], Can: ['Can'], Hammer: ['Hammer'] };
-/** Her hats' parts, one hat shown at a time. Her X hairpin sits just under the beanie's band, so it
- * only shows with the beanie; under the others' brims it would poke through. */
+/** What shows on her head with each hat. Under a hat, the hair over her skull is open where the hat
+ * covers it (HairShell); with no hat it's whole (HairShellBare), with locks over the top of it. Her
+ * X hairpin sits just under the beanie's band, so it shows with the beanie or with nothing on; under
+ * the others' brims it would poke through. */
 const HAT_PARTS: Record<HatId, string[]> = {
-	beanie: ['BeanieCap', 'BeanieRim', 'BeanieEars', 'BeanieEarsInner', 'FlakeHat', 'Pin'],
-	straw: ['StrawHat'],
-	bucket: ['BucketHat'],
+	beanie: ['BeanieCap', 'BeanieRim', 'BeanieEars', 'BeanieEarsInner', 'FlakeHat', 'Pin', 'HairShell'],
+	straw: ['StrawHat', 'HairShell'],
+	bucket: ['BucketHat', 'HairShell'],
+	none: ['HairShellBare', 'HairCrownLocks', 'Pin'],
 };
+const HEAD_PARTS = [...new Set(Object.values(HAT_PARTS).flat())];
 /** Which of her materials stand in for the hoodie's and the beanie's own, so they can be recoloured
  * without her leggings and shoes (which are the same navy) changing with them. */
 const OWN_MATERIAL: [RegExp, Record<string, string>][] = [
@@ -223,8 +228,10 @@ const LANDS_STANDING: NixJump[] = ['JumpDown', 'JumpStand'];
 const HEAD_LIFT: Partial<Record<NixClip, number>> = { Swim: -0.55, Tread: -0.08 };
 /** How far her long hair streams back behind her in each clip. */
 /** Where her long hair swings about, from the middle of her head (in the model's metres): at the back
- * of it, a little below the middle. */
-const HAIR_PIVOT = new THREE.Vector3(0, -0.08, -0.52);
+ * of it, a little below the middle under a hat with a brim (so the hair just under the brim stays
+ * put), and otherwise at the top of the long hair (so its top edge stays put, under the beanie's band
+ * or the hair over her crown, rather than standing out from the back of her head). */
+const HAIR_PIVOT = { brim: new THREE.Vector3(0, -0.08, -0.52), bare: new THREE.Vector3(0, 0.14, -0.52) };
 /** How far her hair streams back under a hat with a brim (the straw hat, the bucket hat), of how far
  * it does under the beanie. */
 const BRIM_STREAM = 0.45;
@@ -239,6 +246,8 @@ export interface NixFigure {
 	setProp(prop: NixProp, shown: boolean): void;
 	/** Which hat she wears (the outfit's in outfit.ts). */
 	setHat(hat: HatId): void;
+	/** The design on the front of her hoodie (logos.ts), and its colour. */
+	setLogo(logo: LogoId, colour: string): void;
 	/** A named node of the model once it's in: a bone like "HandL", or the "RodTip" the line hangs from. */
 	node(name: string): THREE.Object3D | null;
 	/** Recolours one of her materials by name ("Can", "Reel"…), as when a tool is upgraded. */
@@ -294,6 +303,15 @@ export function buildNixFigure(url: string): NixFigure {
 		Metal: toon('#9aa3c4'),
 	};
 	const snowMat = toon('#ffffff', { map: snowflakeTexture(), transparent: true, alphaTest: 0.3, polygonOffset: true, polygonOffsetFactor: -2 });
+	// The design on her chest is drawn on a canvas of its own, drawn again when she changes it.
+	const logoCanvas = document.createElement('canvas');
+	logoCanvas.width = logoCanvas.height = 256;
+	const logoTexture = new THREE.CanvasTexture(logoCanvas);
+	logoTexture.colorSpace = THREE.SRGBColorSpace;
+	logoTexture.anisotropy = 4;
+	drawLogo(logoCanvas.getContext('2d')!, 'snowflake', SNOW);
+	const logoMat = toon('#ffffff', { map: logoTexture, transparent: true, alphaTest: 0.3, polygonOffset: true, polygonOffsetFactor: -2 });
+	const logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), logoMat);
 
 	// The ink line: a back-facing twin of each mesh, pushed out along its normals.
 	// Hair gets a finer lavender line, so the thin tips don't turn into black spikes.
@@ -320,11 +338,10 @@ export function buildNixFigure(url: string): NixFigure {
 	const propShown: Record<NixProp, boolean> = { Rod: false, Can: false, Hammer: false };
 	let hat: HatId = 'beanie';
 	const showHat = () => {
-		for (const [id, parts] of Object.entries(HAT_PARTS))
-			for (const name of parts) {
-				const part = loaded?.getObjectByName(name);
-				if (part) part.visible = id === hat;
-			}
+		for (const name of HEAD_PARTS) {
+			const part = loaded?.getObjectByName(name);
+			if (part) part.visible = HAT_PARTS[hat].includes(name);
+		}
 	};
 	const showProps = () => {
 		for (const prop of Object.keys(PROP_PARTS) as NixProp[])
@@ -335,7 +352,7 @@ export function buildNixFigure(url: string): NixFigure {
 	};
 	const rest = { head: new THREE.Quaternion(), hair: new THREE.Quaternion(), hairAt: new THREE.Vector3() };
 	/** Where the long hair swings about, in its bone's frame (scaled as the bone is). */
-	const hairPivot = new THREE.Vector3();
+	const hairPivots = { brim: new THREE.Vector3(), bare: new THREE.Vector3() };
 	const swung = new THREE.Vector3();
 
 	const ready = new GLTFLoader().loadAsync(url).then((gltf) => {
@@ -370,12 +387,8 @@ export function buildNixFigure(url: string): NixFigure {
 				mesh.add(new THREE.Mesh(mesh.geometry, lineMat));
 			}
 		}
-		for (const [name, size] of [
-			['FlakeHat', 0.34],
-			['FlakeChest', 0.22],
-		] as const) {
-			model.getObjectByName(name)?.add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), snowMat));
-		}
+		model.getObjectByName('FlakeHat')?.add(new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), snowMat));
+		model.getObjectByName('FlakeChest')?.add(logoMesh);
 		// The rig's bones: the clips pose the body, and the page turns the head and long hair on top.
 		head = model.getObjectByName('Head') ?? null;
 		longHair = model.getObjectByName('Hair') ?? null;
@@ -390,8 +403,10 @@ export function buildNixFigure(url: string): NixFigure {
 			const pivot = model.getObjectByName('HeadPivot');
 			if (pivot) {
 				model.updateMatrixWorld(true);
-				const at = pivot.getWorldPosition(new THREE.Vector3()).add(HAIR_PIVOT);
-				hairPivot.copy(longHair.worldToLocal(at)).multiply(longHair.scale);
+				for (const kind of ['brim', 'bare'] as const) {
+					const at = pivot.getWorldPosition(new THREE.Vector3()).add(HAIR_PIVOT[kind]);
+					hairPivots[kind].copy(longHair.worldToLocal(at)).multiply(longHair.scale);
+				}
 			}
 		}
 		mixer = new THREE.AnimationMixer(model);
@@ -444,6 +459,11 @@ export function buildNixFigure(url: string): NixFigure {
 		setHat(next) {
 			hat = next;
 			showHat();
+		},
+		setLogo(logo, colour) {
+			logoMesh.visible = logo !== 'none';
+			drawLogo(logoCanvas.getContext('2d')!, logo, colour);
+			logoTexture.needsUpdate = true;
 		},
 		setProp(prop, shown) {
 			if (propShown[prop] === shown) return;
@@ -516,7 +536,8 @@ export function buildNixFigure(url: string): NixFigure {
 			yaw = damp(yaw, THREE.MathUtils.clamp(pointer.x, -1, 1) * 0.28, 4);
 			pitch = damp(pitch, THREE.MathUtils.clamp(-pointer.y, -1, 1) * 0.12, 4);
 			// Under a brim, her hair swings back less, so it stays under it.
-			const stream = (HAIR_STREAM[clip] ?? 0) * (hat === 'beanie' ? 1 : BRIM_STREAM);
+			const brimmed = hat === 'straw' || hat === 'bucket';
+			const stream = (HAIR_STREAM[clip] ?? 0) * (brimmed ? BRIM_STREAM : 1);
 			lift = damp(lift, HEAD_LIFT[clip] ?? 0, 5);
 			flow = damp(flow, airborne ? -0.2 : stream + (still ? 0 : Math.sin(time * 1.7) * 0.02), airborne ? 6 : 3);
 			head.quaternion.copy(rest.head).multiply(look.setFromEuler(euler.set(pitch + lift, yaw, still ? 0 : Math.sin(time * 0.8) * 0.03)));
@@ -525,6 +546,7 @@ export function buildNixFigure(url: string): NixFigure {
 			longHair.quaternion.copy(rest.hair).multiply(look);
 			// Turned about hairPivot rather than the bone's own origin: move the bone by where the pivot
 			// would otherwise have gone.
+			const hairPivot = hairPivots[brimmed ? 'brim' : 'bare'];
 			swung.copy(hairPivot).applyQuaternion(look).negate().add(hairPivot).applyQuaternion(rest.hair);
 			longHair.position.copy(rest.hairAt).add(swung);
 		},

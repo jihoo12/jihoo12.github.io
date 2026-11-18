@@ -178,7 +178,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 					</section>
 					<section>
 						<h3>Nixchan's house</h3>
-						<p>Her house is a short walk from the garden, with a porch out front. Stand at the mirror on the porch and press <kbd class="keys">E</kbd><span class="touch">the action button</span> to open the wardrobe: pick a colour for her hoodie, a hat, and the hat's colour. She keeps wearing it everywhere, the 3D home too.</p>
+						<p>Her house is a short walk from the garden, with a porch out front. Stand at the mirror on the porch and press <kbd class="keys">E</kbd><span class="touch">the action button</span> to open the wardrobe: pick a colour for her hoodie and the design on its front, a hat, and the hat's colour. She keeps wearing it everywhere, the 3D home too.</p>
 					</section>
 					<section>
 						<h3>The way out</h3>
@@ -232,6 +232,12 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 			<h2 id="wardrobe-title">Wardrobe</h2>
 			<p class="wardrobe-label">Hoodie</p>
 			<div class="swatches" data-wardrobe-hoodie></div>
+			<p class="wardrobe-label">Logo</p>
+			<div class="logos" data-wardrobe-logos></div>
+			<div data-wardrobe-logo-colour-row>
+				<p class="wardrobe-label">Logo colour</p>
+				<div class="swatches" data-wardrobe-logo-colour></div>
+			</div>
 			<p class="wardrobe-label">Hat</p>
 			<div class="hats" data-wardrobe-hats></div>
 			<div data-wardrobe-hat-colour-row>
@@ -335,7 +341,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 	/* The wardrobe: beside her rather than over her, so she can be seen changing (in the mirror). */
 	.wardrobe {
 		position: fixed; z-index: 30; top: 50%; right: clamp(16px, 4vw, 40px); transform: translateY(-50%);
-		width: min(300px, calc(100% - 32px)); padding: 16px 18px; border-radius: 18px;
+		width: min(300px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 16px 18px; border-radius: 18px;
 		background: color-mix(in srgb, var(--surface) 94%, transparent);
 		-webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 		box-shadow: 0 14px 30px -18px var(--shadow);
@@ -349,6 +355,13 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		background: var(--swatch); box-shadow: 0 3px 0 var(--edge), inset 0 0 0 2px color-mix(in srgb, #1c1a3e 18%, transparent);
 	}
 	.swatches :global(.swatch[aria-pressed='true']) { outline: 3px solid var(--accent); outline-offset: 3px; }
+	.logos { display: flex; flex-wrap: wrap; gap: 5px; }
+	.logos :global(.logo) {
+		width: 31px; height: 31px; padding: 4px; border: 0; border-radius: 9px; cursor: pointer;
+		background: var(--swatch); color: #fdfbff; font: 900 16px var(--sans); box-shadow: 0 3px 0 var(--edge);
+	}
+	.logos :global(.logo canvas) { display: block; width: 100%; height: 100%; }
+	.logos :global(.logo[aria-pressed='true']) { outline: 3px solid var(--accent); outline-offset: 2px; }
 	.hats { display: flex; flex-wrap: wrap; gap: 8px; }
 	.hats :global(.hat) {
 		border: 0; border-radius: 9px; padding: 7px 12px; cursor: pointer; background: var(--bg); color: var(--ink);
@@ -357,7 +370,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 	.hats :global(.hat[aria-pressed='true']) { background: var(--btn-bg); color: var(--btn-ink); box-shadow: 0 3px 0 var(--btn-edge); }
 	.wardrobe .button { margin-top: 16px; width: 100%; }
 	@media (max-width: 700px) {
-		.wardrobe { top: auto; bottom: 12px; right: 16px; left: 16px; width: auto; transform: none; }
+		.wardrobe { top: auto; bottom: 12px; right: 16px; left: 16px; width: auto; max-height: 55dvh; transform: none; }
 	}
 
 	.jump { display: none; }

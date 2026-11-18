@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import type { NixFigure } from '../experimental/nix-figure';
+import { LOGOS, LOGO_COLOURS, drawLogo } from '../experimental/logos';
 import { COLOURS, HATS, loadOutfit, saveOutfit, wear, type Outfit } from '../experimental/outfit';
 import type { Feature } from './features';
 import type { Offer } from './interact';
@@ -187,6 +188,9 @@ export function createHouse(ctx: HouseContext) {
 	const ui = {
 		panel: $('[data-wardrobe]'),
 		hoodie: $('[data-wardrobe-hoodie]'),
+		logos: $('[data-wardrobe-logos]'),
+		logoColour: $('[data-wardrobe-logo-colour]'),
+		logoColourRow: $('[data-wardrobe-logo-colour-row]'),
 		hats: $('[data-wardrobe-hats]'),
 		hatColour: $('[data-wardrobe-hat-colour]'),
 		hatColourRow: $('[data-wardrobe-hat-colour-row]'),
@@ -195,19 +199,42 @@ export function createHouse(ctx: HouseContext) {
 	let outfit: Outfit = loadOutfit();
 	let dressing = false;
 
-	const swatch = (c: (typeof COLOURS)[number], chosen: boolean, pick: () => void) => {
+	const swatch = (c: { name: string; main?: string; hex?: string }, chosen: boolean, pick: () => void) => {
 		const b = document.createElement('button');
 		b.type = 'button';
 		b.className = 'swatch';
-		b.style.setProperty('--swatch', c.main);
+		b.style.setProperty('--swatch', c.main ?? c.hex ?? '');
 		b.setAttribute('aria-label', c.name);
 		b.setAttribute('aria-pressed', String(chosen));
 		b.title = c.name;
 		b.addEventListener('click', pick);
 		return b;
 	};
+	/** A button showing a logo, drawn as it'd be on her hoodie. */
+	const logoButton = (l: (typeof LOGOS)[number]) => {
+		const b = document.createElement('button');
+		b.type = 'button';
+		b.className = 'logo';
+		b.title = l.name;
+		b.setAttribute('aria-label', l.name);
+		b.setAttribute('aria-pressed', String(l.id === outfit.logo));
+		const hoodie = COLOURS.find((c) => c.id === outfit.hoodie) ?? COLOURS[0];
+		b.style.setProperty('--swatch', hoodie.main);
+		if (l.id === 'none') b.textContent = '—';
+		else {
+			const c = document.createElement('canvas');
+			c.width = c.height = 256;
+			drawLogo(c.getContext('2d')!, l.id, (LOGO_COLOURS.find((x) => x.id === outfit.logoColour) ?? LOGO_COLOURS[0]).hex);
+			b.append(c);
+		}
+		b.addEventListener('click', () => change({ logo: l.id }));
+		return b;
+	};
 	const render = () => {
 		ui.hoodie?.replaceChildren(...COLOURS.map((c) => swatch(c, c.id === outfit.hoodie, () => change({ hoodie: c.id }))));
+		ui.logos?.replaceChildren(...LOGOS.map(logoButton));
+		ui.logoColour?.replaceChildren(...LOGO_COLOURS.map((c) => swatch(c, c.id === outfit.logoColour, () => change({ logoColour: c.id }))));
+		if (ui.logoColourRow) ui.logoColourRow.hidden = outfit.logo === 'none';
 		ui.hats?.replaceChildren(
 			...HATS.map((h) => {
 				const b = document.createElement('button');

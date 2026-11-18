@@ -15,7 +15,8 @@
 # that hand too, for Smith, a loop of strikes on the anvil in front of her.
 # Carry and CarryWalk hold something in both arms in front of her (the page puts it there).
 # Her other hats (StrawHat and BucketHat) sit on her head beside the beanie's parts (Beanie...),
-# and the page shows one hat at a time.
+# and the page shows one hat at a time; with none, it swaps HairShell (open where a hat covers it)
+# for HairShellBare (whole) and shows HairCrownLocks over it.
 # For /skills she has a fighting stance (Ready), a held spell (Charge), and four spells that each
 # play once from Ready back to Ready: Shot, Slam, Summon and Dash.
 import math
@@ -802,6 +803,55 @@ brim(bm, 0.22, 0.13, 0.03, 0, BUCKET_SQUASH, start=-0.02, knee=(0.1, 0.02))
 band(bm, BUCKET_SQUASH, 0.16, 1)
 bucket = mesh_object('BucketHat', bm, ['Bucket', 'BucketTrim'], parent=head)
 smooth(bucket)
+
+# ---------- the top of her head, with no hat on ----------
+# Under a hat there's no hair up there (the hat covers where it would be), so with no hat on the page
+# swaps the hair over her skull for this one, the same but whole over the top (one surface, so there's
+# no join to show), with chunky locks over it from her crown down to the sides and back and into her
+# bangs at the front, so it isn't a smooth cap; and a single lock standing up on top.
+bm = bmesh.new()
+verts = sphere(bm, Vector(), HEAD_R * 1.03, seg=(48, 30))
+doomed = []
+for v in verts:
+    d = v.co.normalized()
+    around = math.atan2(d.x, d.z)
+    down = math.acos(max(-1, min(1, d.y)))
+    # As HairShell, but kept where a hat would be (all but over her face, where the bangs start).
+    if down > 2.25 or (abs(around) < 1.05 and down > 0.85 and not (down < 0.97 and abs(around) < 1.05)):
+        doomed.append(v)
+bmesh.ops.delete(bm, geom=doomed, context='VERTS')
+face_outward(bm)
+bare_shell = mesh_object('HairShellBare', bm, ['Hair'], parent=head, closed=False)
+modify(bare_shell, ('SOLIDIFY', {'thickness': 0.04, 'offset': 1}))
+
+bm = bmesh.new()
+# Locks from a whorl just behind the top of her head, fanning out all round, each sinking back into
+# the hair at its end (under the bangs at the front, into the hair over the sides and back), so no
+# row of tips shows where they stop.
+WHORL = (math.pi, 0.18)
+for k in range(20):
+    around = -math.pi + 2 * math.pi * (k + 0.5) / 20
+    front = math.cos(around) > 0.45
+    # At the front they end under the bangs; round the sides and back they sink into the long hair.
+    end = 1.3 if front else 1.8
+    curl = 0.12 * math.sin(around * 2)
+    pts = []
+    for i in range(8):
+        t = i / 7
+        down = WHORL[1] + 0.12 + (end - WHORL[1] - 0.12) * t
+        if front:
+            lift = 1.11 + 0.035 * math.sin(math.pi * t) - 0.1 * t * t
+        else:
+            lift = 1.11 + 0.03 * math.sin(math.pi * min(t / 0.8, 1)) - 0.12 * smoothstep(0.75, 1.0, t)
+        pts.append(on_head(around + curl * t, down, HEAD_R * lift))
+    ribbon(bm, pts, lock_width(0.26 if front else 0.24, root=0.7), lock_thick(0.07), outward=lambda p: p.copy(), n=18)
+# Where they all start, a little swirl of hair over the very top, so no gap shows between their roots.
+sphere(bm, Vector((0, HEAD_R * 1.08, 0)), 1, scale=(0.2, 0.07, 0.2), seg=(20, 10))
+# The lock standing up on top, curling forward.
+ahoge = [on_head(0.2, 0.22, HEAD_R * 1.05), on_head(0.15, 0.08, HEAD_R * 1.2), Vector((0.02, HEAD_R * 1.45, 0.08)), Vector((0.0, HEAD_R * 1.55, 0.2)), Vector((0.0, HEAD_R * 1.47, 0.29))]
+ribbon(bm, ahoge, lock_width(0.12, root=0.9), lock_thick(0.06), outward=lambda p: Vector((1, 0, 0)), n=18)
+crown_locks = mesh_object('HairCrownLocks', bm, ['Hair'], parent=head)
+smooth(crown_locks)
 
 # ---------- the rig ----------
 # Every bone points straight up with no roll, so in rest each one's axes are the world's: a pose is
@@ -1603,17 +1653,21 @@ if PREVIEW:
         ('head-back', (-1.5, 2.8, -4.5), HEAD),
         ('head-side', (4.6, 1.6, BODY_Z), HEAD),
         ('head-front', (0, 1.9, 4.6), HEAD),
+        ('head-back-right', (2.4, 1.9, -4.2), HEAD),
+        ('head-back-left', (-2.4, 1.9, -4.2), HEAD),
     )
     only = os.environ.get('NIX_PREVIEW_VIEWS')
     # The clips' NLA tracks would otherwise pose her over the top of these stills.
     rig.animation_data.use_nla = False
-    # Which hat she's wearing in them: the beanie unless NIX_PREVIEW_HAT says straw or bucket.
+    # Which hat she's wearing in them: the beanie unless NIX_PREVIEW_HAT says straw, bucket or none.
     wearing = os.environ.get('NIX_PREVIEW_HAT', 'beanie')
     for o in scene.objects:
         if o.name.startswith('Beanie'):
             o.hide_render = wearing != 'beanie'
     straw.hide_render = wearing != 'straw'
     bucket.hide_render = wearing != 'bucket'
+    bare_shell.hide_render = crown_locks.hide_render = wearing != 'none'
+    shell.hide_render = wearing == 'none'
     apply_pose(sit(0))
     for name, at, look in views:
         if only and name not in only.split(','):

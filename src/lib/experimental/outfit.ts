@@ -1,7 +1,9 @@
-// What Nixchan's wearing: the colour of her hoodie, which hat, and the hat's colour. She changes at
-// the wardrobe in her house on /island (island/house.ts), and the choice is saved in the browser,
-// so she's dressed the same wherever her figure shows up (/island, /experimental, /skills).
+// What Nixchan's wearing: the colour of her hoodie and the design on its front (logos.ts), which hat,
+// and the hat's colour. She changes at the wardrobe in her house on /island (island/house.ts), and
+// the choice is saved in the browser, so she's dressed the same wherever her figure shows up
+// (/island, /experimental, /skills).
 import { loadJSON, saveJSON } from '../island/save';
+import { LOGOS, LOGO_COLOURS, type LogoColourId, type LogoId } from './logos';
 import type { NixFigure } from './nix-figure';
 
 /** Colours for her hoodie and her hat: the main colour, and the deeper one for cuffs and bands. */
@@ -19,16 +21,19 @@ export const HATS = [
 	{ id: 'beanie', name: 'Cat beanie', tinted: true },
 	{ id: 'straw', name: 'Straw hat', tinted: false },
 	{ id: 'bucket', name: 'Bucket hat', tinted: true },
+	{ id: 'none', name: 'No hat', tinted: false },
 ] as const;
 export type HatId = (typeof HATS)[number]['id'];
 
 export interface Outfit {
 	hoodie: ColourId;
+	logo: LogoId;
+	logoColour: LogoColourId;
 	hat: HatId;
 	hatColour: ColourId;
 }
 
-export const DEFAULT_OUTFIT: Outfit = { hoodie: 'navy', hat: 'beanie', hatColour: 'navy' };
+export const DEFAULT_OUTFIT: Outfit = { hoodie: 'navy', logo: 'snowflake', logoColour: 'ice', hat: 'beanie', hatColour: 'navy' };
 
 const colour = (id: string) => COLOURS.find((c) => c.id === id);
 
@@ -37,6 +42,8 @@ export function loadOutfit(): Outfit {
 	const saved = loadJSON('outfit') as Partial<Outfit> | undefined;
 	return {
 		hoodie: colour(saved?.hoodie ?? '')?.id ?? DEFAULT_OUTFIT.hoodie,
+		logo: LOGOS.find((l) => l.id === saved?.logo)?.id ?? DEFAULT_OUTFIT.logo,
+		logoColour: LOGO_COLOURS.find((c) => c.id === saved?.logoColour)?.id ?? DEFAULT_OUTFIT.logoColour,
 		hat: HATS.find((h) => h.id === saved?.hat)?.id ?? DEFAULT_OUTFIT.hat,
 		hatColour: colour(saved?.hatColour ?? '')?.id ?? DEFAULT_OUTFIT.hatColour,
 	};
@@ -57,4 +64,5 @@ export function wear(figure: NixFigure, outfit: Outfit) {
 	figure.tint('HatTrim', hat.deep);
 	figure.tint('Bucket', hat.main);
 	figure.setHat(outfit.hat);
+	figure.setLogo(outfit.logo, (LOGO_COLOURS.find((c) => c.id === outfit.logoColour) ?? LOGO_COLOURS[0]).hex);
 }
