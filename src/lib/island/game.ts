@@ -44,6 +44,7 @@ import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { canDash, createOwl } from './owl';
 import { createFourthWall } from './fourthwall';
+import { createHouse } from './house';
 import { createTortoise } from './tortoise';
 import { createPlayer } from './player';
 import { MAX_BELTS, MAX_WINDMILLS, REACH, beltCarry, createPower } from './power';
@@ -132,6 +133,11 @@ export async function startIsland() {
 			// With the menu open, only the keys that work the menu do anything.
 			if (menu.isOpen && !['m', 'i', 'h', '?', 'escape'].includes(key)) return true;
 			if ((farm.shopOpen || forge.dialogOpen) && key !== 'escape') return true;
+			// At the wardrobe, the panel's buttons are what's working; Esc (or E) puts it away.
+			if (house.dressing) {
+				if (key === 'escape' || key === 'e') house.close();
+				return true;
+			}
 			return false;
 		},
 		command(key, e) {
@@ -188,6 +194,7 @@ export async function startIsland() {
 			if (wall.breaking) return towardCamera();
 			if (farm.busy) held = farm.facing;
 			if (forge.busy) held = forge.facing;
+			if (house.dressing) held = house.facing;
 			// So does fishing, but walking off (or jumping) puts the rod away, unless a fish is on the line.
 			if (fishing.active) {
 				if (held === null && tryingToMove && !fishing.hooked) fishing.interrupt();
@@ -340,6 +347,24 @@ export async function startIsland() {
 		if (id === 'lantern') lantern.show();
 	};
 	const lantern = createLantern({ scene, toon, theme, pos, turn: () => player.turn });
+
+	// Her house, near the garden too (and put after the forge, so it keeps out of its way), where she
+	// changes clothes at the mirror on the porch.
+	const house = createHouse({
+		scene,
+		toon,
+		figure,
+		modelUrl: canvas.dataset.houseModel ?? '',
+		near: layout.GARDEN,
+		places: layout.places,
+		clearOfPlaces: layout.clearOfPlaces,
+		roomy,
+		addFeature,
+		pos,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !talk.talking,
+		toast: (text) => fishing.toast(text),
+	});
+	interactions.add(house.offer);
 
 	// The garden's machines: sprinklers where four plots meet, and Sprocket by the harvest crate.
 	const machines = createMachines({
@@ -579,7 +604,7 @@ export async function startIsland() {
 
 	theme.start();
 	// For trying things out in development: where she is, and Hollis's ledge.
-	if (import.meta.env.DEV) Object.assign(window, { island: { pos, player, owl, orbit, blocks, inventory } });
+	if (import.meta.env.DEV) Object.assign(window, { island: { pos, player, owl, orbit, blocks, inventory, house } });
 
 	// ---------- the loop ----------
 
@@ -644,8 +669,9 @@ export async function startIsland() {
 		rift.update(time, dt);
 		lantern.update(time, dt);
 		forge.update(time, dt);
+		house.update(dt);
 
-		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : owl?.talking ? { ...owl.spot, facing: owl.facing } : tortoise.talking ? { ...tortoise.spot, facing: tortoise.facing } : forge.framing);
+		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : owl?.talking ? { ...owl.spot, facing: owl.facing } : tortoise.talking ? { ...tortoise.spot, facing: tortoise.facing } : (house.framing ?? forge.framing));
 		sky.update(time, camera, pos);
 		water.update(time, dt);
 

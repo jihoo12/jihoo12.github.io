@@ -14,6 +14,8 @@
 # garden clips are Tend (crouched, patting the soil) and Water. Her smithing hammer ("Hammer") is in
 # that hand too, for Smith, a loop of strikes on the anvil in front of her.
 # Carry and CarryWalk hold something in both arms in front of her (the page puts it there).
+# Her other hats (StrawHat and BucketHat) sit on her head beside the beanie's parts (Beanie...),
+# and the page shows one hat at a time.
 # For /skills she has a fighting stance (Ready), a held spell (Charge), and four spells that each
 # play once from Ready back to Ready: Shot, Slam, Summon and Dash.
 import math
@@ -53,6 +55,13 @@ COLORS = {
     'Reel': '#f25f6b',
     'Can': '#5fb0e8',
     'Metal': '#9aa3c4',
+    # Her other hats, from the wardrobe in her house on /island.
+    'Straw': '#ecc77a',
+    'StrawBand': '#f25f6b',
+    'Petal': '#ff9ec7',
+    'PetalCore': '#ffd84d',
+    'Bucket': '#6fa88f',
+    'BucketTrim': '#f4f3ff',
 }
 
 
@@ -704,6 +713,90 @@ for spin in (math.pi / 4, -math.pi / 4):
     verts = bmesh.ops.create_cube(bm, size=1)['verts']
     bmesh.ops.transform(bm, matrix=orient @ Matrix.Rotation(spin, 4, 'Z') @ Matrix.Diagonal((0.27, 0.042, 0.035, 1)), verts=verts)
 pin = mesh_object('Pin', bm, ['Ink'], parent=head)
+
+# ---------- her other hats ----------
+# Changed into at the wardrobe in her house on /island, and hidden until then (the page shows one
+# hat at a time). Each is cut on the beanie's own curve, tipped the same way, and comes down at
+# least as far as it does, since the hair under the beanie isn't there.
+
+
+def squashed(p, squash):
+    """A point on the hat with its height over the brim squashed (a crown lower than the beanie's)."""
+    return Vector((p.x, 0.02 + (p.y - 0.02) * squash, p.z))
+
+
+def hat_ring(polar_of, r, squash):
+    """A ring of points round the hat, `polar_of(around)` down from its crown and `r` out."""
+    return [BEANIE_TILT @ squashed(cap_point(a, polar_of(a), r), squash) for a in (2 * math.pi * s / 64 for s in range(64))]
+
+
+def brim(bm, reach, droop, thick, mat, squash, start=0.0):
+    """A brim out from the hat's edge: `reach` out and `droop` down at its outer edge, `thick` thick."""
+    rings = []
+    for o, d in ((0, thick / 2), (reach, -droop + thick / 2), (reach, -droop - thick / 2), (0, -thick / 2)):
+        ring = []
+        for s in range(64):
+            a = 2 * math.pi * s / 64
+            base = squashed(cap_point(a, rim(a) + start, CAP_R), squash)
+            flat = Vector((base.x, 0, base.z)).normalized()
+            ring.append(BEANIE_TILT @ (base + flat * o + Vector((0, d, 0))))
+        rings.append(ring)
+    rings.append(rings[0])
+    grid(bm, rings, mat=mat)
+
+
+def crown(bm, squash, flat_top=None, mat=0):
+    untilt = BEANIE_TILT.inverted()
+    rows = []
+    for j in range(1, 14):
+        ring = hat_ring(lambda a, j=j: rim(a) * j / 13, CAP_R * 1.01, squash)
+        if flat_top is not None:
+            ring = [BEANIE_TILT @ Vector((q.x, min(q.y, flat_top), q.z)) for q in (untilt @ v for v in ring)]
+        rows.append(ring)
+    rings = grid(bm, rows, mat=mat)
+    top_y = 0.02 + CAP_R * 1.01 * CAP_TALL * squash
+    if flat_top is not None:
+        top_y = min(top_y, flat_top)
+    cap = bm.verts.new(BEANIE_TILT @ Vector((0, top_y, 0)))
+    for s in range(64):
+        bm.faces.new((cap, rings[0][s], rings[0][(s + 1) % 64])).material_index = mat
+    bm.faces.new(rings[-1]).material_index = mat
+
+
+def band(bm, squash, height, mat):
+    """A thick band round the bottom of the crown, rolled out as far as the beanie's is, so it covers
+    the bangs where they ride up over her forehead."""
+    rows = [(height + 0.02, 1.01), (height, 1.1), (0.02, 1.11), (0.0, 1.01)]
+    grid(bm, [hat_ring(lambda a, d=d: rim(a) - d, CAP_R * r, squash) for d, r in rows], mat=mat)
+
+
+# A straw sun hat: a rounded crown, a wide brim that dips a little at the edge, a red band, and a
+# pink flower tucked into the band on her left.
+STRAW_SQUASH = 0.9
+bm = bmesh.new()
+crown(bm, STRAW_SQUASH, mat=0)
+brim(bm, 0.42, 0.07, 0.035, 0, STRAW_SQUASH)
+band(bm, STRAW_SQUASH, 0.24, 1)
+flower_at = BEANIE_TILT @ squashed(cap_point(1.25, rim(1.25) - 0.11, CAP_R * 1.07), STRAW_SQUASH)
+out = (flower_at - BEANIE_TILT @ Vector((0, 0.1, 0))).normalized()
+across = out.cross(Vector((0, 1, 0))).normalized()
+upv = across.cross(out)
+for k in range(5):
+    a = 2 * math.pi * k / 5
+    sphere(bm, flower_at + (across * math.cos(a) + upv * math.sin(a)) * 0.06, 0.045, mat=2, seg=(10, 6))
+sphere(bm, flower_at + out * 0.02, 0.035, mat=3, seg=(10, 6))
+straw = mesh_object('StrawHat', bm, ['Straw', 'StrawBand', 'Petal', 'PetalCore'], parent=head)
+smooth(straw)
+
+# A fisher's bucket hat: a flat-topped crown, a short brim sloping down all round, and a white
+# band of stitching where they meet.
+BUCKET_SQUASH = 0.92
+bm = bmesh.new()
+crown(bm, BUCKET_SQUASH, flat_top=0.6, mat=0)
+brim(bm, 0.2, 0.15, 0.03, 0, BUCKET_SQUASH, start=-0.02)
+band(bm, BUCKET_SQUASH, 0.16, 1)
+bucket = mesh_object('BucketHat', bm, ['Bucket', 'BucketTrim'], parent=head)
+smooth(bucket)
 
 # ---------- the rig ----------
 # Every bone points straight up with no roll, so in rest each one's axes are the world's: a pose is
@@ -1506,6 +1599,13 @@ if PREVIEW:
     only = os.environ.get('NIX_PREVIEW_VIEWS')
     # The clips' NLA tracks would otherwise pose her over the top of these stills.
     rig.animation_data.use_nla = False
+    # Which hat she's wearing in them: the beanie unless NIX_PREVIEW_HAT says straw or bucket.
+    wearing = os.environ.get('NIX_PREVIEW_HAT', 'beanie')
+    for o in scene.objects:
+        if o.name.startswith('Beanie'):
+            o.hide_render = wearing != 'beanie'
+    straw.hide_render = wearing != 'straw'
+    bucket.hide_render = wearing != 'bucket'
     apply_pose(sit(0))
     for name, at, look in views:
         if only and name not in only.split(','):

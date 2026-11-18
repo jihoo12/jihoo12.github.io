@@ -4,6 +4,7 @@
 // Her origin is where she sits: y = 0 is the surface, z = 0 is its front edge, and she faces +z.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { loadOutfit, wear, type HatId } from './outfit';
 
 const NAVY = '#2c2a52';
 const NAVY_DEEP = '#22203f';
@@ -200,6 +201,20 @@ const ONCE: NixClip[] = ['Water', 'Plant', 'Shot', 'Slam', 'Summon', 'Dash'];
 /** The things she can hold, each hidden until she's using it. */
 export type NixProp = 'Rod' | 'Can' | 'Hammer';
 const PROP_PARTS: Record<NixProp, string[]> = { Rod: ['Rod', 'Reel'], Can: ['Can'], Hammer: ['Hammer'] };
+/** Her hats' parts, one hat shown at a time. Her X hairpin sits just under the beanie's band, so it
+ * only shows with the beanie; under the others' brims it would poke through. */
+const HAT_PARTS: Record<HatId, string[]> = {
+	beanie: ['BeanieCap', 'BeanieRim', 'BeanieEars', 'BeanieEarsInner', 'FlakeHat', 'Pin'],
+	straw: ['StrawHat'],
+	bucket: ['BucketHat'],
+};
+/** Which of her materials stand in for the hoodie's and the beanie's own, so they can be recoloured
+ * without her leggings and shoes (which are the same navy) changing with them. */
+const OWN_MATERIAL: [RegExp, Record<string, string>][] = [
+	[/^(Body|Sleeves|Hood)$/, { Navy: 'Hoodie' }],
+	[/^Cuff/, { NavyDeep: 'HoodieTrim' }],
+	[/^Beanie/, { Navy: 'Hat', NavyDeep: 'HatTrim' }],
+];
 /** The jumps, which the page scrubs along her flight, by where she leaps from and lands: a seat or her feet. */
 export type NixJump = 'Jump' | 'JumpUp' | 'JumpDown' | 'JumpStand';
 /** The jumps that land her on her feet, which a Land clip follows. */
@@ -216,6 +231,8 @@ export interface NixFigure {
 	setBlink(closed: boolean): void;
 	/** Show or hide something in her right hand: the fishing rod, the watering can or the hammer. */
 	setProp(prop: NixProp, shown: boolean): void;
+	/** Which hat she wears (the outfit's in outfit.ts). */
+	setHat(hat: HatId): void;
 	/** A named node of the model once it's in: a bone like "HandL", or the "RodTip" the line hangs from. */
 	node(name: string): THREE.Object3D | null;
 	/** Recolours one of her materials by name ("Can", "Reel"…), as when a tool is upgraded. */
@@ -251,6 +268,16 @@ export function buildNixFigure(url: string): NixFigure {
 	const materials: Record<string, THREE.Material> = {
 		Navy: toon(NAVY),
 		NavyDeep: toon(NAVY_DEEP),
+		Hoodie: toon(NAVY),
+		HoodieTrim: toon(NAVY_DEEP),
+		Hat: toon(NAVY),
+		HatTrim: toon(NAVY_DEEP),
+		Straw: toon('#ecc77a'),
+		StrawBand: toon('#f25f6b'),
+		Petal: toon('#ff9ec7'),
+		PetalCore: toon('#ffd84d'),
+		Bucket: toon('#6fa88f'),
+		BucketTrim: toon('#f4f3ff'),
 		Hair: toon(HAIR, { side: THREE.DoubleSide }),
 		Skin: toon(SKIN),
 		Ink: toon(INK),
@@ -285,6 +312,14 @@ export function buildNixFigure(url: string): NixFigure {
 	let clip: NixClip = 'Sit';
 	let loaded: THREE.Object3D | null = null;
 	const propShown: Record<NixProp, boolean> = { Rod: false, Can: false, Hammer: false };
+	let hat: HatId = 'beanie';
+	const showHat = () => {
+		for (const [id, parts] of Object.entries(HAT_PARTS))
+			for (const name of parts) {
+				const part = loaded?.getObjectByName(name);
+				if (part) part.visible = id === hat;
+			}
+	};
 	const showProps = () => {
 		for (const prop of Object.keys(PROP_PARTS) as NixProp[])
 			for (const name of PROP_PARTS[prop]) {
@@ -308,7 +343,8 @@ export function buildNixFigure(url: string): NixFigure {
 				faceUVs(mesh.geometry);
 				mesh.material = faceMat;
 			} else {
-				mesh.material = materials[placeholder.name] ?? materials.Navy;
+				const own = OWN_MATERIAL.find(([re]) => re.test(owner))?.[1][placeholder.name];
+				mesh.material = materials[own ?? placeholder.name] ?? materials.Navy;
 			}
 			placeholder.dispose();
 			mesh.castShadow = true;
@@ -360,6 +396,7 @@ export function buildNixFigure(url: string): NixFigure {
 		}
 		loaded = model;
 		showProps();
+		wear(figure, loadOutfit());
 		group.add(model);
 	});
 
@@ -376,11 +413,15 @@ export function buildNixFigure(url: string): NixFigure {
 	let landWeight = 0;
 	const look = new THREE.Quaternion();
 	const euler = new THREE.Euler();
-	return {
+	const figure: NixFigure = {
 		group,
 		ready,
 		setBlink(closed) {
 			faceMat.map = closed ? closedFace : openFace;
+		},
+		setHat(next) {
+			hat = next;
+			showHat();
 		},
 		setProp(prop, shown) {
 			if (propShown[prop] === shown) return;
@@ -460,4 +501,5 @@ export function buildNixFigure(url: string): NixFigure {
 			longHair.quaternion.copy(rest.hair).multiply(look.setFromEuler(euler.set(flow, yaw * 0.55, 0)));
 		},
 	};
+	return figure;
 }

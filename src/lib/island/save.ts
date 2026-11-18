@@ -28,6 +28,11 @@ export const SAVE_KEYS = {
 	// Parmen, the tortoise on the islet: '' (not met), 'met', or 'through' (she's knocked her way out
 	// through the screen, back to /experimental).
 	tortoise: 'island-tortoise',
+	// What Nixchan's wearing (experimental/outfit.ts), changed at the wardrobe in her house and worn
+	// everywhere her figure shows up: { hoodie, hat, hatColour }.
+	outfit: 'nixchan-outfit',
+	// Her house: '' until she's first found it, then '1'.
+	house: 'island-house',
 	// The grey place through the rift (/monochrome): the colour shards she's found there, and the
 	// snowflakes she's left to find her way.
 	monoShards: 'monochrome-shards',
