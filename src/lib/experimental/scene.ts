@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { buildNixFigure, type NixClip, type NixJump } from './nix-figure';
 import { buildPortal, PORTAL_FEET, PORTAL_HALF_WIDTH, PORTAL_RADIUS } from './portal';
+import { loadText, saveText } from '../island/save';
 
 interface SceneData {
 	projects: { title: string; tagline: string; language: string; commits: number; href: string }[];
@@ -1418,6 +1419,63 @@ export async function start() {
 		onClick: () => (roam && nix.state === 'free' && Math.hypot(nix.root.position.x - portalAt.x, nix.root.position.z - portalAt.z) < 16 ? walkToGate() : leave()),
 	});
 	portal.ready.catch(() => {});
+
+	// A feather by the foot of the gate: Hollis's, blown off from under Cloudrest (island/owl.ts).
+	// The writing on its quill is the only word anywhere of where she lives. Picking it up (a click)
+	// takes it home to her ledge, where it's there the next time Nixchan visits.
+	if (loadText('feather') !== '1') {
+		const feather = new THREE.Group();
+		const vane = new THREE.Shape();
+		vane.moveTo(0, 0.1);
+		vane.bezierCurveTo(0.16, 0.3, 0.15, 0.75, 0, 0.95);
+		vane.bezierCurveTo(-0.12, 0.72, -0.13, 0.3, 0, 0.1);
+		const brown = new THREE.MeshLambertMaterial({ color: '#8b6a4e', side: THREE.DoubleSide });
+		const cream = new THREE.MeshLambertMaterial({ color: '#ecdcb8', side: THREE.DoubleSide });
+		const blade = new THREE.Mesh(new THREE.ShapeGeometry(vane, 10), brown);
+		blade.castShadow = true;
+		feather.add(blade);
+		for (let i = 0; i < 3; i++) {
+			const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.2 - i * 0.03, 0.035), cream);
+			bar.position.set(0, 0.36 + i * 0.17, 0.004);
+			bar.rotation.z = 0.35;
+			feather.add(bar);
+		}
+		const quill = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 1, 5), cream);
+		quill.position.y = 0.45;
+		feather.add(quill);
+		feather.scale.setScalar(0.9);
+		const at = new THREE.Vector3(portalAt.x + PORTAL_HALF_WIDTH + 0.9, FLOOR_Y - 0.08, portalAt.z + 0.7);
+		feather.position.copy(at);
+		feather.rotation.set(0.15, -0.6, -0.42);
+		scene.add(feather);
+		let flying = -1;
+		const pickable: Pickable = {
+			object: feather,
+			label: 'An owl\u2019s feather. Tiny writing on the quill: \u201cUnder the clouds, where the rock hangs down. Come and find me. \u2014 H.\u201d',
+			onHover: () => (flying < 0 ? (feather.rotation.z = -0.3) : undefined),
+			onClick: () => {
+				if (flying >= 0) return;
+				saveText('feather', '1');
+				flying = 0;
+				pickables.splice(pickables.indexOf(pickable), 1);
+			},
+		};
+		pickables.push(pickable);
+		tickers.push((dt, time) => {
+			if (flying < 0) {
+				// It stirs in the breeze.
+				feather.rotation.z = damp(feather.rotation.z, -0.42 + Math.sin(time * 1.7) * 0.06, 3, dt);
+				return;
+			}
+			if (!feather.parent) return;
+			// Picked up, the wind takes it: up and away over the gate, turning as it goes.
+			flying += dt;
+			feather.position.set(at.x - flying * 0.8, at.y + flying * flying * 1.6 + flying, at.z - flying * 1.5);
+			feather.rotation.y += dt * 6;
+			feather.scale.setScalar(0.9 * Math.max(0, 1 - flying / 2.2));
+			if (flying > 2.2) scene.remove(feather);
+		});
+	}
 
 	/** The way she's steered while she goes to or through the gate, or null when it's up to the keys. */
 	const gateSteer = (dt: number): THREE.Vector3 | null => {

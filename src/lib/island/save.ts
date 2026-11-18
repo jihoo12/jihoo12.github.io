@@ -21,6 +21,10 @@ export const SAVE_KEYS = {
 	blocks: 'island-blocks',
 	// Windmills (where each stands) and drills (which vein, and what's in its bin).
 	power: 'island-power',
+	// Hollis, the owl under Cloudrest: '' (not found yet), 'met', or 'taught' (Nixchan can dash).
+	owl: 'island-owl',
+	// Hollis's feather, picked up at the sky gate on /experimental ('1').
+	feather: 'island-feather',
 	// The grey place through the rift (/monochrome): the colour shards she's found there, and the
 	// snowflakes she's left to find her way.
 	monoShards: 'monochrome-shards',

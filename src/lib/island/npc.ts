@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Toon } from './look';
 import { loadText, saveText } from './save';
+import type { Choice, Speaker, Talk } from './talk';
 import { clamp, damp } from './util';
 
 type Clip = 'Idle' | 'Wave' | 'Talk' | 'Happy';
@@ -26,6 +27,8 @@ export interface Facts {
 	forged: (id: 'can' | 'rod' | 'glider' | 'helper') => boolean;
 	/** How many sprinklers she has, set up or not. */
 	sprinklers: number;
+	/** Whether she's found Hollis, down under Cloudrest. */
+	owlMet: boolean;
 }
 
 export interface NpcContext {
@@ -39,6 +42,7 @@ export interface NpcContext {
 	pos: THREE.Vector3;
 	facts: () => Facts;
 	openShop: () => void;
+	talk: Talk;
 }
 
 const NAME = 'Pebble';
@@ -60,6 +64,7 @@ const TIPS: { id: string; when: (f: Facts) => boolean; say: (f: Facts) => string
 	{ id: 'sky', when: (f) => !f.found('sky'), say: () => "Ever looked up past the summit? There are islands floating up there! The wind at the Windspout blows straight up. Open your glider in it and hold on." },
 	{ id: 'spire', when: (f) => f.found('sky') && !f.found('spire'), say: () => "Been up to Cloudrest? There's a second wind up there, by the temple, that goes higher still. Something's waiting at the top of the spire." },
 	{ id: 'skyfish', when: (f) => f.found('sky') && !f.hasCaught('cloudkoi'), say: () => "They say the lake on Cloudrest has fish in it that have never once seen the sea. Imagine!" },
+	{ id: 'owl', when: (f) => f.found('sky') && !f.owlMet, say: () => "Funny thing: of an evening I've seen two big round eyes under Cloudrest, right down where the rock hangs. Not a bird I know. Something lives down there!" },
 	{ id: 'islet', when: (f) => !f.found('islet'), say: () => "See that little islet out at sea? You can swim there, or glide from up high. There's a fish there you won't find anywhere else." },
 	{ id: 'stones', when: (f) => !f.found('stones'), say: () => "There's a ring of old standing stones up in the hills. Gives me the shivers after dark." },
 	{ id: 'lighthouse', when: (f) => !f.found('lighthouse'), say: () => 'The lighthouse round the coast is lovely at night. Its beam sweeps right across the sea.' },
@@ -70,8 +75,6 @@ const TIPS: { id: string; when: (f: Facts) => boolean; say: (f: Facts) => string
 ];
 
 export function createNpc(ctx: NpcContext) {
-	const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel);
-	const ui = { talk: $('[data-talk]'), text: $('[data-talk-text]'), choices: $('[data-talk-choices]'), bubble: $('[data-bubble]') };
 
 	const root = new THREE.Group();
 	// She stands on a step behind the counter, so she can see over the produce.
@@ -163,66 +166,25 @@ export function createNpc(ctx: NpcContext) {
 		return ['Hello again, Nixchan! Lovely day for it.', 'Nixchan! What can I do for you?', "Back again? I was hoping you'd come by."][Math.floor(Math.random() * 3)];
 	};
 
-	let talking = false;
-	let typing = '';
-	let shown = 0;
-	let choices: { label: string; run: () => void }[] = [];
-	let chosen = 0;
-	let closeAt = 0;
-	const say = (text: string, next: { label: string; run: () => void }[]) => {
-		typing = text;
-		shown = 0;
-		choices = next;
-		chosen = 0;
-		if (ui.text) ui.text.textContent = '';
-		ui.choices?.replaceChildren();
-		play('Talk');
+	const speaker: Speaker = {
+		name: NAME,
+		color: '#9a6a43',
+		onSay: () => play('Talk'),
+		onTyped: () => play('Idle'),
+		onClose: () => play('Idle'),
 	};
-	const drawChoices = () => {
-		if (!ui.choices) return;
-		ui.choices.replaceChildren(
-			...choices.map((c, i) => {
-				const b = document.createElement('button');
-				b.type = 'button';
-				b.textContent = c.label;
-				b.setAttribute('aria-pressed', String(i === chosen));
-				b.addEventListener('click', () => c.run());
-				return b;
-			}),
-		);
-	};
-	const menu = () => [
-		{ label: "Let's trade", run: () => (close(), ctx.openShop()) },
+	const talking = () => ctx.talk.speaker === speaker;
+	const say = (text: string, next: Choice[]) => ctx.talk.say(text, next);
+	const menu = (): Choice[] => [
+		{ label: "Let's trade", run: () => (ctx.talk.close(), ctx.openShop()) },
 		{ label: 'Any tips?', run: () => say(nextTip(ctx.facts()), menu()) },
-		{ label: 'Bye!', run: () => (say(ctx.facts().night ? 'Night night, Nixchan. Mind the dark!' : 'See you soon, Nixchan!', []), (closeAt = performance.now() + 1600)) },
+		{ label: 'Bye!', run: () => ctx.talk.bye(ctx.facts().night ? 'Night night, Nixchan. Mind the dark!' : 'See you soon, Nixchan!') },
 	];
 	const open = () => {
-		if (!ui.talk) return ctx.openShop();
-		talking = true;
-		closeAt = 0;
-		ui.talk.hidden = false;
+		if (!ctx.talk.open(speaker)) return ctx.openShop();
 		const f = ctx.facts();
 		const hello = greeting(f);
 		say(`${hello} ${nextTip(f)}`, menu());
-	};
-	function close() {
-		talking = false;
-		closeAt = 0;
-		if (ui.talk) ui.talk.hidden = true;
-		play('Idle');
-	}
-
-	/** Keys while she's talking: E, Space or Enter to hurry her along or pick, arrows to choose, Esc to go. */
-	const key = (k: string) => {
-		if (k === 'escape') return close();
-		if (k === 'arrowleft' || k === 'arrowup') chosen = (chosen + choices.length - 1) % Math.max(choices.length, 1);
-		else if (k === 'arrowright' || k === 'arrowdown') chosen = (chosen + 1) % Math.max(choices.length, 1);
-		else if (k === 'e' || k === ' ' || k === 'enter') {
-			if (shown < typing.length) shown = typing.length;
-			else if (choices[chosen]) return choices[chosen].run();
-			else if (!choices.length) return close();
-		} else if (/^[1-9]$/.test(k) && choices[Number(k) - 1]) return choices[Number(k) - 1].run();
-		drawChoices();
 	};
 
 	// ---------- every frame ----------
@@ -230,17 +192,10 @@ export function createNpc(ctx: NpcContext) {
 	let near = false;
 	let waveUntil = 0;
 	let happyUntil = 0;
-	let bubbleUntil = 0;
 	let yaw = 0;
 	const look = new THREE.Quaternion();
 	const up = new THREE.Vector3(0, 1, 0);
-	const above = new THREE.Vector3();
-	const bubble = (text: string, seconds = 2.6) => {
-		if (!ui.bubble) return;
-		ui.bubble.textContent = text;
-		ui.bubble.hidden = false;
-		bubbleUntil = performance.now() + seconds * 1000;
-	};
+	const above = new THREE.Vector3(root.position.x, root.position.y + 2.2, root.position.z);
 
 	const update = (dt: number) => {
 		const now = performance.now();
@@ -250,26 +205,16 @@ export function createNpc(ctx: NpcContext) {
 		// A wave and a hello as Nixchan comes by.
 		if (!near && dist < 7.5) {
 			near = true;
-			if (!talking) {
+			if (!ctx.talk.talking) {
 				waveUntil = now + 2400;
-				bubble(ctx.facts().night ? 'Evening, Nixchan!' : met ? 'Hi, Nixchan!' : 'Hello there!');
+				ctx.talk.bubble(ctx.facts().night ? 'Evening, Nixchan!' : met ? 'Hi, Nixchan!' : 'Hello there!', above);
 			}
 		} else if (near && dist > 11) {
 			near = false;
 		}
-		if (talking) {
-			if (shown < typing.length) {
-				shown = Math.min(typing.length, shown + dt * 55);
-				if (ui.text) ui.text.textContent = typing.slice(0, Math.floor(shown));
-				if (shown >= typing.length) drawChoices();
-			} else if (clip === 'Talk') {
-				play('Idle');
-			}
-			if (closeAt && now > closeAt) close();
-			// Walking off ends the chat.
-			if (dist > 3.5) close();
-		}
-		if (!talking) play(now < happyUntil ? 'Happy' : now < waveUntil ? 'Wave' : 'Idle');
+		// Walking off ends the chat.
+		if (talking() && dist > 3.5) ctx.talk.close();
+		if (!talking()) play(now < happyUntil ? 'Happy' : now < waveUntil ? 'Wave' : 'Idle');
 
 		if (mixer) {
 			for (const [name, action] of actions) {
@@ -284,30 +229,19 @@ export function createNpc(ctx: NpcContext) {
 			yaw = damp(yaw, want, 5, dt);
 			head?.quaternion.multiply(look.setFromAxisAngle(up, yaw));
 		}
-
-		// The speech bubble floats over her head.
-		if (ui.bubble && !ui.bubble.hidden) {
-			if (now > bubbleUntil || talking) ui.bubble.hidden = true;
-			above.set(root.position.x, root.position.y + 2.2, root.position.z).project(ctx.camera);
-			const onScreen = above.z < 1 && Math.abs(above.x) < 1.1 && Math.abs(above.y) < 1.1;
-			ui.bubble.style.visibility = onScreen ? 'visible' : 'hidden';
-			ui.bubble.style.transform = `translate(${((above.x + 1) / 2) * innerWidth}px, ${((1 - above.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
-		}
 	};
 
 	return {
 		name: NAME,
 		open,
-		close,
-		key,
 		update,
 		/** A sale or a purchase: she's delighted. */
 		cheer() {
 			happyUntil = performance.now() + 1500;
-			bubble(['Pleasure doing business!', 'Thank you kindly!', 'Ooh, lovely!'][Math.floor(Math.random() * 3)], 1.8);
+			ctx.talk.bubble(['Pleasure doing business!', 'Thank you kindly!', 'Ooh, lovely!'][Math.floor(Math.random() * 3)], above, 1.8);
 		},
 		get talking() {
-			return talking;
+			return talking();
 		},
 		/** Where she stands. */
 		spot: ctx.spot,

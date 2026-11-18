@@ -70,13 +70,14 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<p class="fish-toast" data-fish-toast aria-live="polite"></p>
 		<p class="bubble" data-bubble hidden aria-live="polite"></p>
 		<div class="talk" data-talk hidden role="dialog" aria-label="Talking with Pebble">
-			<p class="talk-name">Pebble</p>
+			<p class="talk-name" data-talk-name>Pebble</p>
 			<p class="talk-text" data-talk-text aria-live="polite"></p>
 			<div class="talk-choices" data-talk-choices></div>
 		</div>
 
 		<div class="stick" data-stick hidden aria-hidden="true"><div class="knob" data-knob></div></div>
 		<button class="jump" type="button" data-jump aria-label="Jump">⤒</button>
+		<button class="dash" type="button" data-dash hidden aria-label="Dash">»</button>
 
 		<div class="atlas" data-atlas hidden role="dialog" aria-modal="true" aria-labelledby="atlas-title">
 			<div class="atlas-card">
@@ -111,12 +112,13 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 							<dt>Drag</dt><dd>Look around; the scroll wheel zooms</dd>
 							<dt><kbd>E</kbd></dt><dd>Plant, water, harvest or use what's in front of you; otherwise wave</dd>
 							<dt><kbd>B</kbd></dt><dd>Take out stone blocks to build with, or put them away</dd>
-							<dt><kbd>Q</kbd></dt><dd>Take back the block in front of you</dd>
+							<dt><kbd>Q</kbd></dt><dd>Take back the block in front of you, while you're building<span data-dash-help hidden>; otherwise dash</span></dd>
 						</dl>
 						<dl class="touch">
 							<dt>Left thumb</dt><dd>Walk; push far to run</dd>
 							<dt>Drag the right</dt><dd>Look around</dd>
 							<dt>⤒</dt><dd>Jump; tap again in mid-air to glide</dd>
+							<dt data-dash-help hidden>»</dt><dd data-dash-help hidden>Dash the way you're going, once more in mid-air</dd>
 						</dl>
 						<p>Wade into the shallows, or swim out to sea. High ground makes a good place to glide from, and the wind at the Windspout carries a glider straight up.</p>
 					</section>
@@ -330,8 +332,17 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 	}
 	.jump:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--edge); }
 
+	.dash { display: none; }
+	.dash {
+		position: fixed; z-index: 25; right: 112px; bottom: 228px; width: 56px; height: 56px; border: 0; border-radius: 50%;
+		background: var(--surface); color: var(--ink); font: 900 26px var(--sans); box-shadow: 0 4px 0 var(--edge);
+		touch-action: none;
+	}
+	.dash:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--edge); }
+
 	@media (pointer: coarse) {
 		.jump { display: block; }
+		.dash:not([hidden]) { display: block; }
 	}
 
 	.fish-prompt {

@@ -43,6 +43,8 @@ The page is `src/pages/island/index.astro` (HTML/CSS for the menus and prompts),
 | `interact.ts` | What E does: sources register offers |
 | `explore.ts`, `menu.ts` | Places found, the maps, the menu |
 | `fishing.ts`, `farm.ts`, `npc.ts`, `inventory.ts` | Things to do, and her bag |
+| `talk.ts` | The conversation box and speech bubble everyone she talks to shares |
+| `owl.ts` | Somebody who lives somewhere hard to find (spoilers inside) |
 | `forge.ts` | The smithy: ore veins, smelting (iron, and ashen ore from the grey place), and the upgrades made at the anvil |
 | `machines.ts` | Sprinklers and Sprocket the clockwork helper, looking after the garden |
 | `rift.ts` | The grey rift at the standing stones, through to `/monochrome/` |

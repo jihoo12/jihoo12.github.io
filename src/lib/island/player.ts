@@ -24,6 +24,12 @@ const JUMP_SPEED = 8.6;
 const FALL_MAX = 24;
 const FLIGHT = (2 * JUMP_SPEED) / GRAVITY;
 const BODY_R = 0.45;
+/** A dash (taught by Hollis, owl.ts): how fast, for how long, and how long before the next. */
+const DASH_SPEED = 19;
+const DASH_TIME = 0.2;
+const DASH_REST = 0.55;
+/** The furthest she moves sideways in one go, so a dash can't step her up a cliff in a frame. */
+const STEP_MAX = 0.3;
 /** How far above her feet her middle is, and the top of her head. */
 const BODY_MID = 0.8;
 const HEAD = 1.7;
@@ -46,6 +52,8 @@ export interface PlayerContext {
 	carrying?: () => boolean;
 	/** How her glider flies: its speed and how fast it sinks (better once upgraded at the forge). */
 	glider?: () => { speed: number; sink: number };
+	/** Whether she knows how to dash (Hollis teaches her). */
+	canDash?: () => boolean;
 	/** How fast what she's standing on (at x, z, at height y) is moving, if it is: a belt with power. */
 	carriedBy?: (x: number, z: number, y: number) => { x: number; z: number } | null;
 }
@@ -112,7 +120,27 @@ export function createPlayer(ctx: PlayerContext) {
 	let turn = heading;
 	let waving = 0;
 	let nextBlink = 2;
+	let dashing = 0;
+	let dashRest = 0;
+	let airDashed = false;
+	const dashDir = new THREE.Vector3();
 	root.position.copy(pos);
+
+	// Puffs of air left behind her as she dashes.
+	const puffs = Array.from({ length: 8 }, () => {
+		const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false }));
+		m.visible = false;
+		ctx.scene.add(m);
+		return { m, life: 0 };
+	});
+	let nextPuff = 0;
+	let puffClock = 0;
+	const puff = () => {
+		const p = puffs[nextPuff++ % puffs.length];
+		p.life = 1;
+		p.m.visible = true;
+		p.m.position.set(pos.x - dashDir.x * 0.4 + (Math.random() - 0.5) * 0.3, pos.y + 0.5 + Math.random() * 0.6, pos.z - dashDir.z * 0.4 + (Math.random() - 0.5) * 0.3);
+	};
 
 	/** Back to the beach, should she ever fall out of the world. */
 	const respawn = () => {
@@ -187,7 +215,29 @@ export function createPlayer(ctx: PlayerContext) {
 			moving = false;
 			input.jumpQueued = false;
 			input.waveQueued = false;
+			input.dashQueued = false;
 			heading = held;
+		}
+		// A dash: a quick dart the way she's steering (or facing), on her feet or once in the air.
+		dashRest = Math.max(0, dashRest - dt);
+		if (input.dashQueued) {
+			input.dashQueued = false;
+			const airborne = !grounded && !swimming;
+			if (ctx.canDash?.() && !swimming && dashRest === 0 && !(airborne && airDashed)) {
+				if (moving) dashDir.copy(steer).normalize();
+				else dashDir.set(Math.sin(heading), 0, Math.cos(heading));
+				dashing = DASH_TIME;
+				dashRest = DASH_TIME + DASH_REST;
+				heading = Math.atan2(dashDir.x, dashDir.z);
+				if (airborne) {
+					airDashed = true;
+					gliding = false;
+					vy = Math.max(vy, 1.5);
+				}
+				waving = 0;
+				puff();
+				puffClock = 0.04;
+			}
 		}
 		// Gliding, she keeps sailing on the way she's facing even with nothing held, unless the wind
 		// is carrying her up, when she hangs in it.
@@ -199,27 +249,55 @@ export function createPlayer(ctx: PlayerContext) {
 		const speed = gliding ? wing.speed : swimming ? (running ? SWIM_FAST : SWIM) : (running ? RUN : WALK) * (wading ? 0.6 : 1);
 		// In the water she glides, and in the air she can only steer a little (more so under the wing).
 		const control = grounded ? 10 : swimming ? 4 : gliding ? 2.2 : 3;
-		vel.x = damp(vel.x, steer.x * speed, control, dt);
-		vel.z = damp(vel.z, steer.z * speed, control, dt);
+		if (dashing > 0) {
+			// Mid-dash she goes flat out, and afterwards eases back to her own pace (slowly, in the
+			// air, so a dash off a jump carries her a long way).
+			dashing = Math.max(0, dashing - dt);
+			vel.x = dashDir.x * DASH_SPEED;
+			vel.z = dashDir.z * DASH_SPEED;
+			puffClock -= dt;
+			if (puffClock <= 0) {
+				puff();
+				puffClock = 0.05;
+			}
+		} else {
+			vel.x = damp(vel.x, steer.x * speed, control, dt);
+			vel.z = damp(vel.z, steer.z * speed, control, dt);
+		}
 
 		// Move, sliding along whatever stops her rather than sticking to it. Standing on something
-		// that moves (a belt), she goes along with it, on top of her own walking.
+		// that moves (a belt), she goes along with it, on top of her own walking. Going fast, she
+		// moves a little at a time, so she meets whatever's in the way rather than stepping over it.
 		const carried = grounded ? ctx.carriedBy?.(pos.x, pos.z, pos.y) : null;
-		const nx = pos.x + (vel.x + (carried?.x ?? 0)) * dt;
-		const nz = pos.z + (vel.z + (carried?.z ?? 0)) * dt;
-		if (canGo(nx, nz)) {
-			pos.x = nx;
-			pos.z = nz;
-		} else if (canGo(nx, pos.z)) {
-			pos.x = nx;
-			vel.z = 0;
-		} else if (canGo(pos.x, nz)) {
-			pos.z = nz;
-			vel.x = 0;
-		} else {
-			vel.x = vel.z = 0;
+		const mx = (vel.x + (carried?.x ?? 0)) * dt;
+		const mz = (vel.z + (carried?.z ?? 0)) * dt;
+		const steps = Math.max(1, Math.ceil(Math.hypot(mx, mz) / STEP_MAX));
+		for (let k = 0; k < steps; k++) {
+			const nx = pos.x + mx / steps;
+			const nz = pos.z + mz / steps;
+			if (canGo(nx, nz)) {
+				pos.x = nx;
+				pos.z = nz;
+			} else if (canGo(nx, pos.z)) {
+				pos.x = nx;
+				vel.z = 0;
+			} else if (canGo(pos.x, nz)) {
+				pos.z = nz;
+				vel.x = 0;
+			} else {
+				vel.x = vel.z = 0;
+				dashing = 0;
+				break;
+			}
+			pushOut(pos);
+			// Stepping along the ground, keep her feet on it as she goes (so she follows slopes and
+			// edges the same at speed as walking).
+			if (grounded && !swimming && steps > 1) {
+				const g = groundAt(pos.x, pos.z, pos.y);
+				if (g >= pos.y - 0.6) pos.y = Math.max(g, SWIM_IN);
+				else break;
+			}
 		}
-		pushOut(pos);
 
 		const ground = groundAt(pos.x, pos.z, pos.y);
 		// She can jump from her feet, or spring up out of the water: high enough to reach the pier.
@@ -273,6 +351,8 @@ export function createPlayer(ctx: PlayerContext) {
 			airTime += dt;
 			// Under the glider the wind lifts her; without it, it only slows her fall a little.
 			if (gliding) vy = damp(vy, lift > 0 ? lift : -wing.sink, lift > 0 ? 2 : 3, dt);
+			// Darting through the air, she holds her height.
+			else if (dashing > 0) vy = damp(vy, 0, 8, dt);
 			else vy = Math.max(vy - GRAVITY * (lift > 0 ? 0.6 : 1) * dt, -FALL_MAX);
 			pos.y += vy * dt;
 			// She bumps her head on the underside of the sky island rather than rising into it.
@@ -290,6 +370,15 @@ export function createPlayer(ctx: PlayerContext) {
 				gliding = false;
 				vy = 0;
 			}
+		}
+		if (grounded || swimming) airDashed = false;
+		for (const p of puffs) {
+			if (!p.m.visible) continue;
+			p.life -= dt * 2.6;
+			p.m.visible = p.life > 0;
+			(p.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, p.life) * 0.55;
+			p.m.scale.setScalar(0.6 + (1 - p.life) * 1.4);
+			p.m.position.y += dt * 0.4;
 		}
 		if (pos.y < -4) respawn();
 		root.position.copy(pos);
@@ -353,6 +442,10 @@ export function createPlayer(ctx: PlayerContext) {
 		},
 		get swimming() {
 			return swimming;
+		},
+		/** Whether she's mid-dash. */
+		get dashing() {
+			return dashing > 0;
 		},
 		/** Repaints the glider's stripes, in turn across the wing (six of them). */
 		paintGlider: (...stripes: string[]) => paintGlider(...stripes),

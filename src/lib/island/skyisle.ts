@@ -239,6 +239,14 @@ export function windLift(x: number, z: number, y: number) {
 
 // ---------- building it ----------
 
+export interface Crag {
+	x: number;
+	z: number;
+	top: number;
+	length: number;
+	radius: number;
+}
+
 export interface SkyIsleContext {
 	scene: THREE.Scene;
 	toon: Toon;
@@ -443,11 +451,15 @@ export function createSkyIsle(ctx: SkyIsleContext) {
 		scene.add(rock);
 	}
 
+	/** The crags hanging under the great island (the first ones) and the spire's: each a cone, point
+	 * down, `radius` wide at its `top` and `length` long. Hollis perches on one (owl.ts). */
+	const crags: Crag[] = [];
 	// Long crags of rock hanging under the great island and the spire's, so it looks torn up out of a
 	// mountain; and roots and vines trailing from its edge.
 	{
 		const parts: THREE.BufferGeometry[] = [];
 		const crag = (x: number, z: number, top: number, length: number, radius: number, hex: string) => {
+			crags.push({ x, z, top, length, radius });
 			const g = new THREE.ConeGeometry(radius, length, 7, 4).toNonIndexed();
 			g.rotateX(Math.PI);
 			const p = g.attributes.position;
@@ -1009,6 +1021,7 @@ export function createSkyIsle(ctx: SkyIsleContext) {
 	/** Whether she's up on one of the islands (where it's the lake she'd fish in, not the sea far below). */
 	const aboard = () => skyGround(ctx.pos.x, ctx.pos.z, ctx.pos.y) > -Infinity;
 	return {
+		crags,
 		/** E by a ripe crystal, or by the chest at the spire. */
 		offer: (): Offer | null => {
 			if (!aboard()) return null;

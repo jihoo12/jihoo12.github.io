@@ -15,6 +15,8 @@
 //   interact           what E does here (sources register offers)
 //   explore, menu      places found, the maps, and the menu over the game
 //   fishing, farm, npc, inventory   the things to do
+//   talk               the conversation box and speech bubble Pebble and Hollis share
+//   owl                Hollis, hidden under Cloudrest, who teaches her to dash
 //   forge              the smithy: ore to mine, ingots to smelt, tools to make better
 //   machines           sprinklers and Sprocket, made at the forge, looking after the garden
 //   rift               the grey rift at the standing stones, through to /monochrome
@@ -40,6 +42,7 @@ import { planIsland } from './layout';
 import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
+import { canDash, createOwl } from './owl';
 import { createPlayer } from './player';
 import { MAX_BELTS, MAX_WINDMILLS, REACH, beltCarry, createPower } from './power';
 import { createLantern } from './lantern';
@@ -48,6 +51,7 @@ import { loadJSON, saveJSON } from './save';
 import { scatter } from './scatter';
 import { createSkyIsle, skyWaterAt } from './skyisle';
 import { createSky } from './sky';
+import { createTalk } from './talk';
 import { ISLET, PIER_DIR, deckAt, terrainMesh } from './terrain';
 import { createTheme, isNight } from './theme';
 import { createWater } from './water';
@@ -66,6 +70,7 @@ export async function startIsland() {
 		stick: $('[data-stick]'),
 		knob: $('[data-knob]'),
 		jump: $<HTMLButtonElement>('[data-jump]'),
+		dash: $<HTMLButtonElement>('[data-dash]'),
 	};
 
 	let renderer: THREE.WebGLRenderer;
@@ -111,10 +116,10 @@ export async function startIsland() {
 	const orbit: Orbit = { yaw: heading + Math.PI + (fromRift ? 0.9 : 0), pitch: 0.32, distance: 9 };
 	const controls = createControls(canvas, ui, orbit, {
 		intercept(key, e) {
-			// Talking with Pebble, the keys work the conversation.
-			if (npc.talking) {
+			// Talking with Pebble (or Hollis), the keys work the conversation.
+			if (talk.talking) {
 				if (key === ' ' || key.startsWith('arrow') || key === 'enter') e.preventDefault();
-				if (!e.repeat) npc.key(key);
+				if (!e.repeat) talk.key(key);
 				return true;
 			}
 			// With the menu open, only the keys that work the menu do anything.
@@ -140,8 +145,10 @@ export async function startIsland() {
 			} else if (key === 'f') fishing.press();
 			else if (key === 'b') blocks.toggle();
 			else if (key === 'q') {
+				// Q takes back a belt or a block while she's laying or building; otherwise it's a dash.
 				if (power.laying) power.takeBelt();
-				else blocks.take();
+				else if (blocks.on) blocks.take();
+				else controls.state.dashQueued = true;
 			}
 			else if (key === 'm') menu.toggle('map');
 			else if (key === 'i') menu.toggle('bag');
@@ -168,6 +175,7 @@ export async function startIsland() {
 			// Chatting with Pebble or tending the garden keeps her on the spot, facing it, until done.
 			let held: number | null = null;
 			if (npc.talking) held = npc.facing;
+			if (owl?.talking) held = owl.facing;
 			if (farm.busy) held = farm.facing;
 			if (forge.busy) held = forge.facing;
 			// So does fishing, but walking off (or jumping) puts the rod away, unless a fish is on the line.
@@ -181,6 +189,7 @@ export async function startIsland() {
 		carrying: () => machines.carrying || blocks.on || power.carrying,
 		// A belt with power carries her along it.
 		carriedBy: beltCarry,
+		canDash,
 		// Remade at the forge, the glider flies faster and sinks slower; the prism glider most of all.
 		glider: () => (forge.has('prism') ? { speed: 12, sink: 1.1 } : forge.has('glider') ? { speed: 10.5, sink: 1.4 } : { speed: 8.5, sink: 2.3 }),
 	});
@@ -200,6 +209,7 @@ export async function startIsland() {
 	const landmarks = buildLandmarks(scene, toon, theme, layout, pos);
 	const follow = createFollowCamera(camera, orbit, layout.START);
 	const towardCamera = () => Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z);
+	const talk = createTalk(camera);
 
 	// ---------- things to do ----------
 
@@ -244,7 +254,7 @@ export async function startIsland() {
 		waterAt: (x, z) => (skyIsle.aboard ? skyWaterAt(x, z, pos.y) : groundAt(x, z) < -0.5 ? 0 : null),
 		ripple: water.ripple,
 		pos,
-		canStand: () => ready && player.grounded && !player.swimming && !blocks.on && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !npc.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
+		canStand: () => ready && player.grounded && !player.swimming && !blocks.on && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !talk.talking && Math.hypot(player.vel.x, player.vel.z) < 0.6,
 		rod: () => (forge.has('rod') ? { lo: 0.15, hi: 0.9, speed: 1.45 } : { lo: 0.25, hi: 0.85, speed: 1 }),
 		heading: () => player.heading,
 		towardCamera,
@@ -271,7 +281,7 @@ export async function startIsland() {
 		addFeature,
 		pos,
 		towardCamera,
-		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !menu.isOpen && !npc.talking && !forge.busy && !forge.dialogOpen,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !menu.isOpen && !talk.talking && !forge.busy && !forge.dialogOpen,
 		toast: (text) => fishing.toast(text),
 		keeper: { name: 'Pebble', talk: () => npc.open() },
 		onTrade: () => npc.cheer(),
@@ -294,7 +304,7 @@ export async function startIsland() {
 		roomy,
 		addFeature,
 		pos,
-		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !menu.isOpen && !npc.talking,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !menu.isOpen && !talk.talking,
 		toast: (text) => fishing.toast(text),
 		onUpgrade: (id) => showUpgrade(id),
 		more: (item) =>
@@ -330,7 +340,7 @@ export async function startIsland() {
 		removeFeature,
 		scene,
 		pos,
-		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !talk.talking,
 		toast: (text) => fishing.toast(text),
 		figure,
 		swimming: () => player.swimming,
@@ -345,7 +355,7 @@ export async function startIsland() {
 		figure,
 		pos,
 		canAct: () =>
-			ready && player.grounded && !player.swimming && !skyIsle.aboard && !machines.carrying && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
+			ready && player.grounded && !player.swimming && !skyIsle.aboard && !machines.carrying && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !talk.talking,
 		open: (x, z) => roomy(x, z, 0.7) && !power.beltAt(x, z) && keptClear.every((p) => Math.hypot(p.x - x, p.z - z) > p.r + 1),
 		toast: (text) => fishing.toast(text),
 		closeMenu: () => menu.close(),
@@ -366,7 +376,7 @@ export async function startIsland() {
 		removeFeature,
 		pos,
 		canAct: () =>
-			ready && player.grounded && !player.swimming && !skyIsle.aboard && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !npc.talking,
+			ready && player.grounded && !player.swimming && !skyIsle.aboard && !fishing.active && !farm.busy && !farm.shopOpen && !forge.busy && !forge.dialogOpen && !menu.isOpen && !talk.talking,
 		canCarry: () => !player.swimming && !skyIsle.aboard,
 		// Clear of trees and rocks, of her blocks, and of the places that are kept clear.
 		open: (x, z) =>
@@ -404,9 +414,34 @@ export async function startIsland() {
 		theme,
 		stones: layout.STONES,
 		pos,
-		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !forge.busy && !menu.isOpen && !npc.talking,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !farm.busy && !forge.busy && !menu.isOpen && !talk.talking,
 	});
 	interactions.add(rift.offer);
+
+	// Hollis, on a ledge of one of the crags under Cloudrest.
+	const touch = matchMedia('(pointer: coarse)').matches;
+	const showDash = () => {
+		if (ui.dash) ui.dash.hidden = false;
+		for (const el of document.querySelectorAll<HTMLElement>('[data-dash-help]')) el.hidden = false;
+	};
+	if (canDash()) showDash();
+	const owl = createOwl({
+		scene,
+		toon,
+		crags: skyIsle.crags,
+		addFeature,
+		pos,
+		talk,
+		night: isNight,
+		canAct: () => ready && player.grounded && !fishing.active && !menu.isOpen && !talk.talking,
+		toast: (text) => fishing.toast(text),
+		arrive: () => explore.announce('Under the Rock', owl?.met ? null : 'Somebody lives here'),
+		learned: () => {
+			showDash();
+			fishing.toast(touch ? 'Nixchan can dash! Tap » to dart ahead.' : 'Nixchan can dash! Press Q to dart ahead.');
+		},
+	});
+	if (owl) interactions.add(owl.offer);
 
 	// Pebble, who keeps the stand, behind its counter.
 	const npc = createNpc({
@@ -417,6 +452,7 @@ export async function startIsland() {
 		spot: farm.keeperSpot,
 		groundAt,
 		pos,
+		talk,
 		openShop: () => farm.openShop(),
 		facts: () => {
 			const sellable = { count: 0, value: 0, name: null as string | null };
@@ -441,6 +477,7 @@ export async function startIsland() {
 				garden: farm.summary(),
 				forged: forge.has,
 				sprinklers: machines.sprinklers(),
+				owlMet: owl?.met ?? false,
 			};
 		},
 	});
@@ -498,6 +535,8 @@ export async function startIsland() {
 	$('[data-map]')?.addEventListener('click', () => menu.open('map'));
 
 	theme.start();
+	// For trying things out in development: where she is, and Hollis's ledge.
+	if (import.meta.env.DEV) Object.assign(window, { island: { pos, player, owl, orbit } });
 
 	// ---------- the loop ----------
 
@@ -538,6 +577,8 @@ export async function startIsland() {
 			machines.update(dt, time);
 			power.update(dt, time);
 			npc.update(dt);
+			owl?.update(dt, time);
+			talk.update(dt);
 			// Her arms hold one thing at a time: whatever she's just taken up, the rest go away.
 			const holding = { sprinkler: machines.carrying, blocks: blocks.on, power: power.carrying };
 			if (holding.sprinkler && !held.sprinkler) {
@@ -560,7 +601,7 @@ export async function startIsland() {
 		lantern.update(time, dt);
 		forge.update(time, dt);
 
-		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : forge.framing);
+		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : owl?.talking ? { ...owl.spot, facing: owl.facing } : forge.framing);
 		sky.update(time, camera, pos);
 		water.update(time, dt);
 

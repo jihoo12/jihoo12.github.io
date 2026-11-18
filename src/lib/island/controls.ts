@@ -25,13 +25,13 @@ const MOVE_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arr
 
 export function createControls(
 	canvas: HTMLCanvasElement,
-	ui: { stick: HTMLElement | null; knob: HTMLElement | null; jump: HTMLButtonElement | null },
+	ui: { stick: HTMLElement | null; knob: HTMLElement | null; jump: HTMLButtonElement | null; dash?: HTMLButtonElement | null },
 	orbit: Orbit,
 	route: KeyRoute,
 ) {
 	const keys = new Set<string>();
 	const stick = new THREE.Vector2();
-	const state = { jumpQueued: false, waveQueued: false };
+	const state = { jumpQueued: false, waveQueued: false, dashQueued: false };
 
 	addEventListener('keydown', (e) => {
 		if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -110,9 +110,13 @@ export function createControls(
 		e.preventDefault();
 		state.jumpQueued = true;
 	});
+	ui.dash?.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		state.dashQueued = true;
+	});
 
 	return {
-		/** Jump and wave are queued by a press and taken (cleared) by whoever acts on them. */
+		/** Jump, wave and dash are queued by a press and taken (cleared) by whoever acts on them. */
 		state,
 		/** Lets go of every held key, as when a menu opens over the game. */
 		clearKeys: () => keys.clear(),
