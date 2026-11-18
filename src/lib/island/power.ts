@@ -43,7 +43,7 @@ export const BELT = 'belt';
 export const MAX_WINDMILLS = 6;
 export const MAX_BELTS = 400;
 /** How far a windmill's power reaches, and how far from a belt with power a machine has it too. */
-const REACH = 8;
+export const REACH = 8;
 const BELT_REACH = 1.5;
 /** How high the ground has to be for there to be wind enough. */
 const WINDY = 3;

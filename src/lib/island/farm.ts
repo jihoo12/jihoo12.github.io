@@ -16,6 +16,7 @@ import type { Inventory } from './inventory';
 import type { Offer } from './interact';
 import type { Toon } from './look';
 import { loadJSON, saveJSON } from './save';
+import { isNight } from './theme';
 import { thumbnail } from './thumbnail';
 import { clamp, closeOnBackdrop, damp } from './util';
 
@@ -35,13 +36,78 @@ export interface Crop {
 	color: string;
 	about: string;
 	eat: string;
+	/** How it's shown: its crop on the seed packet, where its crops hang once it's ripe (x, y, z,
+	 * scale, in the plant's own frame), and how big she holds one up. */
+	look: { packet: number; ripe: [number, number, number, number][]; show: number };
+	/** A rare crop: not sold at the stand, and where its seeds are found instead. */
+	rare?: string;
+	/** What it needs to grow besides water: the dark of night, or power (a windmill near the plot). */
+	needs?: 'night' | 'power';
+	/** It grows grey, the colour only coming back into it once it's picked. */
+	grey?: boolean;
+	/** What she says as she picks one, if it's something special. */
+	picked?: string;
 }
 
 export const CROPS: Crop[] = [
-	{ id: 'turnip', name: 'Turnip', leaves: 'TurnipLeaves', item: 'Turnip', minutes: 1, yield: 1, cost: 10, sell: 25, color: '#c98ad0', about: 'Quick to grow and hard to get wrong. A good first crop.', eat: 'Crunchy, and a bit peppery.' },
-	{ id: 'carrot', name: 'Carrot', leaves: 'CarrotLeaves', item: 'Carrot', minutes: 2, yield: 1, cost: 20, sell: 50, color: '#f28c3a', about: 'Sweet and bright orange, from feathery leaves.', eat: 'Sweet and crunchy!' },
-	{ id: 'strawberry', name: 'Strawberry', leaves: 'StrawberryBush', item: 'Strawberry', minutes: 3, yield: 3, regrow: true, cost: 40, sell: 30, color: '#ef4a5c', about: 'A little bush that fruits again and again after its first harvest.', eat: 'So sweet!' },
-	{ id: 'pumpkin', name: 'Pumpkin', leaves: 'PumpkinVine', item: 'Pumpkin', minutes: 4, yield: 1, cost: 80, sell: 240, color: '#f29a3a', about: 'Takes its time, but grows into a whopper worth a lot at the stand.', eat: 'Too big to eat in one go… but she tries.' },
+	{ id: 'turnip', name: 'Turnip', leaves: 'TurnipLeaves', item: 'Turnip', minutes: 1, yield: 1, cost: 10, sell: 25, color: '#c98ad0', about: 'Quick to grow and hard to get wrong. A good first crop.', eat: 'Crunchy, and a bit peppery.', look: { packet: 0.4, ripe: [[0, -0.1, 0, 1]], show: 1.2 } },
+	{ id: 'carrot', name: 'Carrot', leaves: 'CarrotLeaves', item: 'Carrot', minutes: 2, yield: 1, cost: 20, sell: 50, color: '#f28c3a', about: 'Sweet and bright orange, from feathery leaves.', eat: 'Sweet and crunchy!', look: { packet: 0.4, ripe: [[0, 0.02, 0, 1.1]], show: 1.2 } },
+	{ id: 'strawberry', name: 'Strawberry', leaves: 'StrawberryBush', item: 'Strawberry', minutes: 3, yield: 3, regrow: true, cost: 40, sell: 30, color: '#ef4a5c', about: 'A little bush that fruits again and again after its first harvest.', eat: 'So sweet!', look: { packet: 0.9, ripe: [0, 1, 2].map((k) => [Math.cos(k * 2.1) * 0.15, 0.06, Math.sin(k * 2.1) * 0.15, 1]), show: 2.4 } },
+	{ id: 'pumpkin', name: 'Pumpkin', leaves: 'PumpkinVine', item: 'Pumpkin', minutes: 4, yield: 1, cost: 80, sell: 240, color: '#f29a3a', about: 'Takes its time, but grows into a whopper worth a lot at the stand.', eat: 'Too big to eat in one go… but she tries.', look: { packet: 0.16, ripe: [[0.18, -0.05, 0.12, 0.9]], show: 0.55 } },
+	// The rare ones: their seeds aren't sold, but found (or made) elsewhere.
+	{
+		id: 'starbloom',
+		name: 'Starbloom',
+		leaves: 'StarbloomStem',
+		item: 'Starbloom',
+		minutes: 2,
+		yield: 1,
+		regrow: true,
+		cost: 0,
+		sell: 120,
+		color: '#ffe9a3',
+		about: 'A star-shaped flower from the sky. It only grows at night, and flowers again after each picking.',
+		rare: 'Now and then one comes away with a sky shard, from the crystals on Cloudrest.',
+		needs: 'night',
+		eat: 'It tastes like cold, clear air.',
+		picked: 'A starbloom, still glowing faintly!',
+		look: { packet: 0.9, ripe: [[0.014, 0.4, 0.03, 1.1]], show: 2.4 },
+	},
+	{
+		id: 'ashen',
+		name: 'Ashen Lily',
+		leaves: 'AshenLeaves',
+		item: 'AshenLily',
+		minutes: 3,
+		yield: 1,
+		cost: 0,
+		sell: 200,
+		color: '#a4a4aa',
+		about: 'A lily from the grey place. It grows as grey as where it came from, until it is picked.',
+		rare: 'Sometimes found in the ashen ore she chips from the rocks in the grey place.',
+		grey: true,
+		eat: 'Pretty, but she would rather keep it.',
+		picked: 'As she picked it, the colour came flooding back into the lily!',
+		look: { packet: 0.8, ripe: [[0, 0.36, 0, 1.2]], show: 2.2 },
+	},
+	{
+		id: 'gearbloom',
+		name: 'Gearbloom',
+		leaves: 'GearStalk',
+		item: 'Gearbloom',
+		minutes: 1,
+		yield: 2,
+		regrow: true,
+		cost: 0,
+		sell: 40,
+		color: '#e8b84a',
+		about: 'A brass flower that ticks as it grows. Quick, and it fruits again and again, but only where there is power.',
+		rare: 'Made at the forge, from an iron ingot and a sky shard.',
+		needs: 'power',
+		eat: 'Clunk. Not for eating.',
+		picked: 'Two gearblooms, ticking softly!',
+		look: { packet: 0.7, ripe: [[0.09, 0.1, 0.04, 0.9], [-0.08, 0.18, -0.03, 0.9]], show: 2.0 },
+	},
 ];
 
 const ROWS = 3;
@@ -110,6 +176,8 @@ export interface FarmContext {
 	keeper?: { name: string; talk: () => void };
 	/** Something bought or sold at the stand. */
 	onTrade?: () => void;
+	/** How far a windmill's power reaches, to say so when a crop that needs it has none. */
+	powerReach?: number;
 }
 
 
@@ -184,8 +252,10 @@ export function createFarm(ctx: FarmContext) {
 		shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normal * 0.012;');
 	};
 	const toonCache = new Map<string, THREE.Material>();
-	/** A copy of one of the garden's models, in toon materials of its own colours (or `tint` for the packet's paper). */
-	const make = (name: string, { tint, inked = false }: { tint?: string; inked?: boolean } = {}) => {
+	const greyed = new THREE.Color();
+	/** A copy of one of the garden's models, in toon materials of its own colours (or `tint` for the
+	 * packet's paper; or all in greys, for a crop from the grey place still growing). */
+	const make = (name: string, { tint, inked = false, grey = false }: { tint?: string; inked?: boolean; grey?: boolean } = {}) => {
 		const source = models.get(name);
 		if (!source) return null;
 		const copy = source.clone(true);
@@ -195,7 +265,12 @@ export function createFarm(ctx: FarmContext) {
 		copy.traverse((o) => o instanceof THREE.Mesh && meshes.push(o));
 		for (const o of meshes) {
 			const placeholder = o.material as THREE.MeshStandardMaterial;
-			const color = tint && placeholder.name === 'Packet' ? tint : `#${placeholder.color.getHexString()}`;
+			let color = tint && placeholder.name === 'Packet' ? tint : `#${placeholder.color.getHexString()}`;
+			if (grey) {
+				greyed.set(color);
+				const l = 0.25 + 0.6 * (greyed.r * 0.3 + greyed.g * 0.59 + greyed.b * 0.11);
+				color = `#${greyed.setRGB(l, l, l).getHexString()}`;
+			}
 			let mat = toonCache.get(color);
 			if (!mat) toonCache.set(color, (mat = ctx.toon({ color, side: THREE.DoubleSide })));
 			o.material = mat;
@@ -221,7 +296,7 @@ export function createFarm(ctx: FarmContext) {
 		const item = make(c.item);
 		if (!packet || !item) return null;
 		const group = new THREE.Group();
-		item.scale.setScalar(c.id === 'pumpkin' ? 0.16 : c.id === 'strawberry' ? 0.9 : 0.4);
+		item.scale.setScalar(c.look.packet);
 		item.position.set(0, 0.075, 0.03);
 		group.add(packet, item);
 		return group;
@@ -243,7 +318,7 @@ export function createFarm(ctx: FarmContext) {
 			id: `seed-${c.id}`,
 			name: `${c.name} seeds`,
 			kind: 'seed',
-			description: `${c.about} Each stage takes about ${c.minutes} min once watered.`,
+			description: `${c.about}${c.rare ? ` ${c.rare}` : ''} Each stage takes about ${c.minutes} min once watered.`,
 			color: c.color,
 			icon: () => iconOf(`seed-${c.id}`, () => seedPacket(c), new THREE.Vector3(0.25, 0.15, 1)),
 			actions: [
@@ -327,23 +402,19 @@ export function createFarm(ctx: FarmContext) {
 		} else if (p.stage === 1) {
 			view.plant.add(make('Sprout') ?? mound());
 		} else {
-			const leaves = make(c.leaves);
+			const leaves = make(c.leaves, { grey: c.grey });
 			if (leaves) {
 				leaves.scale.setScalar(p.stage === 2 ? 0.6 : 1);
 				view.plant.add(leaves);
 			}
 			if (p.stage === 3) {
-				const add = (x: number, y: number, z: number, s = 1) => {
-					const item = make(c.item, { inked: true });
-					if (!item) return;
+				for (const [x, y, z, s] of c.look.ripe) {
+					const item = make(c.item, { inked: true, grey: c.grey });
+					if (!item) continue;
 					item.position.set(x, y, z);
 					item.scale.setScalar(s);
 					view.plant.add(item);
-				};
-				if (c.id === 'turnip') add(0, -0.1, 0);
-				else if (c.id === 'carrot') add(0, 0.02, 0, 1.1);
-				else if (c.id === 'strawberry') for (let k = 0; k < 3; k++) add(Math.cos(k * 2.1) * 0.15, 0.06, Math.sin(k * 2.1) * 0.15);
-				else add(0.18, -0.05, 0.12, 0.9);
+				}
 			}
 		}
 	};
@@ -353,6 +424,14 @@ export function createFarm(ctx: FarmContext) {
 	 * plot round it; the helper picks what's ripe and plants the same again. One at a time, so that
 	 * hours with the page closed come out the same as if she'd watched. */
 	let machines: GardenMachines | null = null;
+	/** Whether there's power at (x, z), once the windmills are up (power.ts). */
+	let poweredAt: ((x: number, z: number) => boolean) | null = null;
+	/** What plot i's crop is waiting on to grow, though it's watered: night, or power. */
+	const waitingFor = (c: Crop, i: number) => {
+		if (c.needs === 'night' && !isNight()) return 'night';
+		if (c.needs === 'power' && !poweredAt?.(plots[i].x, plots[i].z)) return 'power';
+		return null;
+	};
 	/** Plots the machines are seeing to (the helper on its way over), left alone till they're done. */
 	const pending = new Set<number>();
 	const LIVE_MS = 4000;
@@ -364,7 +443,8 @@ export function createFarm(ctx: FarmContext) {
 			if (pending.has(i) || stuck.has(i)) return null;
 			const c = crop(p.crop);
 			if (c) {
-				if (p.stage < 3 && p.wet) return { t: p.since + stageMs(c), kind: 'grow' };
+				// One waiting on night or power stays watered, and grows as soon as it has it.
+				if (p.stage < 3 && p.wet) return waitingFor(c, i) ? null : { t: p.since + stageMs(c), kind: 'grow' };
 				const from = p.stage < 3 ? machines?.wateredFrom(i) : machines?.tendedFrom();
 				if (from === null || from === undefined) return null;
 				return { t: Math.max(p.since, from), kind: p.stage < 3 ? 'water' : 'pick' };
@@ -767,11 +847,11 @@ export function createFarm(ctx: FarmContext) {
 							}
 							inv.add(`crop-${c.id}`, c.yield);
 							pickPlot(i, Date.now());
-							ctx.toast(c.yield > 1 ? `${c.yield} ${c.name.toLowerCase()}s, into the bag!` : `A ${c.name.toLowerCase()}, into the bag!`);
+							ctx.toast(c.picked ?? (c.yield > 1 ? `${c.yield} ${c.name.toLowerCase()}s, into the bag!` : `A ${c.name.toLowerCase()}, into the bag!`));
 							// Then she holds it up to show it off, turned round to face the camera.
 							const shown = make(c.item, { inked: true });
 							if (shown) {
-								shown.scale.setScalar(c.id === 'pumpkin' ? 0.55 : c.id === 'strawberry' ? 2.4 : 1.2);
+								shown.scale.setScalar(c.look.show);
 								ctx.figure.group.add(shown);
 							}
 							begin({ clip: 'Show', seconds: 1.8, face: ctx.towardCamera(), done: () => {}, show: shown ?? undefined });
@@ -779,7 +859,12 @@ export function createFarm(ctx: FarmContext) {
 					})),
 			};
 		}
-		if (p.wet) return { label: `${c.name}: next stage in ${fmt(stageMs(c) - (Date.now() - p.since))}` };
+		if (p.wet) {
+			const wait = waitingFor(c, i);
+			if (wait === 'night') return { label: `${c.name}: watered, and waiting for night to grow` };
+			if (wait === 'power') return { label: `${c.name}: watered, but needs power${ctx.powerReach ? ` (a windmill within ${ctx.powerReach} m)` : ''}` };
+			return { label: `${c.name}: next stage in ${fmt(stageMs(c) - (Date.now() - p.since))}` };
+		}
 		if (machines?.wateredFrom(i) != null) return { label: `The sprinkler will water the ${c.name.toLowerCase()}` };
 		if (!inv.has('tool-can')) return { label: `The ${c.name.toLowerCase()} needs water` };
 		if (state.water <= 0) return { label: 'The can is empty: fill it at the barrel' };
@@ -815,7 +900,7 @@ export function createFarm(ctx: FarmContext) {
 		if (ui.coins) ui.coins.textContent = `${state.coins} coins`;
 		if (ui.buy)
 			ui.buy.replaceChildren(
-				...CROPS.map((c) => {
+				...CROPS.filter((c) => !c.rare).map((c) => {
 					const id = `seed-${c.id}`;
 					return row(inv.def(id)?.icon?.() ?? null, c.color, `${c.name} seeds`, `${c.cost} coins · about ${c.minutes * 3} min to grow`, [
 						[
@@ -1002,6 +1087,11 @@ export function createFarm(ctx: FarmContext) {
 		/** The machines that help look after the garden, once there are any. */
 		setMachines(m: GardenMachines) {
 			machines = m;
+			grow();
+		},
+		/** Where there's power, for the crops that need it to grow. */
+		setPower(at: (x: number, z: number) => boolean) {
+			poweredAt = at;
 			grow();
 		},
 		update,

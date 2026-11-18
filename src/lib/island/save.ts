@@ -30,6 +30,8 @@ export const SAVE_KEYS = {
 	// that hasn't reached the island's bag yet (it goes in when she's back through the rift).
 	monoVeins: 'monochrome-veins',
 	monoCarried: 'monochrome-carried',
+	// Ashen lily seeds found in the ore there, likewise waiting to reach the bag.
+	monoSeeds: 'monochrome-seeds',
 } as const;
 
 export type SaveKey = keyof typeof SAVE_KEYS;

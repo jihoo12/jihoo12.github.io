@@ -37,6 +37,8 @@ const CAMERA_SWINGS = [0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3];
 const MAX_MARKS = 30;
 /** How long ashen ore takes to grow back on its rock. */
 const REGROW_MS = 10 * 60 * 1000;
+/** How often a chip of ashen ore has an ashen lily seed in it (planted in the island's garden). */
+const ASHEN_SEED_CHANCE = 0.2;
 
 interface Mark {
 	cell: string;
@@ -131,6 +133,12 @@ export async function startMonochrome() {
 	{
 		const saved = loadJSON('monoCarried');
 		if (typeof saved === 'number' && saved > 0) carried = Math.floor(saved);
+	}
+	// And ashen lily seeds, found now and then in the ore, to plant in the island's garden.
+	let seeds = 0;
+	{
+		const saved = loadJSON('monoSeeds');
+		if (typeof saved === 'number' && saved > 0) seeds = Math.floor(saved);
 	}
 	const ripe = (id: string) => chipped[id] === undefined || Date.now() - chipped[id] >= REGROW_MS;
 	// Made at the island's forge, the Rift Compass knows the way back to the Threshold from anywhere.
@@ -671,18 +679,22 @@ export async function startMonochrome() {
 		heading = Math.atan2(at.x - pos.x, at.z - pos.z);
 		cast('Smith', 0.9);
 		const n = Math.random() < 0.3 ? 2 : 1;
+		const seed = Math.random() < ASHEN_SEED_CHANCE;
 		carried += n;
+		if (seed) seeds++;
 		chipped[id] = Date.now();
 		saveJSON('monoVeins', chipped);
 		saveJSON('monoCarried', carried);
+		saveJSON('monoSeeds', seeds);
 		showVeins();
 		showCarried();
-		toast(n > 1 ? 'Two pieces of ashen ore came away!' : 'A piece of ashen ore came away, cold as glass.');
+		if (seed) toast('Something rattled loose with the ore: a grey seed! It might grow, back in the garden.');
+		else toast(n > 1 ? 'Two pieces of ashen ore came away!' : 'A piece of ashen ore came away, cold as glass.');
 	};
 	const showCarried = () => {
 		if (!ui.carried) return;
-		ui.carried.hidden = carried === 0;
-		ui.carried.textContent = `Ashen ore \u00d7 ${carried}`;
+		ui.carried.hidden = carried === 0 && seeds === 0;
+		ui.carried.textContent = [carried && `Ashen ore \u00d7 ${carried}`, seeds && `Grey seeds \u00d7 ${seeds}`].filter(Boolean).join(' \u00b7 ');
 	};
 	showCarried();
 

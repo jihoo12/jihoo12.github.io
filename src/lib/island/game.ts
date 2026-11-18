@@ -41,7 +41,7 @@ import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { createPlayer } from './player';
-import { MAX_BELTS, MAX_WINDMILLS, beltCarry, createPower } from './power';
+import { MAX_BELTS, MAX_WINDMILLS, REACH, beltCarry, createPower } from './power';
 import { createLantern } from './lantern';
 import { createIslandRift, riftArrival } from './rift';
 import { loadJSON, saveJSON } from './save';
@@ -276,6 +276,7 @@ export async function startIsland() {
 		keeper: { name: 'Pebble', talk: () => npc.open() },
 		onTrade: () => npc.cheer(),
 		canHolds: () => (forge.has('can') ? 12 : 5),
+		powerReach: REACH,
 	});
 
 	// The forge, near the garden: ore to mine in the hills (E), and the anvil to make things at.
@@ -380,6 +381,8 @@ export async function startIsland() {
 	});
 	for (const id of ['can', 'rod', 'glider', 'helper', 'lantern', 'prism'] as const) if (forge.has(id)) showUpgrade(id);
 	farm.setMachines(machines.machines);
+	// Gearblooms grow only where there's power.
+	farm.setPower(power.poweredAt);
 	// Smithing comes first, so E strikes while she's at it; the sprinkler hint comes last.
 	// Building comes first, so E sets a block while she has them out.
 	interactions.add(() => blocks.offer());
@@ -455,6 +458,14 @@ export async function startIsland() {
 			broughtHome++;
 		}
 		saveJSON('monoCarried', left);
+		inventory.render();
+	}
+	// And any ashen lily seeds she found in the ore.
+	const seeds = loadJSON('monoSeeds');
+	if (typeof seeds === 'number' && seeds > 0) {
+		let left = Math.floor(seeds);
+		while (left > 0 && inventory.add('seed-ashen')) left--;
+		saveJSON('monoSeeds', left);
 		inventory.render();
 	}
 

@@ -253,6 +253,9 @@ export interface SkyIsleContext {
 
 const SHARD = 'sky-shard';
 const SHARDS_IN_CHEST = 3;
+/** A starbloom seed (farm.ts), and how often one comes away with a gathered shard. */
+const STARBLOOM_SEED = 'seed-starbloom';
+const STARBLOOM_CHANCE = 0.25;
 /** How long a gathered crystal takes to grow back. */
 const REGROW_MS = 12 * 60 * 1000;
 
@@ -1024,6 +1027,11 @@ export function createSkyIsle(ctx: SkyIsleContext) {
 						mined[n.id] = Date.now();
 						saveJSON('skyCrystals', mined);
 						growClock = 0;
+						// Now and then a starbloom seed is caught among the crystal, too.
+						if (Math.random() < STARBLOOM_CHANCE && ctx.inventory.add(STARBLOOM_SEED)) {
+							ctx.toast(`${count > 1 ? 'Two sky shards' : 'A sky shard'}, and tucked in the crystal, a starbloom seed!`);
+							return;
+						}
 						ctx.toast(count > 1 ? 'Two sky shards came away in her hands!' : 'A sky shard came away in her hands.');
 					},
 				};

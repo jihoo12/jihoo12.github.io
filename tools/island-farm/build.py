@@ -19,6 +19,12 @@
 #   Helper, HelperKey                       Sprocket, the clockwork garden helper, and the key in
 #                                           its back that turns as it goes (origin at its axle)
 #   HarvestCrate                            the crate Sprocket picks crops into
+#
+# And the rare crops, whose seeds aren't sold at the stand:
+#   StarbloomStem, Starbloom                found on Cloudrest; grows only at night
+#   AshenLeaves, AshenLily                  found in the grey place; grows grey, and the lily's
+#                                           colour comes back when it's picked
+#   GearStalk, Gearbloom                    made at the forge; grows only where there's power
 import math
 import os
 import sys
@@ -63,6 +69,16 @@ COLORS = {
     'Teal': '#5fc7c0',
     'Eye': '#2c2a52',
     'Bulb': '#ff7a6b',
+    # The rare crops.
+    'StarStem': '#6f8fc4',
+    'StarLeaf': '#9cc3f0',
+    'Star': '#ffe9a3',
+    'StarHeart': '#fff8de',
+    'Ash': '#a4a4aa',
+    'AshDark': '#7c7c84',
+    'Lily': '#ff8ab8',
+    'LilyDeep': '#e0609a',
+    'LilyHeart': '#ffd166',
 }
 
 
@@ -490,6 +506,127 @@ def harvest_crate():
     return p.done(smooth=False)
 
 
+# ---------- the rare crops ----------
+
+
+def star_points(p, centre, outer, inner, mat, points=5, thick=0.012, tilt=0.0):
+    """A flat five-pointed star lying in the xz plane at `centre`, a little puffed in the middle."""
+    bm = p.bm
+    c = Vector(centre)
+    rim = []
+    for k in range(points * 2):
+        a = k * math.pi / points
+        r = outer if k % 2 == 0 else inner
+        rim.append(Vector((math.sin(a) * r, -abs(math.sin(a)) * tilt * r, math.cos(a) * r)))
+    top = bm.verts.new(c + Vector((0, thick * 1.6, 0)))
+    bot = bm.verts.new(c - Vector((0, thick * 1.6, 0)))
+    ring_t = [bm.verts.new(c + v + Vector((0, thick * 0.4, 0))) for v in rim]
+    ring_b = [bm.verts.new(c + v - Vector((0, thick * 0.4, 0))) for v in rim]
+    n = len(rim)
+    for k in range(n):
+        bm.faces.new((top, ring_t[k], ring_t[(k + 1) % n]))
+        bm.faces.new((bot, ring_b[(k + 1) % n], ring_b[k]))
+        bm.faces.new((ring_t[k], ring_b[k], ring_b[(k + 1) % n], ring_t[(k + 1) % n]))
+    return p.paint([top, bot, *ring_t, *ring_b], mat)
+
+
+def starbloom_stem():
+    """A slender blue stalk with silvery leaves, nodding at the top where the star flower opens."""
+    p = Part('StarbloomStem')
+    pts = [Vector((0.02 * math.sin(t * 2.4), t * 0.42, 0.03 * t * t)) for t in [i / 6 for i in range(7)]]
+    for a, b in zip(pts, pts[1:]):
+        cylinder(p, a, b, 0.012, 0.01, 'StarStem', 6)
+    for i, t in enumerate((1, 2, 3, 4)):
+        a = i * 2.4 + 0.3
+        leaf(p, pts[t], (math.cos(a), math.sin(a)), 0.15 - 0.02 * i, 0.03, 'StarLeaf' if i % 2 else 'StarStem', lift=0.3, curl=0.6, thick=0.006)
+    # A closed bud at the tip: the star itself is the crop, shown there once it's ripe.
+    ball(p, pts[-1] + Vector((0, 0.02, 0)), 0.028, 'StarLeaf', scale=(1, 1.4, 1), seg=(10, 8))
+    return p.done()
+
+
+def starbloom():
+    """The flower: a pale gold star with a soft white heart, on a short stalk (origin at its base)."""
+    p = Part('Starbloom')
+    cylinder(p, (0, 0, 0), (0, 0.07, 0), 0.008, 0.008, 'StarStem', 6)
+    head = star_points(p, (0, 0, 0), 0.085, 0.036, 'Star', tilt=0.25)
+    head += ball(p, (0, 0.016, 0), 0.026, 'StarHeart', scale=(1, 0.6, 1), seg=(10, 6))
+    # Turned up to face the sky and out towards +z, at the top of the stalk.
+    place(p.bm, head, Matrix.Translation((0, 0.12, 0.01)) @ Matrix.Rotation(1.1, 4, 'X'))
+    return p.done()
+
+
+def ashen_leaves():
+    """Long grey blades, like a lily's, with a tall grey stalk up the middle."""
+    p = Part('AshenLeaves')
+    for i in range(6):
+        a = i * TAU / 6 + 0.2
+        leaf(p, (0, 0.02, 0), (math.cos(a), math.sin(a)), 0.3 + 0.04 * (i % 2), 0.05, 'Ash' if i % 2 else 'AshDark', lift=1.4, curl=1.0)
+    cylinder(p, (0, 0, 0), (0, 0.42, 0), 0.012, 0.009, 'AshDark', 6)
+    return p.done()
+
+
+def ashen_lily():
+    """A trumpet lily on its stalk (origin at the stalk's base): six petals curling out from a gold heart."""
+    p = Part('AshenLily')
+    cylinder(p, (0, 0, 0), (0, 0.1, 0), 0.01, 0.009, 'Stem', 6)
+    centre = Vector((0, 0.1, 0))
+    for k in range(6):
+        a = k * TAU / 6
+        leaf(p, centre, (math.cos(a), math.sin(a)), 0.1, 0.04, 'Lily' if k % 2 else 'LilyDeep', lift=1.3, curl=1.3, thick=0.006)
+    for k in range(3):
+        a = k * TAU / 3 + 0.5
+        tip = centre + Vector((math.cos(a) * 0.018, 0.05, math.sin(a) * 0.018))
+        cylinder(p, centre, tip, 0.003, 0.003, 'LilyHeart', 5)
+        ball(p, tip, 0.008, 'LilyHeart', seg=(8, 5))
+    return p.done()
+
+
+def gear(p, centre, radius, teeth, mat, thick=0.02, hole=None):
+    """A flat gear lying in the xz plane: a disc with square teeth round it."""
+    c = Vector(centre)
+    cylinder(p, c - Vector((0, thick / 2, 0)), c + Vector((0, thick / 2, 0)), radius, radius, mat, max(16, teeth * 2))
+    for k in range(teeth):
+        a = k * TAU / teeth
+        box(p, (0, 0, 0), (radius * 0.38, thick * 0.9, radius * 0.4), mat, matrix=Matrix.Translation(c) @ Matrix.Rotation(a, 4, 'Y') @ Matrix.Translation((0, 0, radius * 1.05)))
+    if hole:
+        cylinder(p, c - Vector((0, thick * 0.7, 0)), c + Vector((0, thick * 0.7, 0)), radius * 0.4, radius * 0.4, hole, 12)
+
+
+def gear_stalk():
+    """A brass stalk with copper leaves, riveted at the joints."""
+    p = Part('GearStalk')
+    cylinder(p, (0, 0, 0), (0, 0.36, 0), 0.014, 0.012, 'Brass', 8)
+    for i, y in enumerate((0.1, 0.18, 0.26)):
+        a = i * 2.2 + 0.6
+        leaf(p, (0, y, 0), (math.cos(a), math.sin(a)), 0.14, 0.05, 'Copper', lift=0.4, curl=0.3)
+        ball(p, (0, y, 0), 0.02, 'Metal', seg=(8, 6))
+    gear(p, (0, 0.37, 0), 0.03, 6, 'Copper', thick=0.014)
+    return p.done(smooth=False)
+
+
+def gearbloom():
+    """The bloom: a brass gear standing upright on a short stalk, with a teal heart (origin at its base)."""
+    p = Part('Gearbloom')
+    cylinder(p, (0, 0, 0), (0, 0.05, 0), 0.01, 0.01, 'Brass', 6)
+    q = Part('_gear')
+    gear(q, (0, 0, 0), 0.06, 8, 'Brass', thick=0.022, hole='Teal')
+    # Stood up on its edge, facing +z, and set on the stalk.
+    stand = Matrix.Translation((0, 0.05 + 0.075, 0)) @ Matrix.Rotation(math.pi / 2, 4, 'X')
+    bmesh.ops.transform(q.bm, matrix=stand, verts=q.bm.verts[:])
+    me = bpy.data.meshes.new('_gear')
+    q.bm.to_mesh(me)
+    q.bm.free()
+    p.bm.from_mesh(me)
+    # from_mesh keeps the material index; map _gear's onto p's.
+    remap = [p.mat(m) for m in q.mats]
+    offset = len(p.bm.faces) - len(me.polygons)
+    p.bm.faces.ensure_lookup_table()
+    for f, poly in zip(p.bm.faces[offset:], me.polygons):
+        f.material_index = remap[poly.material_index]
+    bpy.data.meshes.remove(me)
+    return p.done(smooth=False)
+
+
 OBJECTS = [
     sprout(),
     turnip_leaves(),
@@ -509,6 +646,12 @@ OBJECTS = [
     helper(),
     helper_key(),
     harvest_crate(),
+    starbloom_stem(),
+    starbloom(),
+    ashen_leaves(),
+    ashen_lily(),
+    gear_stalk(),
+    gearbloom(),
 ]
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -554,12 +697,16 @@ if PREVIEW:
     key_obj.location = Vector((0, 0, 3)) + Vector(HELPER_KEY)
     key_obj.rotation_euler = (0, 0, 0.5)
     crate_obj.location = (1.1, 0, 3)
+    # The rare crops, in a row out to the left: each one's plant, and its crop beside it.
+    for i, o in enumerate(OBJECTS[18:24]):
+        o.location = (-4.2 + (i // 2) * 0.9 + (i % 2) * 0.35, 0, 2.2 + (i % 2) * 0.3)
+        o.scale = (1.6, 1.6, 1.6)
     cam = bpy.data.objects.new('Cam', bpy.data.cameras.new('Cam'))
     cam.data.type = 'ORTHO'
     cam.data.ortho_scale = 6.6
     scene.collection.objects.link(cam)
     scene.camera = cam
-    for name, location, target, scale in (('front', (0, 1.6, 8), (0, 0.6, 0), 6.6), ('above', (0, 6, 6), (0, 0.6, 0), 6.6), ('stall', (1.2, 3.4, 4), (-1.6, 1.5, -1), 6), ('machines', (1.5, 1.4, 6), (0, 0.4, 3), 2.6), ('machines-back', (-1.2, 1.2, 0.5), (0, 0.4, 3), 2.6)):
+    for name, location, target, scale in (('front', (0, 1.6, 8), (0, 0.6, 0), 6.6), ('above', (0, 6, 6), (0, 0.6, 0), 6.6), ('stall', (1.2, 3.4, 4), (-1.6, 1.5, -1), 6), ('machines', (1.5, 1.4, 6), (0, 0.4, 3), 2.6), ('machines-back', (-1.2, 1.2, 0.5), (0, 0.4, 3), 2.6), ('rare', (-3.3, 1.6, 6), (-3.3, 0.35, 2.3), 2.6), ('rare-crops', (-3.3, 1.2, 6), (-3.15, 0.25, 2.5), 1.3)):
         target = Vector(target)
         cam.data.ortho_scale = scale
         back = (Vector(location) - target).normalized()
