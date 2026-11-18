@@ -9,7 +9,11 @@
 // too high to walk up, low enough to jump onto. Each one after is a metre.
 //
 // She takes blocks out with B (or the bag): one in her arms, a see-through one where it would go,
-// E sets it there and Q takes the top one of the column in front of her back into the bag.
+// E sets it there and Q takes the top one of the column in front of her back into the bag. With a
+// mouse, where it goes is wherever the pointer is (within her reach): pointing at the ground puts a
+// block there, at the top of a stack puts one on top, at its side starts (or adds to) the stack next
+// to it. A click sets it, a right-click takes back the block pointed at. On a touch screen, or with
+// the pointer off the island, it's the cell in front of her, as before.
 import * as THREE from 'three';
 import type { NixFigure } from '../experimental/nix-figure';
 import type { Offer } from './interact';
@@ -29,6 +33,10 @@ const PAD = 0.3;
 const REACH_UP = 2.6;
 const REACH_DOWN = 1.6;
 const MAX_BLOCKS = 2000;
+/** How far from her (across the ground) the pointer can set or take a block. */
+const POINT_REACH = 6;
+/** How far out from the camera the pointer looks for the ground. */
+const POINT_FAR = 70;
 
 interface Column {
 	i: number;
@@ -91,6 +99,9 @@ export interface BlocksContext {
 	open: (x: number, z: number) => boolean;
 	toast: (text: string) => void;
 	closeMenu: () => void;
+	/** For aiming with the mouse: the camera, and the canvas the pointer moves over. */
+	camera: THREE.Camera;
+	canvas: HTMLCanvasElement;
 }
 
 export function createBlocks(ctx: BlocksContext) {
@@ -113,7 +124,7 @@ export function createBlocks(ctx: BlocksContext) {
 		id: STONE_BLOCK,
 		name: 'Stone Block',
 		kind: 'material',
-		description: 'Dressed stone, made at the forge, to build with out on the island. Take them out with B, set one with E and take one back with Q.',
+		description: 'Dressed stone, made at the forge, to build with out on the island. Take them out with B, point where one goes, and click (or E) to set it; right-click (or Q) takes one back.',
 		color: '#d8c9a8',
 		actions: [
 			{
@@ -208,7 +219,7 @@ export function createBlocks(ctx: BlocksContext) {
 	outline.renderOrder = 2;
 	ctx.scene.add(outline);
 
-	// ---------- what's in front of her ----------
+	// ---------- where she's building ----------
 
 	let on = false;
 	const facing = new THREE.Vector3();
@@ -226,37 +237,135 @@ export function createBlocks(ctx: BlocksContext) {
 	/** Whether her middle is within the ground of cell (i, j), so a block there would be under her. */
 	const standingIn = (i: number, j: number) => Math.abs(ctx.pos.x - (i + 0.5)) < 0.5 + PAD + 0.05 && Math.abs(ctx.pos.z - (j + 0.5)) < 0.5 + PAD + 0.05;
 
+	// The mouse, while it's over the island (a finger, or the pointer leaving, hands back to her facing).
+	const pointer = { on: false, ndc: new THREE.Vector2(), down: null as { x: number; y: number; button: number } | null };
+	ctx.canvas.addEventListener('pointermove', (e) => {
+		pointer.on = e.pointerType === 'mouse';
+		const r = ctx.canvas.getBoundingClientRect();
+		pointer.ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+	});
+	ctx.canvas.addEventListener('pointerleave', () => (pointer.on = false));
+	ctx.canvas.addEventListener('pointerdown', (e) => {
+		if (e.pointerType !== 'mouse') pointer.on = false;
+		pointer.down = { x: e.clientX, y: e.clientY, button: e.button };
+	});
+	// A click (not a drag, which swings the camera) sets a block; a right-click takes one back.
+	ctx.canvas.addEventListener('pointerup', (e) => {
+		const down = pointer.down;
+		pointer.down = null;
+		if (!on || !pointer.on || !down || down.button !== e.button || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
+		if (e.button === 0) place();
+		else if (e.button === 2) take();
+	});
+	ctx.canvas.addEventListener('contextmenu', (e) => {
+		if (on) e.preventDefault();
+	});
+
+	const ray = new THREE.Raycaster();
+	const box = new THREE.Box3();
+	const hit = new THREE.Vector3();
+	const probe = new THREE.Vector3();
+	/** The ground (or the sea) at (x, z), leaving the blocks out: they're met as boxes. */
+	const surface = (x: number, z: number) => Math.max(terrainAt(x, z), deckAt(x, z), 0);
+	/** What the pointer's on: a block column (and which face of it), or the ground; or null. */
+	const pointed = (): { column: Column; normal: THREE.Vector3 } | { ground: THREE.Vector3 } | null => {
+		ray.setFromCamera(pointer.ndc, ctx.camera);
+		const { origin, direction } = ray.ray;
+		// The nearest stack it passes into, of those near her.
+		let best: { column: Column; normal: THREE.Vector3 } | null = null;
+		let bestT = POINT_FAR;
+		for (const c of columns.values()) {
+			if (Math.hypot(c.i + 0.5 - ctx.pos.x, c.j + 0.5 - ctx.pos.z) > POINT_REACH + 8) continue;
+			box.min.set(c.i, c.foot, c.j);
+			box.max.set(c.i + 1, topOf(c), c.j + 1);
+			if (!ray.ray.intersectBox(box, hit)) continue;
+			const t = hit.distanceTo(origin);
+			if (t >= bestT) continue;
+			bestT = t;
+			// Which face: whichever the hit's nearest to.
+			const faces: [number, THREE.Vector3][] = [
+				[hit.y - box.max.y, new THREE.Vector3(0, 1, 0)],
+				[box.min.x - hit.x, new THREE.Vector3(-1, 0, 0)],
+				[hit.x - box.max.x, new THREE.Vector3(1, 0, 0)],
+				[box.min.z - hit.z, new THREE.Vector3(0, 0, -1)],
+				[hit.z - box.max.z, new THREE.Vector3(0, 0, 1)],
+			];
+			faces.sort((p, q) => Math.abs(p[0]) - Math.abs(q[0]));
+			best = { column: c, normal: faces[0][1] };
+		}
+		// The ground, nearer than that: stepped along, then narrowed down.
+		let prev = 0;
+		for (let t = 0.5; t < bestT; t += 0.25) {
+			probe.copy(origin).addScaledVector(direction, t);
+			if (probe.y > surface(probe.x, probe.z)) {
+				prev = t;
+				continue;
+			}
+			let lo = prev;
+			let hi = t;
+			for (let k = 0; k < 8; k++) {
+				const mid = (lo + hi) / 2;
+				probe.copy(origin).addScaledVector(direction, mid);
+				if (probe.y > surface(probe.x, probe.z)) lo = mid;
+				else hi = mid;
+			}
+			return { ground: probe.copy(origin).addScaledVector(direction, hi) };
+		}
+		return best;
+	};
+
 	interface Aim {
-		i: number;
-		j: number;
-		column: Column | undefined;
-		/** Where a block set here would go (its bottom and top), or why one can't. */
-		place: { bottom: number; top: number } | string;
-		/** Whether the top block here is in reach to take. */
-		take: boolean;
+		/** Where a block would go: the cell, and the block's bottom and top, or why one can't. */
+		place: { i: number; j: number; column: Column | undefined; spot: { bottom: number; top: number } | string } | null;
+		/** The column whose top block would be taken back, if one's in reach. */
+		take: Column | null;
 	}
-	const aimAt = (): Aim | null => {
-		const cell = cellAhead();
-		if (!cell) return null;
-		const { i, j } = cell;
+	const inReach = (c: Column) => topOf(c) - ctx.pos.y <= REACH_UP + 0.2 && topOf(c) - ctx.pos.y >= -REACH_DOWN;
+	/** Whether a block could go in cell (i, j), and where; or why not. */
+	const placing = (i: number, j: number, far: boolean): NonNullable<Aim['place']> => {
 		const cx = i + 0.5;
 		const cz = j + 0.5;
 		const column = columns.get(key(i, j));
 		const feet = ctx.pos.y;
-		const take = !!column && topOf(column) - feet <= REACH_UP + 0.2 && topOf(column) - feet >= -REACH_DOWN;
-		let place: Aim['place'];
 		const f = column ?? footing(i, j);
 		const top = column ? topOf(column) + 1 : f.first;
 		const bottom = column ? topOf(column) : f.foot;
-		if (column && column.n >= MAX_STACK) place = 'That stack is as high as it goes';
-		else if (top - feet > REACH_UP) place = 'Too high to reach';
-		else if (top - feet < -REACH_DOWN) place = 'Too far down to reach';
-		else if (Math.hypot(cx, cz) > WORLD_EDGE - 4 || terrainAt(cx, cz) < -1) place = 'Too deep to build in';
-		else if (!column && (!ctx.open(cx, cz) || [0, 1].some((dx) => [0, 1].some((dz) => deckAt(i + dx, j + dz) > -Infinity)))) place = 'No building here';
-		else if (skyCeiling(cx, cz, top) < top + 2.5) place = 'No room under the sky island';
-		else if (standingIn(i, j)) place = 'Step back to make room';
-		else place = { bottom, top };
-		return { i, j, column, place, take };
+		let spot: { bottom: number; top: number } | string;
+		if (far) spot = 'Too far away. Go closer';
+		else if (column && column.n >= MAX_STACK) spot = 'That stack is as high as it goes';
+		else if (top - feet > REACH_UP) spot = 'Too high to reach';
+		else if (top - feet < -REACH_DOWN) spot = 'Too far down to reach';
+		else if (Math.hypot(cx, cz) > WORLD_EDGE - 4 || terrainAt(cx, cz) < -1) spot = 'Too deep to build in';
+		else if (!column && (!ctx.open(cx, cz) || [0, 1].some((dx) => [0, 1].some((dz) => deckAt(i + dx, j + dz) > -Infinity)))) spot = 'No building here';
+		else if (skyCeiling(cx, cz, top) < top + 2.5) spot = 'No room under the sky island';
+		else if (standingIn(i, j)) spot = 'Step back to make room';
+		else spot = { bottom, top };
+		return { i, j, column, spot };
+	};
+	const away = (i: number, j: number) => Math.hypot(i + 0.5 - ctx.pos.x, j + 0.5 - ctx.pos.z) > POINT_REACH;
+	const aimAt = (usePointer = pointer.on): Aim | null => {
+		if (usePointer) {
+			const at = pointed();
+			if (!at) return null;
+			if ('ground' in at) {
+				const i = Math.floor(at.ground.x);
+				const j = Math.floor(at.ground.z);
+				const column = columns.get(key(i, j));
+				return { place: placing(i, j, away(i, j)), take: column && !away(i, j) && inReach(column) ? column : null };
+			}
+			const { column, normal } = at;
+			const take = !away(column.i, column.j) && inReach(column) ? column : null;
+			// On top: another on the stack. On a side: the stack next to it. Underneath: nothing.
+			if (normal.y > 0.5) return { place: placing(column.i, column.j, away(column.i, column.j)), take };
+			if (normal.y < -0.5) return { place: null, take };
+			const i = column.i + normal.x;
+			const j = column.j + normal.z;
+			return { place: placing(i, j, away(i, j)), take };
+		}
+		const cell = cellAhead();
+		if (!cell) return null;
+		const column = columns.get(key(cell.i, cell.j));
+		return { place: placing(cell.i, cell.j, false), take: column && inReach(column) ? column : null };
 	};
 
 	// ---------- setting and taking ----------
@@ -272,29 +381,31 @@ export function createBlocks(ctx: BlocksContext) {
 		on = false;
 	};
 	const place = () => {
-		const aim = aimAt();
-		if (!aim || typeof aim.place === 'string') return;
+		if (!ctx.canAct()) return;
+		const p = aimAt()?.place;
+		if (!p) return;
+		if (typeof p.spot === 'string') return ctx.toast(p.spot);
 		if (!inventory.remove(STONE_BLOCK)) {
 			ctx.toast('Out of blocks. Q takes them back.');
 			return;
 		}
-		if (aim.column) aim.column.n++;
-		else columns.set(key(aim.i, aim.j), { i: aim.i, j: aim.j, n: 1, ...footing(aim.i, aim.j) });
+		if (p.column) p.column.n++;
+		else columns.set(key(p.i, p.j), { i: p.i, j: p.j, n: 1, ...footing(p.i, p.j) });
 		save();
 		draw();
 		inventory.render();
 	};
 	const take = () => {
 		if (!ctx.canAct()) return false;
-		const aim = aimAt();
-		if (!aim?.take || !aim.column) return false;
+		const column = aimAt(on && pointer.on)?.take;
+		if (!column) return false;
 		if (!inventory.fits(STONE_BLOCK)) {
 			ctx.toast('Her bag is too full to take it.');
 			return true;
 		}
 		inventory.add(STONE_BLOCK);
-		aim.column.n--;
-		if (aim.column.n <= 0) columns.delete(key(aim.i, aim.j));
+		column.n--;
+		if (column.n <= 0) columns.delete(key(column.i, column.j));
 		save();
 		draw();
 		inventory.render();
@@ -319,15 +430,14 @@ export function createBlocks(ctx: BlocksContext) {
 		const aim = current;
 		const left = inventory.count(STONE_BLOCK);
 		if (!left) return { label: aim?.take ? 'Out of blocks (Q takes one back)' : 'Out of blocks' };
-		if (!aim) return { label: 'Turn to where it should go' };
-		if (typeof aim.place === 'string') return { label: aim.place };
-		return { label: `Place a block (${left})`, go: place };
+		if (!aim?.place) return { label: pointer.on ? 'Point at where it should go' : 'Turn to where it should go' };
+		if (typeof aim.place.spot === 'string') return { label: aim.place.spot };
+		return { label: pointer.on ? `Place a block (${left}) · or click` : `Place a block (${left})`, go: place };
 	};
 	/** Asked last, when she's not building: a block of hers right in front of her can be taken back. */
 	const hint = (): Offer | null => {
 		if (on || !columns.size || !ctx.canAct()) return null;
-		const aim = aimAt();
-		return aim?.take ? { label: 'Take the block back', go: () => void take() } : null;
+		return aimAt(false)?.take ? { label: 'Take the block back', go: () => void take() } : null;
 	};
 
 	const mid = new THREE.Vector3();
@@ -350,16 +460,17 @@ export function createBlocks(ctx: BlocksContext) {
 				held.position.copy(mid).add(other.set(0, -0.2, 0.08));
 			}
 		}
-		const spot = current && typeof current.place !== 'string' && inventory.has(STONE_BLOCK) ? current.place : null;
+		const p = current?.place;
+		const spot = p && typeof p.spot !== 'string' && inventory.has(STONE_BLOCK) ? p.spot : null;
 		ghost.visible = !!spot;
-		if (spot && current) {
-			ghost.position.set(current.i + 0.5, spot.bottom, current.j + 0.5);
+		if (spot && p) {
+			ghost.position.set(p.i + 0.5, spot.bottom, p.j + 0.5);
 			ghost.scale.set(1, spot.top - spot.bottom, 1);
 			(ghost.material as THREE.MeshBasicMaterial).opacity = 0.32 + Math.sin(time * 5) * 0.08;
 		}
-		outline.visible = !!current?.take && !!current.column;
-		if (current?.take && current.column) {
-			const c = current.column;
+		outline.visible = !!current?.take;
+		if (current?.take) {
+			const c = current.take;
 			const bottom = c.n === 1 ? c.foot : topOf(c) - 1;
 			outline.position.set(c.i + 0.5, bottom, c.j + 0.5);
 			outline.scale.set(1, topOf(c) - bottom, 1);

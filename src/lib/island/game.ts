@@ -359,6 +359,8 @@ export async function startIsland() {
 		open: (x, z) => roomy(x, z, 0.7) && !power.beltAt(x, z) && keptClear.every((p) => Math.hypot(p.x - x, p.z - z) > p.r + 1),
 		toast: (text) => fishing.toast(text),
 		closeMenu: () => menu.close(),
+		camera,
+		canvas,
 	});
 	// Windmills up in the hills, and the drills they power on the ore veins.
 	const power = createPower({
@@ -536,7 +538,7 @@ export async function startIsland() {
 
 	theme.start();
 	// For trying things out in development: where she is, and Hollis's ledge.
-	if (import.meta.env.DEV) Object.assign(window, { island: { pos, player, owl, orbit } });
+	if (import.meta.env.DEV) Object.assign(window, { island: { pos, player, owl, orbit, blocks, inventory } });
 
 	// ---------- the loop ----------
 
