@@ -6,6 +6,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { buildNixFigure, type NixClip, type NixJump } from './nix-figure';
 import { buildPortal, PORTAL_FEET, PORTAL_HALF_WIDTH, PORTAL_RADIUS } from './portal';
 import { loadText, saveText } from '../island/save';
+import { playPrologue, resetPrologue } from './prologue';
 
 interface SceneData {
 	projects: { title: string; tagline: string; language: string; commits: number; href: string }[];
@@ -1388,6 +1389,8 @@ export async function start() {
 	/** Where she was last frame, in front of the gate (+) or behind it (-). */
 	let gateZWas = 0;
 	const gateAim = new THREE.Vector3();
+	/** Once the page is all sky: the prologue, then the island. */
+	const arrive = () => playPrologue(ISLAND).then(() => location.assign(ISLAND));
 	const byGate = () => Math.hypot(nix.root.position.x - portalAt.x, nix.root.position.z - portalAt.z) < PORTAL_RADIUS + 3.5;
 	/** Fade the page into the sky and go to the island. Walking about, she carries on through the gate `way`. */
 	const leave = (way = 1) => {
@@ -1397,7 +1400,7 @@ export async function start() {
 		autoGate = 0;
 		keys.clear();
 		warp?.classList.add('on');
-		if (!roam || reduceMotion) setTimeout(() => location.assign(ISLAND), reduceMotion ? 0 : 650);
+		if (!roam || reduceMotion) setTimeout(arrive, reduceMotion ? 0 : 900);
 	};
 	const walkToGate = () => {
 		if (leaving >= 0) return;
@@ -1411,6 +1414,7 @@ export async function start() {
 		portal.surge = 0;
 		nix.root.scale.setScalar(1);
 		warp?.classList.remove('on');
+		resetPrologue();
 	});
 	pickables.push({
 		object: portal.pickable,
@@ -1487,7 +1491,7 @@ export async function start() {
 			nix.root.scale.setScalar(Math.max(0.001, 1 - smooth(Math.min(1, leaving * 1.4))));
 			if (leaving === 1) {
 				leaving = 2;
-				location.assign(ISLAND);
+				arrive();
 			}
 			return steerDir.set(0, 0, -gateWay);
 		}

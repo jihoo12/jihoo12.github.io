@@ -70,8 +70,6 @@ const scene = { projects, posts, comics, art };
 			<span class="badge">3D · experimental</span>
 			<span class="spacer"></span>
 			<a class="pill" href="/?view=2d">Back to 2D</a>
-			<a class="pill" href="/island/">Island</a>
-			<a class="pill" href="/skills/">Skills</a>
 			<button class="pill" type="button" data-roam hidden aria-pressed="false">Walk: scroll</button>
 			<button class="pill" type="button" data-nix-mode hidden aria-pressed="true">Nixchan: 3D</button>
 			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
@@ -145,6 +143,14 @@ const scene = { projects, posts, comics, art };
 
 		<div class="tip" data-tip hidden></div>
 		<div class="warp" data-warp aria-hidden="true"></div>
+		<div class="prologue" data-prologue hidden aria-live="polite">
+			<p data-line>Past the end of the path, the sky keeps going.</p>
+			<p data-line>Somewhere in it floats a small island — a garden, a forge, a pond where the fish bite at dusk.</p>
+			<p data-line>Nobody lives there yet. Just an otter, a few seeds, and an owl no one has seen.</p>
+			<p data-line>So Nixchan filled her mug, tied her laces, and stepped through the gate.</p>
+			<p data-line data-title class="title">Nixchan's Island<span class="period">.</span></p>
+			<span class="skip" aria-hidden="true">any key or tap to skip</span>
+		</div>
 		<p class="keyhint" data-keyhint hidden>
 			<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span>
 			<span><kbd>Shift</kbd> run</span>
@@ -266,6 +272,23 @@ const scene = { projects, posts, comics, art };
 	:global([data-time='night']) .warp { background: radial-gradient(circle at 50% 55%, #f4f0ff 0%, #a9a0ec 40%, #4f4aa8 80%, #2a2f7a 100%); }
 	.warp:global(.on) { opacity: 1; pointer-events: auto; }
 	@media (prefers-reduced-motion: reduce) { .warp { transition: none; } }
+
+	/* The prologue, over the sky in the gate: a line at a time, then the island's name. */
+	.prologue {
+		position: fixed; inset: 0; z-index: 41; display: grid; place-items: center; padding: 24px;
+		color: #1c1a3e; cursor: pointer;
+	}
+	.prologue[hidden] { display: none; }
+	:global([data-time='night']) .prologue { color: #fbf8ff; text-shadow: 0 1px 14px rgba(42, 47, 122, 0.85), 0 0 2px rgba(42, 47, 122, 0.6); }
+	.prologue p {
+		grid-area: 1 / 1; max-width: 26em; margin: 0; text-align: center;
+		font-size: clamp(19px, 2.4vw, 27px); font-weight: 800; line-height: 1.5;
+		opacity: 0; transform: translateY(10px); transition: opacity 0.8s ease, transform 0.8s ease;
+	}
+	.prologue p:global(.on) { opacity: 1; transform: none; }
+	.prologue .title { font-family: var(--display); font-size: clamp(40px, 7vw, 76px); font-weight: 400; line-height: 1.1; }
+	.prologue .skip { position: absolute; bottom: 22px; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 800; opacity: 0.55; }
+	@media (prefers-reduced-motion: reduce) { .prologue p { transition: none; transform: none; } }
 
 	.tip {
 		position: fixed; z-index: 30; left: 0; top: 0; max-width: 260px; pointer-events: none;
