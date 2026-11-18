@@ -43,6 +43,8 @@ import { makeToon } from './look';
 import { createMenu } from './menu';
 import { createNpc } from './npc';
 import { canDash, createOwl } from './owl';
+import { createFourthWall } from './fourthwall';
+import { createTortoise } from './tortoise';
 import { createPlayer } from './player';
 import { MAX_BELTS, MAX_WINDMILLS, REACH, beltCarry, createPower } from './power';
 import { createLantern } from './lantern';
@@ -116,6 +118,11 @@ export async function startIsland() {
 	const orbit: Orbit = { yaw: heading + Math.PI + (fromRift ? 0.9 : 0), pitch: 0.32, distance: 9 };
 	const controls = createControls(canvas, ui, orbit, {
 		intercept(key, e) {
+			// Knocking on the screen, nothing else does anything.
+			if (wall.breaking) {
+				e.preventDefault();
+				return true;
+			}
 			// Talking with Pebble (or Hollis), the keys work the conversation.
 			if (talk.talking) {
 				if (key === ' ' || key.startsWith('arrow') || key === 'enter') e.preventDefault();
@@ -176,6 +183,9 @@ export async function startIsland() {
 			let held: number | null = null;
 			if (npc.talking) held = npc.facing;
 			if (owl?.talking) held = owl.facing;
+			if (tortoise.talking) held = tortoise.facing;
+			// Breaking the fourth wall, she turns to face whoever's watching.
+			if (wall.breaking) return towardCamera();
 			if (farm.busy) held = farm.facing;
 			if (forge.busy) held = forge.facing;
 			// So does fishing, but walking off (or jumping) puts the rod away, unless a fish is on the line.
@@ -445,6 +455,37 @@ export async function startIsland() {
 	});
 	if (owl) interactions.add(owl.offer);
 
+	// Parmen, the tortoise on the islet, who talks her into knocking on the screen: the island's
+	// way back out to the 3D home.
+	const overHer = new THREE.Vector3();
+	const wall = createFourthWall({
+		renderer,
+		scene,
+		camera,
+		to: '/experimental/?from=island',
+		say: (text) => talk.bubble(text, overHer.set(pos.x, pos.y + 2.3, pos.z), 3),
+		knock: () => (controls.state.waveQueued = true),
+	});
+	const tortoise = createTortoise({
+		scene,
+		toon,
+		modelUrl: canvas.dataset.tortoiseModel ?? '',
+		groundAt,
+		addFeature,
+		pos,
+		talk,
+		night: isNight,
+		canAct: () => ready && player.grounded && !player.swimming && !fishing.active && !menu.isOpen && !talk.talking && !wall.breaking,
+		breakWall: () => {
+			// The camera settles where it is, a little lower and closer, for her to look out of.
+			orbit.yaw = Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z);
+			orbit.pitch = 0.18;
+			orbit.distance = Math.min(orbit.distance, 6);
+			wall.go();
+		},
+	});
+	interactions.add(tortoise.offer);
+
 	// Pebble, who keeps the stand, behind its counter.
 	const npc = createNpc({
 		scene,
@@ -580,6 +621,7 @@ export async function startIsland() {
 			power.update(dt, time);
 			npc.update(dt);
 			owl?.update(dt, time);
+			tortoise.update(dt);
 			talk.update(dt);
 			// Her arms hold one thing at a time: whatever she's just taken up, the rest go away.
 			const holding = { sprinkler: machines.carrying, blocks: blocks.on, power: power.carrying };
@@ -603,7 +645,7 @@ export async function startIsland() {
 		lantern.update(time, dt);
 		forge.update(time, dt);
 
-		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : owl?.talking ? { ...owl.spot, facing: owl.facing } : forge.framing);
+		follow.update(dt, player, npc.talking ? { ...npc.spot, facing: npc.facing } : owl?.talking ? { ...owl.spot, facing: owl.facing } : tortoise.talking ? { ...tortoise.spot, facing: tortoise.facing } : forge.framing);
 		sky.update(time, camera, pos);
 		water.update(time, dt);
 

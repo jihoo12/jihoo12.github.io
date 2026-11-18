@@ -8,6 +8,7 @@ import otterModel from '../../assets/island/otter.glb?url';
 import skyModel from '../../assets/island/sky.glb?url';
 import forgeModel from '../../assets/island/forge.glb?url';
 import powerModel from '../../assets/island/power.glb?url';
+import tortoiseModel from '../../assets/island/tortoise.glb?url';
 
 const title = "Nixchan's island (experimental)";
 const description = "Roam a little toon island with Nixchan: climb, swim, glide, fish, grow a garden and find what's out there.";
@@ -19,7 +20,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		<meta name="robots" content="noindex" />
 	</head>
 	<body class="isle">
-		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} data-sky-model={skyModel} data-forge-model={forgeModel} data-power-model={powerModel} aria-label="Nixchan on her island"></canvas>
+		<canvas class="stage" data-stage data-model={nixModel} data-fish-model={fishModel} data-farm-model={farmModel} data-otter-model={otterModel} data-sky-model={skyModel} data-forge-model={forgeModel} data-power-model={powerModel} data-tortoise-model={tortoiseModel} aria-label="Nixchan on her island"></canvas>
 
 		<header class="bar">
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
@@ -27,7 +28,6 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 			<span class="spacer"></span>
 			<button class="pill" type="button" data-open="bag" aria-label="Bag (I)">Bag</button>
 			<button class="pill help" type="button" data-open="help" aria-label="Help (H)">?</button>
-			<a class="pill" href="/experimental/">3D home</a>
 			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
 		</header>
 
@@ -174,6 +174,10 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 					<section>
 						<h3>The standing stones</h3>
 						<p>They say the air between the standing stones wears thin after dark, for someone who's been all the way to the top of the sky. What's on the other side, nobody's sure: somewhere grey, that doesn't fit together the way places should.</p>
+					</section>
+					<section>
+						<h3>The way out</h3>
+						<p>There's no door off the island. But an old tortoise sits out on the Lonely Islet, a swim from the beach, and he has some odd ideas about which side of the glass anyone's really on. Ask him, if you're ready to go back to the 3D home.</p>
 					</section>
 					<section>
 						<h3>Menus</h3>

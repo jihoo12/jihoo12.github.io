@@ -143,6 +143,21 @@ const scene = { projects, posts, comics, art };
 
 		<div class="tip" data-tip hidden></div>
 		<div class="warp" data-warp aria-hidden="true"></div>
+		<script is:inline>
+			// Back from the island through the screen (island/fourthwall.ts): the page starts as the sky
+			// she broke through into, and clears.
+			if (new URLSearchParams(location.search).get('from') === 'island') {
+				history.replaceState(null, '', location.pathname);
+				const warp = document.querySelector('[data-warp]');
+				warp.style.transition = 'none';
+				warp.classList.add('on');
+				setTimeout(() => {
+					warp.style.transition = 'opacity 1.4s ease-out';
+					warp.classList.remove('on');
+					setTimeout(() => (warp.style.transition = ''), 1500);
+				}, 350);
+			}
+		</script>
 		<div class="prologue" data-prologue hidden aria-live="polite">
 			<p data-line>Past the end of the path, the sky keeps going.</p>
 			<p data-line>Somewhere in it floats a small island — a garden, a forge, a pond where the fish bite at dusk.</p>

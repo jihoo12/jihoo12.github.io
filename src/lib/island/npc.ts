@@ -65,7 +65,7 @@ const TIPS: { id: string; when: (f: Facts) => boolean; say: (f: Facts) => string
 	{ id: 'spire', when: (f) => f.found('sky') && !f.found('spire'), say: () => "Been up to Cloudrest? There's a second wind up there, by the temple, that goes higher still. Something's waiting at the top of the spire." },
 	{ id: 'skyfish', when: (f) => f.found('sky') && !f.hasCaught('cloudkoi'), say: () => "They say the lake on Cloudrest has fish in it that have never once seen the sea. Imagine!" },
 	{ id: 'owl', when: (f) => f.found('sky') && !f.owlMet, say: () => "Funny thing: of an evening I've seen two big round eyes under Cloudrest, right down where the rock hangs. Not a bird I know. Something lives down there!" },
-	{ id: 'islet', when: (f) => !f.found('islet'), say: () => "See that little islet out at sea? You can swim there, or glide from up high. There's a fish there you won't find anywhere else." },
+	{ id: 'islet', when: (f) => !f.found('islet'), say: () => "See that little islet out at sea? You can swim there, or glide from up high. There's a fish there you won't find anywhere else, and an old tortoise who asks the strangest questions." },
 	{ id: 'stones', when: (f) => !f.found('stones'), say: () => "There's a ring of old standing stones up in the hills. Gives me the shivers after dark." },
 	{ id: 'lighthouse', when: (f) => !f.found('lighthouse'), say: () => 'The lighthouse round the coast is lovely at night. Its beam sweeps right across the sea.' },
 	{ id: 'strawberry', when: () => true, say: () => 'Strawberries keep fruiting after you pick them. Best deal on the island, if you ask me.' },

@@ -25,6 +25,9 @@ export const SAVE_KEYS = {
 	owl: 'island-owl',
 	// Hollis's feather, picked up at the sky gate on /experimental ('1').
 	feather: 'island-feather',
+	// Parmen, the tortoise on the islet: '' (not met), 'met', or 'through' (she's knocked her way out
+	// through the screen, back to /experimental).
+	tortoise: 'island-tortoise',
 	// The grey place through the rift (/monochrome): the colour shards she's found there, and the
 	// snowflakes she's left to find her way.
 	monoShards: 'monochrome-shards',
