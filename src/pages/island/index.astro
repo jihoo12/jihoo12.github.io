@@ -30,7 +30,6 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 			<a class="pill" href="/gallery/?from=island">Gallery</a>
 			<button class="pill" type="button" data-open="bag" aria-label="Bag (I)">Bag</button>
 			<button class="pill help" type="button" data-open="help" aria-label="Help (H)">?</button>
-			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
 		</header>
 
 		<div class="banner" data-banner aria-live="polite">
@@ -196,7 +195,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 								<dt><kbd>Esc</kbd></dt><dd>Close</dd>
 							</dl>
 							<p class="touch">Tap the map or the buttons at the top to open these.</p>
-							<p>The ☀ button turns day to night and back, and some things only happen after dark.</p>
+							<p>Some things only happen after dark. To pass the time, sleep in her bed at home.</p>
 						</section>
 					</div>
 					<!-- The same in Korean, shown instead when the site's read in Korean (island/lang.ts, menu.ts). -->
@@ -292,7 +291,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 								<dt><kbd>Esc</kbd></dt><dd>닫기</dd>
 							</dl>
 							<p class="touch">지도나 위쪽 버튼을 탭하면 열려요.</p>
-							<p>☀ 버튼으로 낮과 밤을 바꿀 수 있어요. 어떤 일은 해가 진 뒤에만 일어나요.</p>
+							<p>어떤 일은 해가 진 뒤에만 일어나요. 시간을 넘기고 싶으면 집 침대에서 자 보세요.</p>
 						</section>
 					</div>
 				</div>
@@ -354,19 +353,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 <script>
 	import { startIsland } from '../../lib/island/game';
 
-	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
-	button?.addEventListener('click', () => {
-		const next = document.documentElement.dataset.time === 'night' ? 'day' : 'night';
-		document.documentElement.dataset.time = next;
-		try {
-			localStorage.setItem('time', next);
-		} catch {
-			// The choice just won't be remembered.
-		}
-		window.dispatchEvent(new Event('site-time'));
-		button.blur();
-	});
-
+	// No day-and-night button here: to pass the time, she sleeps in her bed at home (home/room.ts).
 	startIsland();
 </script>
 
@@ -396,8 +383,6 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		font: 800 15px var(--sans); box-shadow: 0 4px 0 var(--edge); cursor: pointer; text-decoration: none;
 	}
 	.pill:hover { transform: translateY(-2px); }
-	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }
-	:global([data-time='night']) .clock .moon { display: inline; }
 
 	/* A place's name fades in across the top of the screen as she arrives there. */
 	.banner {
