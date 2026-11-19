@@ -2,6 +2,7 @@
 // itself the first time she arrives.
 import { loadText, saveText } from './save';
 import { closeOnBackdrop } from '../nixkit/util';
+import { lang } from './lang';
 
 export type Tab = 'bag' | 'map' | 'fish' | 'help';
 
@@ -22,6 +23,8 @@ export function createMenu({
 	let current: Tab = 'map';
 	const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-tab]')];
 	const panels = [...document.querySelectorAll<HTMLElement>('[data-panel]')];
+	// Help is written out in each language; show the island's (lang.ts).
+	for (const el of document.querySelectorAll<HTMLElement>('[data-help-lang]')) el.hidden = el.dataset.helpLang !== lang;
 	const showTab = (tab: Tab) => {
 		current = tab;
 		for (const t of tabs) t.setAttribute('aria-selected', String(t.dataset.tab === tab));
