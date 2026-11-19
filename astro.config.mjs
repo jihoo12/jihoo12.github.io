@@ -13,7 +13,7 @@ export default defineConfig({
 		'/monochrome': '/nixchan/monochrome/',
 		'/experimental': '/nixchan/experimental/',
 		'/gallery': '/nixchan/gallery/',
-		'/skills': '/nixchan/skills/',
+		'/skills': '/nixchan/play/snowmagic/',
 		'/play/cloudhop': '/nixchan/play/cloudhop/',
 		'/cloudhop': '/nixchan/play/cloudhop/',
 		'/ko/nixchan': '/nixchan/ko/',
