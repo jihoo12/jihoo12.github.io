@@ -2,6 +2,10 @@
 
 A clean, responsive personal website and journal, built with Astro and published on GitHub Pages.
 
+[![Watch the trailer: Nixchan walks the 3D homepage, roams her island, steps through the rift and into the gallery's portals](public/trailer-poster.jpg)](https://jihoo12.github.io/trailer.mp4)
+
+A 41-second trailer, recorded from the site itself ([`public/trailer.mp4`](public/trailer.mp4)).
+
 ## Pages
 
 - **Home** — welcoming introduction, original hero artwork, and journal preview.
