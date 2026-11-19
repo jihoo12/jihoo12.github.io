@@ -25,6 +25,10 @@ const STYLE = `
 .nk-jump { display: none; position: fixed; right: 24px; bottom: 96px; width: 76px; height: 76px; border: 0; border-radius: 50%; background: var(--surface, #fff); color: var(--ink, #1c1a3e); font: 900 32px var(--sans, system-ui); box-shadow: 0 5px 0 var(--edge, #c9c6e6); touch-action: none; }
 .nk-jump:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--edge, #c9c6e6); }
 @media (pointer: coarse) { .nk-jump { display: block; } }
+.nk-actions { position: fixed; top: 64px; right: 16px; display: flex; gap: 8px; }
+.nk-action { border: 0; border-radius: 9px; padding: 7px 13px; background: var(--surface, #fff); color: var(--ink, #1c1a3e); font: 800 14px var(--sans, system-ui); box-shadow: 0 4px 0 var(--edge, #c9c6e6); cursor: pointer; }
+.nk-action:hover { transform: translateY(-2px); }
+@media (max-width: 560px) { .nk-actions { top: 104px; } }
 /* Going through a portal, everything fades to white. */
 .nk-leaving .nk-flash { opacity: 1; transition: opacity 0.4s; }
 @media (max-width: 560px) { .nk-stats { top: 62px; } .nk-stat { font-size: 13px; padding: 5px 10px; } }
@@ -46,6 +50,7 @@ export function createHud() {
 	const root = el('div', 'nk-hud', document.body);
 	const flash = el('div', 'nk-flash', root);
 	const stats = el('div', 'nk-stats', root);
+	const actions = el('div', 'nk-actions', root);
 	const banner = el('div', 'nk-banner', root);
 	banner.setAttribute('aria-live', 'polite');
 	const bannerTitle = el('p', 'nk-banner-title', banner);
@@ -85,6 +90,17 @@ export function createHud() {
 		flash() {
 			flash.classList.add('show');
 			requestAnimationFrame(() => requestAnimationFrame(() => flash.classList.remove('show')));
+		},
+		/** A button up in the top corner (Restart, say). */
+		button(label: string, onClick: () => void) {
+			const b = el('button', 'nk-action', actions);
+			b.type = 'button';
+			b.textContent = label;
+			b.addEventListener('click', () => {
+				onClick();
+				b.blur();
+			});
+			return b;
 		},
 		/** A counter in the row along the top; set its text whenever it changes. */
 		stat(text = '') {

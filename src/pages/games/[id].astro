@@ -1,38 +1,47 @@
 ---
-// Cloud Hop: an obstacle course in the sky with Nixchan, the first game made with Nixkit
-// (src/lib/nixkit). The game is src/lib/cloudhop/course.ts; the kit makes its HUD itself.
+// A page for each game in src/games/<id>/ (see CONTRIBUTING.md). Its meta.ts says what it's called
+// and who made it; its game.ts runs in the browser (lib/nixkit/runner.ts), and the kit makes the HUD.
 import BaseHead from '../../components/BaseHead.astro';
 import nixModel from '../../assets/nixchan/nixchan-3d.glb?url';
+import type { GameMeta } from '../../lib/nixkit/meta';
 
-const title = 'Cloud Hop (experimental)';
-const description = 'An obstacle course in the sky with Nixchan: hop, dodge the lava, ride the platforms and glide down to the golden arch. Made with Nixkit.';
+export function getStaticPaths() {
+	const metas = import.meta.glob<{ default: GameMeta }>('../../games/*/meta.ts', { eager: true });
+	return Object.entries(metas)
+		.map(([path, mod]) => ({ id: path.split('/').at(-2)!, meta: mod.default }))
+		.filter(({ id }) => !id.startsWith('_'))
+		.map(({ id, meta }) => ({ params: { id }, props: { meta } }));
+}
+
+const { id } = Astro.params;
+const { meta } = Astro.props;
+const title = `${meta.title} (experimental)`;
 ---
 <!doctype html>
 <html lang="en">
 	<head>
-		<BaseHead title={title} description={description} />
+		<BaseHead title={title} description={meta.description} />
 		<meta name="robots" content="noindex" />
 	</head>
-	<body class="hop">
-		<canvas class="stage" data-stage data-model={nixModel} aria-label="Nixchan on an obstacle course in the sky"></canvas>
+	<body class="play">
+		<canvas class="stage" data-stage data-model={nixModel} data-game={id} aria-label={`${meta.title}, a game with Nixchan`}></canvas>
 
 		<header class="bar">
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
-			<span class="badge">cloud hop · made with nixkit</span>
+			<span class="badge">{meta.title.toLowerCase()} · by {meta.github ? <a href={`https://github.com/${meta.github}`} target="_blank" rel="noopener noreferrer">{meta.author}</a> : meta.author}</span>
 			<span class="spacer"></span>
-			<a class="pill" href="/gallery/?from=cloudhop">Gallery</a>
-			<button class="pill" type="button" data-restart aria-label="Start over (R)">Restart</button>
+			<a class="pill" href={`/gallery/?from=${id}`}>Gallery</a>
 			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
 		</header>
 
-		<p class="keys-hint"><kbd>WASD</kbd> move · <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to look · <kbd>R</kbd> restart</p>
-		<p class="loading" data-loading>Nixchan is on her way up…</p>
-		<noscript><p class="loading">Cloud Hop needs JavaScript to run.</p></noscript>
+		<p class="keys-hint"><kbd>WASD</kbd> move · <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to look{meta.keys && ` · ${meta.keys}`}</p>
+		<p class="loading" data-loading>Nixchan is on her way…</p>
+		<noscript><p class="loading">{meta.title} needs JavaScript to run.</p></noscript>
 	</body>
 </html>
 
 <script>
-	import { startCloudHop } from '../../lib/cloudhop/course';
+	import { runGame } from '../../lib/nixkit/runner';
 
 	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
 	button?.addEventListener('click', () => {
@@ -47,13 +56,14 @@ const description = 'An obstacle course in the sky with Nixchan: hop, dodge the 
 		button.blur();
 	});
 
-	startCloudHop();
+	const id = document.querySelector<HTMLCanvasElement>('[data-stage]')?.dataset.game;
+	if (id) runGame(id);
 </script>
 
 <style>
-	:global(html:has(body.hop)), :global(body.hop) { overflow: hidden; height: 100%; }
-	:global(body.hop::before), :global(body.hop::after) { display: none; }
-	:global(body.hop) { background: var(--bg); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+	:global(html:has(body.play)), :global(body.play) { overflow: hidden; height: 100%; }
+	:global(body.play::before), :global(body.play::after) { display: none; }
+	:global(body.play) { background: var(--bg); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 	.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 	.stage:active { cursor: grabbing; }
@@ -67,6 +77,7 @@ const description = 'An obstacle course in the sky with Nixchan: hop, dodge the 
 	.bar > * { pointer-events: auto; }
 	.brand { font-family: var(--display); font-size: 28px; line-height: 1; color: var(--ink); }
 	.badge { background: var(--star); color: #1c1a3e; font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px; transform: rotate(-3deg); white-space: nowrap; }
+	.badge a { color: inherit; }
 	.spacer { flex: 1; }
 	.pill {
 		border: 0; border-radius: 9px; padding: 8px 13px; background: var(--surface); color: var(--ink);

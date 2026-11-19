@@ -4,32 +4,28 @@ A small kit for making 3D games with Nixchan in them. It came out of Nixchan's i
 the island and every Nixkit game share the same Nixchan, the same way of moving her about, the
 same camera and controls, and the same toon look.
 
-The first game made with it is **Cloud Hop** (`/cloudhop`, `src/lib/cloudhop/course.ts`), an
+The first game made with it is **Cloud Hop** (`/games/cloudhop/`, `src/games/cloudhop/`), an
 obstacle course in the sky. The **gallery** (`/gallery`, `src/lib/gallery/gallery.ts`) is made
 with it too: a plaza where Nixchan walks among portals to the games.
 
-## Adding a game to the gallery
+## Adding a game
 
-Add a line to `PORTALS` in `src/lib/gallery/gallery.ts`:
-
-```ts
-{ id: 'mygame', title: 'My Game', note: 'What it is, in a few words', href: '/mygame/', colors: ['#ff8ad8', '#5fd3ff'] },
-```
-
-and have the game link back with `/gallery/?from=mygame`, so she steps out of its portal. A portal
-without `href` stays dim (the "Coming soon" one).
+Games live in `src/games/<id>/`: a `meta.ts` (its name, who made it, its portal's colours) and a
+`game.ts` (the game). Each one gets a page at `/games/<id>/` and a portal in the gallery, both made
+from `meta.ts`. `CONTRIBUTING.md` says how, and what a game may and mayn't do;
+`src/games/_template/` is where to start.
 
 ## Making a game
 
-A game is a page with a canvas and one script:
+A game's `game.ts` is given `createGame`, which sets up everything round the page's canvas:
 
 ```ts
 import * as THREE from 'three';
-import { createGame } from '../nixkit/game';
+import type { GameContext } from '../../lib/nixkit/meta';
 
-const canvas = document.querySelector<HTMLCanvasElement>('[data-stage]')!;
-const game = createGame({ canvas, modelUrl: canvas.dataset.model!, spawn: { pos: new THREE.Vector3(0, 0, 0), heading: 0 } });
-if (game) {
+export default function start({ createGame, store }: GameContext) {
+	const game = createGame({ spawn: { pos: new THREE.Vector3(0, 0, 0), heading: 0 } });
+	if (!game) return;
 	const { parts, hud } = game;
 	parts.add({ at: [0, -0.5, 0], size: [10, 1, 10] });                                   // somewhere to stand
 	parts.add({ at: [0, -0.5, 9], size: [3, 1, 3], move: { by: [6, 0, 0], period: 4 } }); // a moving platform
@@ -43,9 +39,20 @@ if (game) {
 }
 ```
 
-The page passes Nixchan's model in (`import nixModel from '../../assets/nixchan/nixchan-3d.glb?url'`
-and `data-model={nixModel}` on the canvas). The HUD (touch stick, jump button, banners, toasts and
-counters) makes its own elements.
+`createGame` also takes `canGlide` and `canDash` (both off unless given) and `onKey` (keys that
+aren't for moving: `e` waves and `q` dashes unless the game uses them). What it gives back:
+
+| | |
+| --- | --- |
+| `parts` | the world: parts, pickups, checkpoints (below) |
+| `hud` | `stat(text)` a counter along the top, `banner(title, note)`, `toast(text)`, `button(label, fn)`, `flash()` |
+| `player` | Nixchan: `pos`, `vel`, `grounded`, `airborne`, `launch(speed)`, `respawn()` |
+| `onUpdate(fn)` | `fn(dt, time)` every frame, after the parts and she have moved |
+| `teleport(pos, heading)` | puts her somewhere, and makes it where she comes back to |
+| `scene`, `camera`, `toon` | for adding anything else three.js can draw (`toon` makes a material in the kit's shading) |
+| `loaded`, `start()`, `paused` | settles once she's here; starts the loop; stops everything |
+
+`store.get(key)` and `store.set(key, value)` remember things for the game between visits.
 
 ## Parts
 
@@ -79,6 +86,7 @@ The parts are one world; the island's terrain, rocks, trees and sky island are a
 ## What's in the kit
 
 - `game.ts`: `createGame`, which sets up the renderer, sky and light, Nixchan, the camera, controls, HUD and parts, and runs the loop
+- `meta.ts`, `runner.ts`: what a game in `src/games/` is, its `store`, and what runs it on its page
 - `player.ts`: Nixchan and how she moves: walk, run, jump, swim, glide, dash
 - `camera.ts`: the camera that follows her
 - `controls.ts`: keyboard, mouse and touch

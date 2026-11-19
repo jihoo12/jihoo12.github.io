@@ -1,23 +1,34 @@
 // The gallery: a round plaza floating in the sky, where Nixchan walks about among portals to the
-// games made for her. Each portal is one line in PORTALS; a game made with Nixkit gets one here.
+// games made for her. The island has one, and so does every game in src/games/<id>/ (from its
+// meta.ts, in the order they were added), so a new game turns up here by itself. Last comes one
+// to GitHub, for how to make the next.
 //
 // Back from a game, the page is asked for with ?from=<id>, and she steps out of that game's portal.
 import * as THREE from 'three';
 import { createGame } from '../nixkit/game';
 import { addPortal, type Portal, type PortalSpec } from '../nixkit/portal';
+import type { GameMeta } from '../nixkit/meta';
 import { cloud, cloudSea } from '../nixkit/scenery';
+
+const GAMES = Object.entries(import.meta.glob<{ default: GameMeta }>('../../games/*/meta.ts', { eager: true }))
+	.map(([path, mod]) => ({ id: path.split('/').at(-2)!, meta: mod.default }))
+	.filter(({ id }) => !id.startsWith('_'))
+	.sort((a, b) => a.meta.added.localeCompare(b.meta.added) || a.id.localeCompare(b.id));
 
 /** The portals, left to right round the far side of the plaza. */
 const PORTALS: (Omit<PortalSpec, 'at' | 'facing'> & { id: string })[] = [
 	{ id: 'island', title: "Nixchan's Island", note: 'Roam, fish, garden and build', href: '/island/', colors: ['#5fd17a', '#5fb8ff'] },
-	{ id: 'cloudhop', title: 'Cloud Hop', note: 'An obstacle course in the sky', href: '/cloudhop/', colors: ['#ff8ad8', '#ffd84d'] },
-	{ id: 'soon', title: 'Coming soon', note: 'The next game goes here' },
+	...GAMES.map(({ id, meta }) => ({ id, title: meta.title, note: `${meta.note} · by ${meta.author}`, href: `/games/${id}/`, colors: meta.colors })),
+	// The way to make one: how to add a game, on GitHub.
+	{ id: 'make', title: 'Make your own', note: 'Add a game with a pull request', href: 'https://github.com/jihoo12/jihoo12.github.io/blob/main/CONTRIBUTING.md', colors: ['#c8d3f5', '#8f7bff'] },
 ];
 
-/** How far out from the middle the portals stand, and how far round they spread. */
-const RING = 11;
-const SPREAD = 1.15;
-const PLAZA = 17;
+/** How far apart the portals stand round their ring, and how far round the far side they spread
+ * at most: the more there are, the further out the ring (and the bigger the plaza). */
+const APART = 5;
+const SPREAD = 1.2;
+const RING = Math.max(11, (APART * (PORTALS.length - 1)) / (2 * SPREAD));
+const PLAZA = RING + 6;
 
 export function startGallery() {
 	const canvas = document.querySelector<HTMLCanvasElement>('[data-stage]');
@@ -55,9 +66,8 @@ export function startGallery() {
 
 	const portals = new Map<string, Portal>();
 	PORTALS.forEach(({ id, ...spec }, i) => {
-		const t = PORTALS.length === 1 ? 0 : (i / (PORTALS.length - 1) - 0.5) * 2;
 		// From her side, left to right: so round from +x to -x across the far side.
-		const a = -t * SPREAD;
+		const a = ((PORTALS.length - 1) / 2 - i) * (APART / RING);
 		const at: [number, number, number] = [Math.sin(a) * RING, 0, Math.cos(a) * RING];
 		portals.set(id, addPortal(game, { ...spec, at, facing: a + Math.PI }));
 	});

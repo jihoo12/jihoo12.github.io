@@ -15,6 +15,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # all of it, so the games check can see what the pull request changes
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -22,6 +25,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Check games
+        run: node tools/check-games.mjs --changed origin/${{ github.base_ref || 'main' }}
       - name: Build
         run: npm run build
         env:

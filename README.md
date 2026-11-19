@@ -11,6 +11,8 @@ A clean, responsive personal website and journal, built with Astro and published
 - **Experimental** (`/experimental/`) — a 3D Nixchan.
 - **Island** (`/island/`) — Nixchan's island, a small three.js game (see below).
 - **Monochrome** (`/monochrome/`) — the grey place through the rift at the island's standing stones (see below).
+- **Gallery** (`/gallery/`) — a plaza where Nixchan walks into portals to her games.
+- **Games** (`/games/<id>/`) — games made with Nixkit (`src/lib/nixkit/`), one folder each in `src/games/`. Anyone can add one: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Previous blog posts have been removed as part of this redesign. New Markdown posts can be added under `src/content/blog/`, using the existing Astro content collection.
 

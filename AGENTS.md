@@ -20,3 +20,9 @@ Consult these guides before working on related tasks:
 - [Adding or managing content](https://docs.astro.build/en/guides/content-collections/)
 - [Adding styles or using Tailwind](https://docs.astro.build/en/guides/styling/)
 - [Supporting multiple languages](https://docs.astro.build/en/guides/internationalization/)
+
+## Making a game
+
+Games with Nixchan live in `src/games/<id>/`, one folder each, made with Nixkit (`src/lib/nixkit/`).
+To add one, follow `CONTRIBUTING.md`: copy `src/games/_template/`, change only files in that
+folder, and run `npm run check:games` and `npm run build` before finishing.
