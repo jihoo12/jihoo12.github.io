@@ -2,29 +2,15 @@
 // of cells so each frame only looks at the few nearby. With the terrain, the pier and the sky island
 // they answer the one question movement asks: how high is what she'd stand on here? Under the sky
 // island that depends on how high she is, so movement asks it with her height.
+import { within, type Obstacle, type World } from '../nixkit/world';
 import { blockGround } from './blocks';
 import { beltGround } from './power';
-import { STAND, skyCeiling, skyGround } from './skyisle';
-import { deckAt, terrainAt } from './terrain';
+import { skyCeiling, skyGround, skyWaterDepth, windLift } from './skyisle';
+import { SWIM_IN, SWIM_OUT, WORLD_EDGE, deckAt, terrainAt } from './terrain';
 
-/** A trunk she walks round, a rock she can climb onto (a dome in the heightfield), or a flat-topped
- * plinth she can step or jump up onto (a pad). A tree's trunk stops at `top`, and its leaves are a
- * ball (`crown`) that she glides round rather than through, and that the camera won't sit inside. */
-export interface Feature {
-	x: number;
-	z: number;
-	r: number;
-	dome?: { base: number; top: number };
-	pad?: number;
-	top?: number;
-	crown?: { x: number; y: number; z: number; r: number };
-	/** For something up on the sky island: the height it stands at. It's only there for her when
-	 * she's up there too, and not for anything on the ground far below it. */
-	floor?: number;
-}
-
-/** Whether a feature is there at all for someone at height `y` (unknown: down on the ground). */
-export const within = (f: Feature, y: number | undefined) => f.floor === undefined || (y !== undefined && y >= f.floor - STAND);
+/** A trunk, rock, plinth or tree: what Nixkit calls an obstacle (nixkit/world.ts). */
+export type Feature = Obstacle;
+export { within };
 
 const CELL = 4;
 const cells = new Map<number, Feature[]>();
@@ -87,3 +73,15 @@ export function groundAt(x: number, z: number, y?: number) {
 /** How high she can be at (x, z) before her head meets something over it: the sky island's rock,
  * for anyone under it, and otherwise nothing. */
 export const ceilingAt = (x: number, z: number, y: number) => skyCeiling(x, z, y);
+
+/** The island as a Nixkit world, for Nixchan and the camera to move about in. */
+export const islandWorld: World = {
+	groundAt,
+	ceilingAt,
+	nearby,
+	inside: (x, z) => Math.hypot(x, z) <= WORLD_EDGE,
+	sea: { swimIn: SWIM_IN, swimOut: SWIM_OUT },
+	wadeDepth: skyWaterDepth,
+	windLift,
+	fallOut: -4,
+};

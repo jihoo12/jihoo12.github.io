@@ -29,6 +29,6 @@ export const ogLocale = (lang: Lang) => (lang === 'ko' ? 'ko_KR' : 'en_US');
 export const dateLabel = (lang: Lang) => new Intl.DateTimeFormat(lang === 'ko' ? 'ko-KR' : 'en-US', { dateStyle: 'medium' });
 
 export const nav = {
-	en: { home: 'Home', projects: 'Projects', journal: 'Journal', comics: 'Comics', about: 'About', main: 'Main navigation', homeLabel: 'Jihoo home', clock: 'Switch between day and night', switchTo: '한국어', switchLabel: '한국어로 보기', threeD: '3D', threeDLabel: 'See the 3D home page' },
-	ko: { home: '홈', projects: '프로젝트', journal: '저널', comics: '만화', about: '소개', main: '주 메뉴', homeLabel: 'Jihoo 홈', clock: '낮과 밤 바꾸기', switchTo: 'EN', switchLabel: 'View in English', threeD: '3D', threeDLabel: '3D 홈 페이지 보기' },
+	en: { home: 'Home', projects: 'Projects', journal: 'Journal', comics: 'Comics', gallery: 'Gallery', about: 'About', main: 'Main navigation', homeLabel: 'Jihoo home', clock: 'Switch between day and night', switchTo: '한국어', switchLabel: '한국어로 보기', threeD: '3D', threeDLabel: 'See the 3D home page' },
+	ko: { home: '홈', projects: '프로젝트', journal: '저널', comics: '만화', gallery: '갤러리', about: '소개', main: '주 메뉴', homeLabel: 'Jihoo 홈', clock: '낮과 밤 바꾸기', switchTo: 'EN', switchLabel: 'View in English', threeD: '3D', threeDLabel: '3D 홈 페이지 보기' },
 } satisfies Record<Lang, Record<string, string>>;

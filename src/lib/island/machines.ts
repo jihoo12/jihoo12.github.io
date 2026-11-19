@@ -13,10 +13,10 @@ import * as THREE from 'three';
 import type { Feature } from './features';
 import type { NixFigure } from '../experimental/nix-figure';
 import type { Crop, GardenMachines, createFarm } from './farm';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Inventory } from './inventory';
 import { loadJSON, saveJSON } from './save';
-import { damp } from './util';
+import { damp } from '../nixkit/util';
 
 type Garden = ReturnType<typeof createFarm>['garden'];
 

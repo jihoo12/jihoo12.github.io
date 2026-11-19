@@ -27,6 +27,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 			<a class="brand" href="/">jihoo<span class="period">.</span></a>
 			<span class="badge">island · experimental</span>
 			<span class="spacer"></span>
+			<a class="pill" href="/gallery/?from=island">Gallery</a>
 			<button class="pill" type="button" data-open="bag" aria-label="Bag (I)">Bag</button>
 			<button class="pill help" type="button" data-open="help" aria-label="Help (H)">?</button>
 			<button class="pill clock" type="button" data-clock aria-label="Switch between day and night"><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>
@@ -294,7 +295,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 	.spacer { flex: 1; }
 	.pill {
 		border: 0; border-radius: 9px; padding: 8px 15px; background: var(--surface); color: var(--ink);
-		font: 800 15px var(--sans); box-shadow: 0 4px 0 var(--edge); cursor: pointer;
+		font: 800 15px var(--sans); box-shadow: 0 4px 0 var(--edge); cursor: pointer; text-decoration: none;
 	}
 	.pill:hover { transform: translateY(-2px); }
 	.clock .moon, :global([data-time='night']) .clock .sun { display: none; }

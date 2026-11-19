@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { groundAt } from './features';
 import { CROWN, MAIN, TEMPLE, WINDSPOUT } from './skyisle';
 import { COAST, H, HALF, ISLET, N, PIER, PIER_ANGLE, PIER_DIR, STEP, islandHeight, mainHeight, slopeUp, terrainAt } from './terrain';
-import { TAU, rng } from './util';
+import { TAU, rng } from '../nixkit/util';
 
 export interface Place {
 	id: string;

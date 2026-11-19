@@ -13,12 +13,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { NixClip, NixFigure } from '../experimental/nix-figure';
 import type { Inventory } from './inventory';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Toon } from './look';
 import { loadJSON, saveJSON } from './save';
 import { isNight } from './theme';
 import { thumbnail } from './thumbnail';
-import { clamp, closeOnBackdrop, damp } from './util';
+import { clamp, closeOnBackdrop, damp } from '../nixkit/util';
 
 export interface Crop {
 	id: string;

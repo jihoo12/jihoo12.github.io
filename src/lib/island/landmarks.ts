@@ -9,7 +9,7 @@ import { glowTexture, type Toon } from './look';
 import { loadJSON } from './save';
 import { ISLET, PIER, PIER_ANGLE, terrainAt } from './terrain';
 import type { Theme } from './theme';
-import { TAU, damp } from './util';
+import { TAU, damp } from '../nixkit/util';
 
 /** Everything a landmark gets to build itself with. */
 interface Kit {

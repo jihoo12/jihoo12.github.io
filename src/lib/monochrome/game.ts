@@ -11,11 +11,11 @@
 // The layout keeps its turn as she goes, so the light and the camera never jump.
 import * as THREE from 'three';
 import { buildNixFigure, snowflakeTexture, type NixClip } from '../experimental/nix-figure';
-import { createControls, type Orbit } from '../island/controls';
-import { createInteractions } from '../island/interact';
-import { makeToon } from '../island/look';
+import { createControls, type Orbit } from '../nixkit/controls';
+import { createInteractions } from '../nixkit/interact';
+import { makeToon } from '../nixkit/look';
 import { loadJSON, loadText, saveJSON, saveText } from '../island/save';
-import { clamp, damp, noise } from '../island/util';
+import { clamp, damp, noise } from '../nixkit/util';
 import { loadBlocks, type CellModel, type Solid, type Spot } from './blocks';
 import { CELL, DIRS, HALF, REGION_NAMES, SHARDS, START, cellById, place, turn, type Cell, type Placed, type ShardId, type Side } from './world';
 

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { glowTexture, type Toon } from './look';
 import type { Theme } from './theme';
-import { damp } from './util';
+import { damp } from '../nixkit/util';
 
 export function createLantern(ctx: { scene: THREE.Scene; toon: Toon; theme: Theme; pos: THREE.Vector3; turn: () => number }) {
 	const group = new THREE.Group();

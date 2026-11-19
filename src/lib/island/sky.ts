@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import type { Toon } from './look';
 import type { Theme } from './theme';
-import { TAU, rng } from './util';
+import { TAU, rng } from '../nixkit/util';
 
 export function createSky(scene: THREE.Scene, toon: Toon, theme: Theme) {
 	const fog = new THREE.Fog('#ffffff', 110, 640);

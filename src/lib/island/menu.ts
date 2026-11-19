@@ -1,7 +1,7 @@
 // The menu over the game: her bag, the map, the fish book and help, a tab each. Help opens by
 // itself the first time she arrives.
 import { loadText, saveText } from './save';
-import { closeOnBackdrop } from './util';
+import { closeOnBackdrop } from '../nixkit/util';
 
 export type Tab = 'bag' | 'map' | 'fish' | 'help';
 

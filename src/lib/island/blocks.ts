@@ -16,7 +16,7 @@
 // the pointer off the island, it's the cell in front of her, as before.
 import * as THREE from 'three';
 import type { NixFigure } from '../experimental/nix-figure';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Inventory } from './inventory';
 import type { Toon } from './look';
 import { loadJSON, saveJSON } from './save';

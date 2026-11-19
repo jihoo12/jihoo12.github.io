@@ -6,10 +6,10 @@ import * as THREE from 'three';
 import { createRift } from '../monochrome/rift';
 import { SHARDS } from '../monochrome/world';
 import { groundAt } from './features';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import { loadJSON } from './save';
 import type { Theme } from './theme';
-import { damp } from './util';
+import { damp } from '../nixkit/util';
 
 const THROUGH = '/monochrome/';
 /** How far in from the altar the rift hangs, towards the middle of the island. */

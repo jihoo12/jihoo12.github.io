@@ -1,12 +1,14 @@
-// The camera swings round behind her, and never dips under the ground or the sea. Under the
+// The camera swings round behind her, and never dips under the ground (or the sea, if there is one). Under the
 // glider it hangs back a little, to show more of where she's heading. Given a `chat` (someone
 // she's talking to), it swings round to the side and closes in, to show the two of them.
 import * as THREE from 'three';
 import type { Orbit } from './controls';
-import { groundAt, nearby, type Feature } from './features';
 import { damp } from './util';
+import type { Obstacle, World } from './world';
 
-export function createFollowCamera(camera: THREE.PerspectiveCamera, orbit: Orbit, start: THREE.Vector3) {
+export function createFollowCamera(camera: THREE.PerspectiveCamera, orbit: Orbit, start: THREE.Vector3, world: World) {
+	const { groundAt, nearby } = world;
+	const seaLevel = world.sea ? 0.6 : -Infinity;
 	const camLook = start.clone();
 	camLook.y += 1.2;
 	const camPos = new THREE.Vector3();
@@ -30,7 +32,7 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, orbit: Orbit
 			// rather than sitting inside them, and eases back out once they're past.
 			const wantDistance = orbit.distance * (1 + her.gliderOpen * 0.35);
 			let clear = wantDistance;
-			const checked = new Set<Feature>();
+			const checked = new Set<Obstacle>();
 			for (let t = 0; t <= wantDistance + 2; t += 1) {
 				for (const f of nearby(camLook.x + orbitDir.x * t, camLook.z + orbitDir.z * t)) {
 					const c = f.crown;
@@ -50,9 +52,9 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, orbit: Orbit
 			}
 			camReach = clear < camReach ? damp(camReach, clear, 7, dt) : damp(camReach, clear, 1.8, dt);
 			camPos.copy(camLook).addScaledVector(orbitDir, Math.max(Math.min(camReach, wantDistance), 1.5));
-			// Up on the sky island it keeps above the island's grass too (asked from her height, since
-			// the camera may have dipped below the grass it's being kept above).
-			camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z, Math.max(camPos.y, camLook.y)) + 0.7, 0.6);
+			// Up on floating ground it keeps above that too (asked from her height, since the camera may
+			// have dipped below the ground it's being kept above).
+			camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z, Math.max(camPos.y, camLook.y)) + 0.7, seaLevel);
 			camera.position.copy(camPos);
 			camera.lookAt(camLook);
 		},

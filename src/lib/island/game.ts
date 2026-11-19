@@ -27,15 +27,15 @@
 //   save               every key the island keeps in localStorage
 import * as THREE from 'three';
 import { blockGround, createBlocks } from './blocks';
-import { createFollowCamera } from './camera';
-import { createControls, type Orbit } from './controls';
+import { createFollowCamera } from '../nixkit/camera';
+import { createControls, type Orbit } from '../nixkit/controls';
 import { createExplore } from './explore';
 import { createFarm } from './farm';
-import { addFeature, groundAt, removeFeature, roomy } from './features';
+import { addFeature, groundAt, islandWorld, removeFeature, roomy } from './features';
 import { ASHEN_ORE, ORE, createForge, type Upgrade } from './forge';
 import { MAX_SPRINKLERS, createMachines } from './machines';
 import { createFishing, SPECIES } from './fishing';
-import { createInteractions } from './interact';
+import { createInteractions } from '../nixkit/interact';
 import { createInventory } from './inventory';
 import { buildLandmarks, buildPier } from './landmarks';
 import { planIsland } from './layout';
@@ -46,7 +46,7 @@ import { canDash, createOwl } from './owl';
 import { createFourthWall } from './fourthwall';
 import { createHouse } from './house';
 import { createTortoise } from './tortoise';
-import { createPlayer } from './player';
+import { createPlayer } from '../nixkit/player';
 import { MAX_BELTS, MAX_WINDMILLS, REACH, beltCarry, createPower } from './power';
 import { createLantern } from './lantern';
 import { createIslandRift, riftArrival } from './rift';
@@ -176,6 +176,7 @@ export async function startIsland() {
 	});
 
 	const player = createPlayer({
+		world: islandWorld,
 		scene,
 		toon,
 		modelUrl: canvas.dataset.model ?? '',
@@ -224,7 +225,7 @@ export async function startIsland() {
 	);
 
 	const landmarks = buildLandmarks(scene, toon, theme, layout, pos);
-	const follow = createFollowCamera(camera, orbit, layout.START);
+	const follow = createFollowCamera(camera, orbit, layout.START, islandWorld);
 	const towardCamera = () => Math.atan2(camera.position.x - pos.x, camera.position.z - pos.z);
 	const talk = createTalk(camera);
 

@@ -19,6 +19,8 @@ const links = [
 	{ label: t.comics, href: '/comics/', active: current.startsWith('/comics'), drop: 30 },
 	{ label: t.about, href: '/about/', active: current.startsWith('/about'), drop: 36 },
 ].map((link) => ({ ...link, href: localize(link.href, lang) }));
+// The gallery is one page in 3D, the same in either language.
+links.push({ label: t.gallery, href: '/gallery/', active: current.startsWith('/gallery'), drop: 24 });
 ---
 <header class="signs wrap">
 	<a class="sign brand" style="--drop:30px" href={localize('/', lang)} aria-label={t.homeLabel}><Image class="brand-mark" src={face} alt="" width={64} height={64} loading="eager" /><span class="brand-word">jihoo<span class="period">.</span></span></a>
@@ -104,7 +106,7 @@ const links = [
 			content: ''; position: absolute; z-index: 1; top: 0; left: -6px; right: -6px; height: 8px;
 			border-radius: 4px; background: var(--plank); box-shadow: 0 8px 14px -8px var(--shadow);
 		}
-		nav .sign { --hang: calc(var(--drop) / 2 + 8px); flex: 1 1 0; justify-content: center; min-width: 0; padding: 8px 4px; font-size: 14px; }
+		nav .sign { --hang: calc(var(--drop) / 2 + 8px); flex: 1 1 0; justify-content: center; min-width: 0; padding: 8px 2px; font-size: 13px; }
 	}
 	@media (prefers-reduced-motion: reduce) { .sign:hover { animation: none; } }
 </style>

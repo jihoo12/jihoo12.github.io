@@ -5,7 +5,7 @@ import { addFeature, roomy } from './features';
 import type { Layout } from './layout';
 import { colored, palmGeometry, pineGeometry, rockGeometry, roundTreeGeometry, type Toon } from './look';
 import { ISLET, nearPier, slopeUp, terrainAt } from './terrain';
-import { TAU, fbm, rng } from './util';
+import { TAU, fbm, rng } from '../nixkit/util';
 
 export function scatter(scene: THREE.Scene, toon: Toon, layout: Layout) {
 	const { clearOfPlaces, clearOfStart } = layout;

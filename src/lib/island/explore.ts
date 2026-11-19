@@ -6,7 +6,7 @@ import type { Place } from './layout';
 import { loadJSON, loadText, saveJSON, saveText } from './save';
 import { skyTopAt, skyWaterAt } from './skyisle';
 import { WORLD_EDGE, deckAt, terrainAt } from './terrain';
-import { clamp } from './util';
+import { clamp } from '../nixkit/util';
 
 export interface ExploreUi {
 	banner: HTMLElement | null;

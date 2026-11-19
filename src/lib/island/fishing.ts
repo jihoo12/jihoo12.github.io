@@ -9,7 +9,7 @@ import type { NixClip, NixFigure } from '../experimental/nix-figure';
 import type { Toon } from './look';
 import { loadJSON, saveJSON } from './save';
 import { thumbnail } from './thumbnail';
-import { clamp, damp } from './util';
+import { clamp, damp } from '../nixkit/util';
 
 type Shape = 'Sardine' | 'Bream' | 'Puffer' | 'Moonfish';
 export interface Species {

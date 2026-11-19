@@ -5,7 +5,7 @@
 // can turn to night, and take on a little colour (each region its own) as the shards come back.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { Toon } from '../island/look';
+import type { Toon } from '../nixkit/look';
 import { createRift, riftMaterial } from './rift';
 import { CELL, HALF, SHARDS, turn, type Cell, type Prop, type Region } from './world';
 

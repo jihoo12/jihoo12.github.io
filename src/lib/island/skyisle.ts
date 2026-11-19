@@ -19,12 +19,12 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Feature } from './features';
 import type { Inventory } from './inventory';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import { colored, glowTexture, type Toon } from './look';
 import { loadJSON, saveJSON } from './save';
 import { terrainAt } from './terrain';
 import type { Theme } from './theme';
-import { TAU, clamp, damp, fbm, noise, rng, smoothstep } from './util';
+import { TAU, clamp, damp, fbm, noise, rng, smoothstep } from '../nixkit/util';
 
 /** One floating island: its middle, the height of its grass at the edge, its radius (give or take),
  * how deep its rock hangs below, how much its grass domes up in the middle, and a seed for its shape. */

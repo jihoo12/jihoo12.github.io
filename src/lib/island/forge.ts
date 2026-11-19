@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { NixClip, NixFigure } from '../experimental/nix-figure';
 import type { Feature } from './features';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Inventory } from './inventory';
 import type { Place } from './layout';
 import { glowTexture, type Toon } from './look';
@@ -25,7 +25,7 @@ import { loadJSON, saveJSON } from './save';
 import { slopeUp, terrainAt } from './terrain';
 import type { Theme } from './theme';
 import { thumbnail } from './thumbnail';
-import { TAU, closeOnBackdrop, damp, rng } from './util';
+import { TAU, closeOnBackdrop, damp, rng } from '../nixkit/util';
 
 export interface ForgeContext {
 	renderer: THREE.WebGLRenderer;

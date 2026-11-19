@@ -7,8 +7,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildNixFigure } from '../experimental/nix-figure';
-import { makeToon } from '../island/look';
-import { clamp, damp } from '../island/util';
+import { makeToon } from '../nixkit/look';
+import { clamp, damp } from '../nixkit/util';
 
 // The sizes in tools/home-room/build.py.
 const W = 9;

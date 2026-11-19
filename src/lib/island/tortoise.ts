@@ -6,12 +6,12 @@
 // through. The model and his clips (Idle, Talk, Nod) are made in Blender (tools/island-tortoise).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Toon } from './look';
 import { loadText, saveText } from './save';
 import { ISLET } from './terrain';
 import type { Choice, Speaker, Talk } from './talk';
-import { clamp, damp } from './util';
+import { clamp, damp } from '../nixkit/util';
 
 type Clip = 'Idle' | 'Talk' | 'Nod';
 

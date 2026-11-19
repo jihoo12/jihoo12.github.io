@@ -2,7 +2,7 @@
 // question (how high is the ground here?) and need no physics engine. Also the pier, which is the
 // one bit of ground that isn't part of the heightfield.
 import * as THREE from 'three';
-import { fbm, noise, smoothstep } from './util';
+import { fbm, noise, smoothstep } from '../nixkit/util';
 
 export const R = 120; // the island's radius, give or take its ragged coast
 export const SIZE = 420; // the terrain mesh covers SIZE × SIZE, centred on the origin

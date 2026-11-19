@@ -14,12 +14,12 @@ import type { NixFigure } from '../experimental/nix-figure';
 import { LOGOS, LOGO_COLOURS, drawLogo } from '../experimental/logos';
 import { COLOURS, HATS, loadOutfit, saveOutfit, wear, type Outfit } from '../experimental/outfit';
 import type { Feature } from './features';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Place } from './layout';
 import type { Toon } from './look';
 import { loadText, saveText } from './save';
 import { slopeUp, terrainAt } from './terrain';
-import { TAU, damp, rng } from './util';
+import { TAU, damp, rng } from '../nixkit/util';
 
 // The sizes in tools/island-house/build.py.
 const FLOOR_TOP = 0.3;

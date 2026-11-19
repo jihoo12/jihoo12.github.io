@@ -1,16 +1,15 @@
 // Nixchan herself: her figure and glider, and how she moves. She walks, runs and wades on the
-// ground, swims where it gets deep, jumps, and opens her glider in mid-air, which the Windspout's
-// wind carries up towards the sky island. Everything she might be
-// busy at (fishing, gardening, chatting) is outside; `hold` says whether one of them is keeping her
-// on the spot, and `clip` whether one wants her doing something in particular.
+// ground, swims where it gets deep, jumps, and opens her glider in mid-air, which wind (where the
+// world has any) carries up. Where she can go is the world's say (nixkit/world.ts): she only ever
+// asks it how high the ground is, how low the ceiling, and what's standing near. Everything she
+// might be busy at (fishing, gardening, chatting) is outside; `hold` says whether one of them is
+// keeping her on the spot, and `clip` whether one wants her doing something in particular.
 import * as THREE from 'three';
 import { buildNixFigure, type NixClip } from '../experimental/nix-figure';
 import type { Controls, Orbit } from './controls';
-import { ceilingAt, groundAt, nearby, within } from './features';
 import type { Toon } from './look';
-import { skyWaterDepth, windLift } from './skyisle';
-import { SWIM_IN, SWIM_OUT, WORLD_EDGE } from './terrain';
 import { clamp, damp } from './util';
+import { within, type World } from './world';
 
 const WALK = 3;
 const RUN = 7.5;
@@ -35,6 +34,8 @@ const BODY_MID = 0.8;
 const HEAD = 1.7;
 
 export interface PlayerContext {
+	/** Where she is, and what's round her. */
+	world: World;
 	scene: THREE.Scene;
 	toon: Toon;
 	modelUrl: string;
@@ -42,7 +43,8 @@ export interface PlayerContext {
 	heading: number;
 	controls: Controls;
 	orbit: Orbit;
-	ripple: (x: number, z: number, size: number) => void;
+	/** Rings on the water where she's swimming or wading (a world without water needn't say). */
+	ripple?: (x: number, z: number, size: number) => void;
 	/** If something's keeping her on the spot, the way it has her face; otherwise null. Told whether
 	 * she's trying to move (or jump), which may be enough to end it. */
 	hold: (tryingToMove: boolean) => number | null;
@@ -52,6 +54,10 @@ export interface PlayerContext {
 	carrying?: () => boolean;
 	/** How her glider flies: its speed and how fast it sinks (better once upgraded at the forge). */
 	glider?: () => { speed: number; sink: number };
+	/** Whether she can open her glider at all (she always can, unless this says otherwise). */
+	canGlide?: () => boolean;
+	/** Where she's put back after falling out of the world (where she started, without it). */
+	respawnAt?: () => { pos: THREE.Vector3; heading?: number };
 	/** Whether she knows how to dash (Hollis teaches her). */
 	canDash?: () => boolean;
 	/** How fast what she's standing on (at x, z, at height y) is moving, if it is: a belt with power. */
@@ -59,7 +65,14 @@ export interface PlayerContext {
 }
 
 export function createPlayer(ctx: PlayerContext) {
-	const { controls } = ctx;
+	const { controls, world } = ctx;
+	const { groundAt, ceilingAt, nearby } = world;
+	const sea = world.sea;
+	const swimIn = sea?.swimIn ?? -Infinity;
+	const swimOut = sea?.swimOut ?? -Infinity;
+	const wadeDepth = world.wadeDepth ?? (() => 0);
+	const windLift = world.windLift ?? (() => 0);
+	const ripple = ctx.ripple ?? (() => {});
 	const root = new THREE.Group();
 	const figure = buildNixFigure(ctx.modelUrl);
 	root.add(figure.group);
@@ -142,9 +155,12 @@ export function createPlayer(ctx: PlayerContext) {
 		p.m.position.set(pos.x - dashDir.x * 0.4 + (Math.random() - 0.5) * 0.3, pos.y + 0.5 + Math.random() * 0.6, pos.z - dashDir.z * 0.4 + (Math.random() - 0.5) * 0.3);
 	};
 
-	/** Back to the beach, should she ever fall out of the world. */
+	/** Back to the beach (or wherever she's to go back to), should she ever fall out of the world. */
 	const respawn = () => {
-		pos.copy(ctx.start);
+		const at = ctx.respawnAt?.() ?? { pos: ctx.start };
+		pos.copy(at.pos);
+		if (at.heading !== undefined) heading = turn = at.heading;
+		dashing = 0;
 		vel.set(0, 0, 0);
 		vy = 0;
 		grounded = true;
@@ -155,13 +171,13 @@ export function createPlayer(ctx: PlayerContext) {
 	/** Whether she can move her feet from where she is to (x, z). */
 	const canGo = (x: number, z: number) => {
 		const g = groundAt(x, z, pos.y);
-		if (Math.hypot(x, z) > WORLD_EDGE) return false;
-		// Nor into the side of the sky island, flying at it from below its grass.
+		if (!world.inside(x, z)) return false;
+		// Nor into the side of something floating overhead, coming at it from below.
 		if (ceilingAt(x, z, pos.y) < pos.y + HEAD) return false;
-		// Nor any deeper than her knees into the lake up there (she can always wade back out).
+		// Nor any deeper than her knees into a lake up high (she can always wade back out).
 		if (grounded) {
-			const deep = skyWaterDepth(x, z, pos.y);
-			if (deep > 0.45 && deep > skyWaterDepth(pos.x, pos.z, pos.y) + 1e-3) return false;
+			const deep = wadeDepth(x, z, pos.y);
+			if (deep > 0.45 && deep > wadeDepth(pos.x, pos.z, pos.y) + 1e-3) return false;
 		}
 		// Swimming, she goes round the pier and anything else standing up out of the water.
 		if (swimming) return g < 0.05;
@@ -244,7 +260,7 @@ export function createPlayer(ctx: PlayerContext) {
 		const lift = windLift(pos.x, pos.z, pos.y);
 		if (gliding && !moving && lift === 0) steer.set(Math.sin(heading) * 0.6, 0, Math.cos(heading) * 0.6);
 
-		const wading = grounded && pos.y < 0.05;
+		const wading = !!sea && grounded && pos.y < 0.05;
 		const wing = ctx.glider?.() ?? { speed: GLIDE, sink: GLIDE_SINK };
 		const speed = gliding ? wing.speed : swimming ? (running ? SWIM_FAST : SWIM) : (running ? RUN : WALK) * (wading ? 0.6 : 1);
 		// In the water she glides, and in the air she can only steer a little (more so under the wing).
@@ -294,7 +310,7 @@ export function createPlayer(ctx: PlayerContext) {
 			// edges the same at speed as walking).
 			if (grounded && !swimming && steps > 1) {
 				const g = groundAt(pos.x, pos.z, pos.y);
-				if (g >= pos.y - 0.6) pos.y = Math.max(g, SWIM_IN);
+				if (g >= pos.y - 0.6) pos.y = Math.max(g, swimIn);
 				else break;
 			}
 		}
@@ -303,7 +319,7 @@ export function createPlayer(ctx: PlayerContext) {
 		// She can jump from her feet, or spring up out of the water: high enough to reach the pier.
 		// Jumping again in mid-air opens the glider, and once more folds it away.
 		if (input.jumpQueued && (grounded || swimming)) {
-			if (swimming) ctx.ripple(pos.x, pos.z, 1.2);
+			if (swimming) ripple(pos.x, pos.z, 1.2);
 			vy = JUMP_SPEED;
 			grounded = false;
 			swimming = false;
@@ -312,7 +328,7 @@ export function createPlayer(ctx: PlayerContext) {
 			waving = 0;
 		} else if (input.jumpQueued) {
 			if (gliding) gliding = false;
-			else if (airTime > 0.15 && pos.y - ground > 0.9) gliding = true;
+			else if (airTime > 0.15 && pos.y - ground > 0.9 && (ctx.canGlide?.() ?? true)) gliding = true;
 		}
 		input.jumpQueued = false;
 		const intoWater = () => {
@@ -323,10 +339,10 @@ export function createPlayer(ctx: PlayerContext) {
 			gliding = false;
 			vy = 0;
 			waving = 0;
-			ctx.ripple(pos.x, pos.z, 1.5);
+			ripple(pos.x, pos.z, 1.5);
 		};
 		if (swimming) {
-			if (ground > SWIM_OUT) {
+			if (ground > swimOut) {
 				swimming = false;
 				grounded = true;
 				pos.y = ground;
@@ -335,7 +351,7 @@ export function createPlayer(ctx: PlayerContext) {
 				pos.y = Math.sin(swimClock * 2.2) * 0.05;
 			}
 		} else if (grounded) {
-			if (ground < SWIM_IN) {
+			if (ground < swimIn) {
 				intoWater();
 			} else if (ground < pos.y - 0.6) {
 				// Stepped off an edge.
@@ -355,13 +371,13 @@ export function createPlayer(ctx: PlayerContext) {
 			else if (dashing > 0) vy = damp(vy, 0, 8, dt);
 			else vy = Math.max(vy - GRAVITY * (lift > 0 ? 0.6 : 1) * dt, -FALL_MAX);
 			pos.y += vy * dt;
-			// She bumps her head on the underside of the sky island rather than rising into it.
+			// She bumps her head on the underside of whatever's over her rather than rising into it.
 			const ceiling = ceilingAt(pos.x, pos.z, pos.y);
 			if (pos.y + HEAD > ceiling) {
 				pos.y = ceiling - HEAD;
 				vy = Math.min(vy, 0);
 			}
-			if (pos.y <= 0 && ground < SWIM_IN && vy <= 0) {
+			if (sea && pos.y <= 0 && ground < swimIn && vy <= 0) {
 				pos.y = 0;
 				intoWater();
 			} else if (pos.y <= ground && vy <= 0) {
@@ -380,7 +396,7 @@ export function createPlayer(ctx: PlayerContext) {
 			p.m.scale.setScalar(0.6 + (1 - p.life) * 1.4);
 			p.m.position.y += dt * 0.4;
 		}
-		if (pos.y < -4) respawn();
+		if (pos.y < (world.fallOut ?? -4)) respawn();
 		root.position.copy(pos);
 
 		const planar = Math.hypot(vel.x, vel.z);
@@ -410,9 +426,9 @@ export function createPlayer(ctx: PlayerContext) {
 
 		// Rings on the water: steadily as she swims, now and then as she treads water or wades.
 		rippleClock -= dt;
-		const wet = swimming || (grounded && pos.y < -0.15);
+		const wet = swimming || (!!sea && grounded && pos.y < -0.15);
 		if (wet && rippleClock <= 0) {
-			ctx.ripple(pos.x, pos.z, swimming ? (planar > 0.3 ? 0.9 : 0.7) : 0.6);
+			ripple(pos.x, pos.z, swimming ? (planar > 0.3 ? 0.9 : 0.7) : 0.6);
 			rippleClock = planar > 0.3 ? 0.4 : 1.1;
 		}
 
@@ -432,6 +448,23 @@ export function createPlayer(ctx: PlayerContext) {
 		vel,
 		get heading() {
 			return heading;
+		},
+		/** Throws her up into the air at `speed` (as a bounce pad does). */
+		launch(speed: number) {
+			vy = speed;
+			grounded = false;
+			swimming = false;
+			gliding = false;
+			jumped = true;
+			airTime = 0;
+			airDashed = false;
+			waving = 0;
+		},
+		/** Puts her straight back where she's to go back to (as after a fall). */
+		respawn: () => respawn(),
+		/** Whether she's up in the air (not on her feet, nor swimming). */
+		get airborne() {
+			return !grounded && !swimming;
 		},
 		/** Turns her to face `angle` at once (as when she steps out of a door). */
 		face(angle: number) {

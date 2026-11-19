@@ -8,12 +8,12 @@
 // She's built here, out of spheres and cones, rather than in Blender like Pebble: she only sits.
 import * as THREE from 'three';
 import type { Feature } from './features';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Toon } from './look';
 import { loadText, saveText } from './save';
 import { MAIN, WINDSPOUT, skyCeiling, type Crag } from './skyisle';
 import type { Choice, Speaker, Talk } from './talk';
-import { clamp, damp, noise } from './util';
+import { clamp, damp, noise } from '../nixkit/util';
 
 const NAME = 'Hollis';
 

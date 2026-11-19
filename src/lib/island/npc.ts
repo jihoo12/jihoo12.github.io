@@ -8,7 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Toon } from './look';
 import { loadText, saveText } from './save';
 import type { Choice, Speaker, Talk } from './talk';
-import { clamp, damp } from './util';
+import { clamp, damp } from '../nixkit/util';
 
 type Clip = 'Idle' | 'Wave' | 'Talk' | 'Happy';
 

@@ -29,13 +29,13 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { NixFigure } from '../experimental/nix-figure';
 import type { Feature } from './features';
-import type { Offer } from './interact';
+import type { Offer } from '../nixkit/interact';
 import type { Inventory } from './inventory';
 import type { Toon } from './look';
 import { loadJSON, saveJSON } from './save';
 import { slopeUp, terrainAt } from './terrain';
 import { thumbnail } from './thumbnail';
-import { TAU, damp } from './util';
+import { TAU, damp } from '../nixkit/util';
 
 export const WINDMILL = 'windmill';
 export const DRILL = 'drill';
