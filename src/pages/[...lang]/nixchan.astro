@@ -1,0 +1,339 @@
+---
+// Who Nixchan is: her profile, why she's called that, what she loves, her day, and her friends on
+// the island. Her real name isn't decided yet, so the page keeps it a secret ("???") for now:
+// change REAL_NAME once it is.
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import NixChan from '../../components/NixChan.astro';
+import heroArt from '../../assets/nixchan/nixchan-build-success-03.png';
+import snowArt from '../../assets/nixchan/nixchan-snowy-window-01.png';
+import islandShot from '../../assets/nixchan/nixchan-island-3d-01.png';
+import stretchArt from '../../assets/nixchan/nixchan-morning-stretch-01.png';
+import codingArt from '../../assets/nixchan/nixchan-coding-01.png';
+import ramenArt from '../../assets/nixchan/nixchan-ramen-break-01.png';
+import coffeeArt from '../../assets/nixchan/nixchan-night-coffee-01.png';
+import starsArt from '../../assets/nixchan/nixchan-stargazing-01.png';
+import napArt from '../../assets/nixchan/nixchan-penguin-nap-01.png';
+import { langPaths, localize, ogLocale, pairAlternates, routeLang } from '../../i18n';
+
+export const getStaticPaths = langPaths;
+const lang = routeLang(Astro.params.lang);
+const ko = lang === 'ko';
+
+const REAL_NAME = '???';
+
+const t = ko
+	? {
+			title: '닉스쨩 — Jihoo',
+			description: 'NixOS를 너무 좋아해서 닉스쨩이라고 불리는 아이를 소개해요.',
+			eyebrow: '닉스쨩을 소개해요',
+			name: '닉스쨩',
+			realName: '본명',
+			secret: '아직 비밀이래요',
+			intro: '고양이 귀 후드에 눈송이 무늬, X자 머리핀. 이 사이트 어디에나 있는 그 아이예요. NixOS를 너무 좋아해서 다들 닉스쨩이라고 불러요. 진짜 이름은… 언젠가 알려 준대요.',
+			toIsland: '섬에 놀러 가기 →',
+			to3d: '3D로 만나기',
+			heroAlt: '노트북 앞에서 엄지를 척 올린 닉스쨩. 뒤 화면에 nix build가 Done으로 끝나 있어요.',
+			heroTag: '빌드 성공!',
+			profile: '프로필',
+			rows: [
+				['본명', REAL_NAME],
+				['애칭', '닉스쨩'],
+				['사는 곳', '닉스쨩의 섬'],
+				['트레이드마크', '고양이 귀 후드, 눈송이, X자 머리핀'],
+				['제일 좋아하는 OS', 'NixOS (물론이죠)'],
+				['단짝', '펭귄'],
+				['말버릇', '“괜찮아, 롤백하면 돼!”'],
+			],
+			whyEyebrow: '이름 이야기',
+			why: '왜 닉스쨩이에요?',
+			whyText: [
+				'NixOS를 좋아해도 너무 좋아해서요. 후드에도, 머그컵에도, 의자에도 눈송이가 있어요. 친구들이 하나둘 닉스쨩이라 부르다 보니 이제는 다들 그렇게 불러요.',
+				'사실 nix는 라틴어로 ‘눈’이라는 뜻이에요. 그래서인지 닉스쨩은 눈 오는 날을 제일 좋아해요. 회색 리프트 안에서는 바닥에 눈송이를 남겨서 지나온 길을 기억하기도 하고요.',
+			],
+			snowAlt: '눈 내리는 창가에서 담요를 덮고 펭귄 옆에 앉아 따뜻한 컵을 든 닉스쨩',
+			snowTag: '눈 오는 날 ♡',
+			nixEyebrow: '닉스쨩과 NixOS',
+			nix: 'NixOS가 왜 좋냐면요',
+			reasons: [
+				['📄', '파일 하나에 전부', '컴퓨터가 어떤 모습이어야 하는지 파일 하나에 적어 두면 끝이에요. “어제 뭘 깔았더라?” 하고 고민할 일이 없어요.'],
+				['⏪', '망가져도 괜찮아', '뭔가 잘못돼도 어제의 시스템으로 돌아가면 돼요. 그래서 닉스쨩은 겁 없이 이것저것 해 봐요.'],
+				['🔁', '어디서나 똑같이', '어느 컴퓨터에서 빌드해도 똑같은 결과가 나와요. “내 컴퓨터에선 되는데…”는 이제 그만.'],
+			],
+			fileNote: '닉스쨩을 Nix로 적어 보면',
+			comments: { name: '# 아직 비밀', fav: '# 좋아하는 것' },
+			likes: '좋아하는 것',
+			likeList: ['NixOS', '눈 오는 날', '펭귄', '따뜻한 코코아', '라멘', '별 보기', '초록색 ✓ Done'],
+			dislikes: '싫어하는 것',
+			dislikeList: ['“내 컴퓨터에선 되는데”', '의존성 지옥', '저장 안 한 파일', '빨간 에러 메시지'],
+			dayEyebrow: '어느 날의 기록',
+			day: '닉스쨩의 하루',
+			dayList: [
+				[stretchArt, '기지개 켜며 시작', '창가에서 기지개를 켜며 웃는 닉스쨩'],
+				[codingArt, '코딩 시간', '화면에 fn main()을 띄워 놓고 코딩하는 닉스쨩'],
+				[ramenArt, '라멘으로 점심', '젓가락으로 라멘을 후루룩 먹는 닉스쨩'],
+				[coffeeArt, '밤엔 코코아 한 잔', '헤드폰을 끼고 고양이 옆에서 따뜻한 머그컵을 든 닉스쨩'],
+				[starsArt, '옥상에서 별 보기', '옥상에서 망원경으로 별을 보는 닉스쨩과 펭귄'],
+				[napArt, '빌드 걸어 두고 낮잠', 'nix switch가 끝나는 동안 펭귄을 안고 잠든 닉스쨩'],
+			],
+			threeEyebrow: '3D 닉스쨩',
+			three: '섬에서는 직접 걸어 다녀요',
+			threeText: '3D 닉스쨩은 자기만의 섬에서 살아요. 걷고, 뛰고, 글라이더를 타고 하늘섬 구름쉼터까지 올라가요. 낚시도 하고, 텃밭도 가꾸고, 대장간에서 도구도 만들어요.',
+			islandAlt: '바닷가 모래사장에서 손을 흔드는 3D 닉스쨩. 뒤로 나무 부두가 보여요.',
+			toGallery: '갤러리 광장',
+			friendsEyebrow: '섬 친구들',
+			friends: '닉스쨩의 친구들',
+			friendList: [
+				['🦦', '페블', '텃밭의 시장 가판대를 지키는 해달. 닉스쨩이 지나갈 때마다 손을 흔들어 줘요.'],
+				['🐢', '파르멘', '외딴 섬에 앉아 있는 안경 쓴 늙은 거북이. 가끔 대답하기 어려운 질문을 해요.'],
+				['🦉', '홀리스', '구름쉼터 아래 바위 턱에 사는 늙은 부엉이. 찾기는 어렵지만, 찾으면 대시를 가르쳐 줘요.'],
+			],
+			credit: '닉스쨩 그림과 3D 모델은 jihoo가 그리고 만들었어요. 출처만 밝히면 자유롭게 써도 돼요:',
+			license: '라이선스 보기 ↗',
+		}
+	: {
+			title: 'Nixchan — Jihoo',
+			description: 'Meet the girl everyone calls Nixchan, because she loves NixOS that much.',
+			eyebrow: 'MEET NIXCHAN',
+			name: 'Nixchan',
+			realName: 'Real name',
+			secret: "she's keeping it a secret, for now",
+			intro: "Cat-eared hood, snowflakes, an X hairpin: she's the girl you see all over this site. She loves NixOS so much that everyone calls her Nixchan. Her real name? She says she'll tell you one day.",
+			toIsland: 'Visit her island →',
+			to3d: 'Meet her in 3D',
+			heroAlt: 'Nixchan giving a thumbs up at her laptop, with nix build finished on Done behind her',
+			heroTag: 'BUILD PASSED!',
+			profile: 'Profile',
+			rows: [
+				['Real name', REAL_NAME],
+				['Nickname', 'Nixchan'],
+				['Lives on', "Nixchan's island"],
+				['Trademarks', 'cat-eared hood, snowflakes, X hairpin'],
+				['Favourite OS', 'NixOS (of course)'],
+				['Best friend', 'a penguin'],
+				['Catchphrase', '“It’s fine, just roll it back!”'],
+			],
+			whyEyebrow: 'THE NAME',
+			why: 'Why “Nixchan”?',
+			whyText: [
+				'Because she loves NixOS. Really loves it. There are snowflakes on her hood, her mug, even her chair. Her friends started calling her Nixchan one by one, and now everyone does.',
+				"And nix is Latin for snow. Maybe that's why snowy days are her favourite. In the grey rift, she leaves snowflakes on the floor to remember where she's been.",
+			],
+			snowAlt: 'Nixchan under a blanket by a snowy window, next to a penguin, holding a warm cup',
+			snowTag: 'SNOW DAY ♡',
+			nixEyebrow: 'NIXCHAN AND NIXOS',
+			nix: 'Why she loves NixOS',
+			reasons: [
+				['📄', 'One file says it all', 'Write down what the computer should look like in one file, and that’s it. No more “what did I install yesterday?”'],
+				['⏪', "Broken? That's fine", 'If something goes wrong, boot back into yesterday’s system. So she tries things without being scared.'],
+				['🔁', 'The same, everywhere', 'Build it on any computer and you get the same thing. No more “but it works on my machine…”'],
+			],
+			fileNote: 'Nixchan, written in Nix',
+			comments: { name: '# still a secret', fav: '# her favourite things' },
+			likes: 'Loves',
+			likeList: ['NixOS', 'snowy days', 'penguins', 'hot cocoa', 'ramen', 'stargazing', 'a green ✓ Done'],
+			dislikes: 'Not a fan of',
+			dislikeList: ['“works on my machine”', 'dependency hell', 'unsaved files', 'red error messages'],
+			dayEyebrow: 'A DAY, WRITTEN DOWN',
+			day: "Nixchan's day",
+			dayList: [
+				[stretchArt, 'A big morning stretch', 'Nixchan stretching and smiling by the window'],
+				[codingArt, 'Coding time', 'Nixchan coding, with fn main() on the screen'],
+				[ramenArt, 'Ramen for lunch', 'Nixchan slurping ramen with chopsticks'],
+				[coffeeArt, 'Cocoa at night', 'Nixchan in headphones, holding a warm mug beside a sleeping cat'],
+				[starsArt, 'Stars from the roof', 'Nixchan and a penguin stargazing with a telescope on the roof'],
+				[napArt, 'A nap while it builds', 'Nixchan asleep hugging a penguin while nix switch finishes'],
+			],
+			threeEyebrow: '3D NIXCHAN',
+			three: 'On the island, she walks about',
+			threeText: 'In 3D, Nixchan has an island of her own. She walks, runs, and glides all the way up to Cloudrest, the islands in the sky. She fishes, looks after her garden, and makes tools at the forge.',
+			islandAlt: 'The 3D Nixchan waving on a sandy beach, with a wooden pier behind her',
+			toGallery: 'The gallery plaza',
+			friendsEyebrow: 'ISLAND FRIENDS',
+			friends: "Nixchan's friends",
+			friendList: [
+				['🦦', 'Pebble', 'The sea otter who keeps the market stand in the garden. She waves whenever Nixchan comes by.'],
+				['🐢', 'Parmen', 'An old tortoise in spectacles on the Lonely Islet. Now and then he asks a question that’s hard to answer.'],
+				['🦉', 'Hollis', 'An old owl on a ledge under Cloudrest. Hard to find, but find her and she’ll teach you to dash.'],
+			],
+			credit: 'Nixchan’s illustrations and 3D model are drawn and made by jihoo. Use them freely, with credit:',
+			license: 'See the license ↗',
+		};
+
+const nixFile = [
+	['{ pkgs, ... }: {', ''],
+	['  nixchan = {', ''],
+	[`    name = "${REAL_NAME}";`, t.comments.name],
+	['    hood.ears = "cat";', ''],
+	['    hairpin = "X";', ''],
+	['    mood = "cheerful";', ''],
+	['    favorites = [ "nixos" "snow" "penguins" ];', t.comments.fav],
+	['  };', ''],
+	['}', ''],
+];
+---
+<!doctype html><html lang={lang}><head><BaseHead title={t.title} description={t.description} locale={ogLocale(lang)} alternates={pairAlternates('/nixchan/')} /></head><body><Header/>
+<main class="wrap nix-main">
+	<section class="hero">
+		<div>
+			<span class="eyebrow">{t.eyebrow}</span>
+			<h1>{t.name}<span class="period">.</span></h1>
+			<p class="real-name">{t.realName} <strong>{REAL_NAME}</strong> <span>· {t.secret}</span></p>
+			<p class="lead">{t.intro}</p>
+			<div class="actions">
+				<a class="button primary" href="/island/">{t.toIsland}</a>
+				<a class="button secondary" href="/experimental/">{t.to3d}</a>
+			</div>
+		</div>
+		<div class="art"><Image src={heroArt} alt={t.heroAlt} width={600} loading="eager" /><span class="tag">{t.heroTag}</span></div>
+	</section>
+
+	<section class="profile-stage">
+		<div class="profile-card">
+			<h2 class="display">{t.profile}</h2>
+			<dl>
+				{t.rows.map(([k, v]) => <div class:list={{ secret: v === REAL_NAME }}><dt>{k}</dt><dd>{v}</dd></div>)}
+			</dl>
+		</div>
+		<NixChan perch=".profile-card" />
+	</section>
+
+	<section class="split">
+		<div class="art tilt-left"><Image src={snowArt} alt={t.snowAlt} width={560} /><span class="tag">{t.snowTag}</span></div>
+		<div>
+			<span class="eyebrow">{t.whyEyebrow}</span>
+			<h2 class="display">{t.why}</h2>
+			{t.whyText.map((p) => <p class="body">{p}</p>)}
+		</div>
+	</section>
+
+	<section>
+		<span class="eyebrow">{t.nixEyebrow}</span>
+		<h2 class="display">{t.nix}</h2>
+		<div class="reasons">
+			{t.reasons.map(([icon, head, text]) => <article class="card"><span class="icon" aria-hidden="true">{icon}</span><h3>{head}</h3><p>{text}</p></article>)}
+		</div>
+		<figure class="nix-file">
+			<figcaption><span aria-hidden="true">❄</span> nixchan.nix <small>— {t.fileNote}</small></figcaption>
+			<pre><code>{nixFile.map(([line, note]) => <span class="line">{line}{note && <span class="note"> {note}</span>}{'\n'}</span>)}</code></pre>
+		</figure>
+	</section>
+
+	<section class="likes">
+		<div class="card"><h3>💙 {t.likes}</h3><ul>{t.likeList.map((x) => <li>{x}</li>)}</ul></div>
+		<div class="card"><h3>💧 {t.dislikes}</h3><ul class="meh">{t.dislikeList.map((x) => <li>{x}</li>)}</ul></div>
+	</section>
+
+	<section>
+		<span class="eyebrow">{t.dayEyebrow}</span>
+		<h2 class="display">{t.day}</h2>
+		<ol class="day">
+			{t.dayList.map(([src, caption, alt], i) => (
+				<li class="print" style={`--tilt:${[-1.8, 1.4, -0.8, 1.9, -1.3, 0.9][i]}deg`}>
+					<Image src={src as typeof heroArt} alt={alt as string} width={360} />
+					<span>{caption}</span>
+				</li>
+			))}
+		</ol>
+	</section>
+
+	<section class="split three">
+		<div>
+			<span class="eyebrow">{t.threeEyebrow}</span>
+			<h2 class="display">{t.three}</h2>
+			<p class="body">{t.threeText}</p>
+			<div class="actions">
+				<a class="button primary" href="/island/">{t.toIsland}</a>
+				<a class="button secondary" href="/gallery/">{t.toGallery}</a>
+			</div>
+		</div>
+		<div class="art wide"><Image src={islandShot} alt={t.islandAlt} width={800} /></div>
+	</section>
+
+	<section>
+		<span class="eyebrow">{t.friendsEyebrow}</span>
+		<h2 class="display">{t.friends}</h2>
+		<div class="friends">
+			{t.friendList.map(([icon, name, text]) => <article class="card"><span class="icon" aria-hidden="true">{icon}</span><h3>{name}</h3><p>{text}</p></article>)}
+		</div>
+	</section>
+
+	<p class="credit">{t.credit} <strong>“Nixchan by jihoo, CC BY 4.0”</strong> · <a class="text-link" href="https://github.com/jihoo12/jihoo12.github.io/blob/main/LICENSE-ARTWORK" target="_blank" rel="noopener noreferrer">{t.license}</a></p>
+	<p class="back"><a class="text-link" href={localize('/about/', lang)}>← {ko ? '소개로 돌아가기' : 'Back to About'}</a></p>
+</main>
+<Footer/></body></html>
+<style>
+	.nix-main { padding-top: 90px; padding-bottom: 120px; }
+	.nix-main:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+	.nix-main > section { margin-bottom: 120px; }
+	.nix-main h2 { font-size: clamp(32px, 4.1vw, 48px); line-height: 1.15; margin: 8px 0 28px; }
+	.body { font-size: 16px; color: var(--muted); line-height: 1.9; margin: 0 0 17px; }
+	.actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
+
+	.hero { display: grid; grid-template-columns: 1fr .8fr; align-items: center; gap: 90px; }
+	.hero h1 { font-size: clamp(50px, 7vw, 84px); line-height: 1.05; margin: 14px 0 16px; }
+	.real-name { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0 0 24px; padding: 8px 16px; border-radius: 999px; background: var(--surface); box-shadow: 0 4px 0 var(--edge); font-weight: 800; color: var(--muted); }
+	.real-name strong { font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--accent); letter-spacing: 2px; }
+	.real-name span { font-size: 14px; color: var(--faint); }
+	.lead { font-size: 17px; color: var(--muted); line-height: 1.9; margin: 0; }
+
+	/* She sits on the profile card, like on the 404 page. */
+	.profile-stage { position: relative; width: min(640px, 100%); margin-inline: auto; padding-top: var(--nix-above); }
+	.profile-card { padding: calc(var(--nix-w) * .25 + 30px) 34px 34px; background: var(--surface); border-radius: 16px; box-shadow: 0 7px 0 var(--edge); }
+	.profile-card h2 { margin-top: 0; text-align: center; }
+	.profile-card dl { margin: 0; }
+	.profile-card dl > div { display: grid; grid-template-columns: 9em 1fr; gap: 16px; padding: 13px 0; border-top: 2px dashed var(--line); }
+	.profile-card dt { font-weight: 900; color: var(--accent); font-size: 14px; }
+	.profile-card dd { margin: 0; font-weight: 700; }
+	.profile-card .secret dd { font-family: var(--display); letter-spacing: 3px; color: var(--accent); }
+
+	.split { display: grid; grid-template-columns: .8fr 1fr; align-items: center; gap: 80px; }
+	.split.three { grid-template-columns: 1fr 1.1fr; }
+	.tilt-left { transform: rotate(-1.8deg); }
+	.art.wide :global(img) { aspect-ratio: 16 / 9; }
+
+	.card { background: var(--surface); border-radius: 14px; padding: 24px 24px 20px; box-shadow: 0 5px 0 var(--edge); }
+	.card h3 { margin: 0 0 8px; font-size: 18px; font-weight: 900; }
+	.card p { margin: 0; color: var(--muted); line-height: 1.75; font-size: 15px; }
+	.card .icon { display: block; font-size: 30px; margin-bottom: 10px; }
+	.reasons, .friends { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+
+	.nix-file { margin: 34px 0 0; border-radius: 14px; overflow: hidden; background: var(--code-bg); color: var(--code-ink); box-shadow: 0 12px 26px -12px var(--shadow); }
+	.nix-file figcaption { padding: 12px 20px; font-weight: 800; font-size: 14px; background: rgba(255, 255, 255, .07); color: #c9c8f5; }
+	.nix-file figcaption small { font-weight: 600; opacity: .8; }
+	.nix-file pre { margin: 0; padding: 20px; overflow-x: auto; font-size: 14.5px; line-height: 1.7; }
+	.nix-file code { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; }
+	.nix-file .note { color: #8f8dc4; }
+
+	.likes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+	.likes ul { display: flex; flex-wrap: wrap; gap: 9px; margin: 14px 0 0; padding: 0; list-style: none; }
+	.likes li { padding: 7px 14px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); font-weight: 700; font-size: 14px; }
+	.likes .meh li { background: transparent; border: 2px dashed var(--line); color: var(--muted); }
+
+	.day { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px 30px; margin: 0; padding: 12px 0 0; list-style: none; }
+	.print { background: #fff; padding: 10px 10px 14px; border-radius: 4px; box-shadow: 0 16px 26px -12px var(--shadow); transform: rotate(var(--tilt)); transition: transform .2s; }
+	.print:hover { transform: rotate(0) translateY(-4px); }
+	.print :global(img) { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; }
+	.print span { display: block; margin-top: 10px; text-align: center; font-weight: 800; color: #27244f; font-size: 15px; }
+
+	.credit { color: var(--muted); font-size: 14px; line-height: 1.9; text-align: center; margin: 0 0 18px; }
+	.credit strong { color: var(--ink); }
+	.back { text-align: center; margin: 0; }
+
+	@media (max-width: 850px) {
+		.nix-main { padding-top: 60px; padding-bottom: 80px; }
+		.nix-main > section { margin-bottom: 90px; }
+		.hero, .split, .split.three { grid-template-columns: 1fr; gap: 44px; }
+		.hero .art, .split > .art:not(.wide) { max-width: 420px; }
+		.split > .art:first-child { order: 2; }
+		.reasons, .friends, .likes { grid-template-columns: 1fr; }
+		.day { grid-template-columns: repeat(2, 1fr); gap: 28px 18px; }
+	}
+	@media (max-width: 480px) {
+		.profile-card { padding-inline: 20px; }
+		.profile-card dl > div { grid-template-columns: 1fr; gap: 2px; }
+	}
+	@media (prefers-reduced-motion: reduce) { .print, .print:hover { transition: none; } }
+</style>

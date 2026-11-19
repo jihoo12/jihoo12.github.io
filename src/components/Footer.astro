@@ -21,7 +21,7 @@ const ko = lang === 'ko';
 				<a href={localize('/about/', lang)}>{t.about}</a>
 				<a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 			</nav>
-			<small>© {new Date().getFullYear()} Jihoo. {ko ? '그림: 닉스쨩.' : 'Illustrations: Nixchan.'}</small>
+			<small>© {new Date().getFullYear()} Jihoo. {ko ? '그림: ' : 'Illustrations: '}<a href={localize('/nixchan/', lang)}>{ko ? '닉스쨩' : 'Nixchan'}</a>.</small>
 		</div>
 	</div>
 </footer>
@@ -36,6 +36,8 @@ const ko = lang === 'ko';
 	nav { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 15px; font-weight: 800; }
 	nav a:hover { color: var(--star); }
 	small { color: #b3b1dc; font-size: 13px; }
+	small a { text-decoration: underline; text-underline-offset: 3px; }
+	small a:hover { color: var(--star); }
 	@media (max-width: 760px) {
 		.footer-inner { flex-direction: column; align-items: start; }
 		.footer-right { justify-items: start; }
