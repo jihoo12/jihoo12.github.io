@@ -4,14 +4,14 @@ A small kit for making 3D games with Nixchan in them. It came out of Nixchan's i
 the island and every Nixkit game share the same Nixchan, the same way of moving her about, the
 same camera and controls, and the same toon look.
 
-The first game made with it is **Cloud Hop** (`/games/cloudhop/`, `src/games/cloudhop/`), an
+The first game made with it is **Cloud Hop** (`/play/cloudhop/`, `src/games/cloudhop/`), an
 obstacle course in the sky. The **gallery** (`/gallery`, `src/lib/gallery/gallery.ts`) is made
 with it too: a plaza where Nixchan walks among portals to the games.
 
 ## Adding a game
 
 Games live in `src/games/<id>/`: a `meta.ts` (its name, who made it, its portal's colours) and a
-`game.ts` (the game). Each one gets a page at `/games/<id>/` and a portal in the gallery, both made
+`game.ts` (the game). Each one gets a page at `/play/<id>/` and a portal in the gallery, both made
 from `meta.ts`. `CONTRIBUTING.md` says how, and what a game may and mayn't do;
 `src/games/_template/` is where to start.
 

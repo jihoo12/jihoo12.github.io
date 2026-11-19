@@ -1,6 +1,6 @@
 // What a game in src/games/<id>/ is made of, as the site sees it: a meta.ts that says what the game
 // is called and who made it (read when the site is built, for its page and its portal in the
-// gallery), and a game.ts that starts it (run in the browser, on its page at /games/<id>/).
+// gallery), and a game.ts that starts it (run in the browser, on its page at /play/<id>/).
 // See CONTRIBUTING.md.
 import type { GameOptions, createGame } from './game';
 

@@ -18,7 +18,7 @@ const GAMES = Object.entries(import.meta.glob<{ default: GameMeta }>('../../game
 /** The portals, left to right round the far side of the plaza. */
 const PORTALS: (Omit<PortalSpec, 'at' | 'facing'> & { id: string })[] = [
 	{ id: 'island', title: "Nixchan's Island", note: 'Roam, fish, garden and build', href: '/island/', colors: ['#5fd17a', '#5fb8ff'] },
-	...GAMES.map(({ id, meta }) => ({ id, title: meta.title, note: `${meta.note} · by ${meta.author}`, href: `/games/${id}/`, colors: meta.colors })),
+	...GAMES.map(({ id, meta }) => ({ id, title: meta.title, note: `${meta.note} · by ${meta.author}`, href: `/play/${id}/`, colors: meta.colors })),
 	// The way to make one: how to add a game, on GitHub.
 	{ id: 'make', title: 'Make your own', note: 'Add a game with a pull request', href: 'https://github.com/jihoo12/jihoo12.github.io/blob/main/CONTRIBUTING.md', colors: ['#c8d3f5', '#8f7bff'] },
 ];

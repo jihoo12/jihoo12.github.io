@@ -1,7 +1,7 @@
 # Making a game with Nixchan
 
 Anyone can add a game to this site. A game is a folder in `src/games/`. Open a pull request that
-adds one, and once it's merged the game gets its own page at `/games/<id>/` and a portal in
+adds one, and once it's merged the game gets its own page at `/play/<id>/` and a portal in
 [the gallery](https://jihoo12.github.io/gallery/), where Nixchan can walk into it.
 
 You don't need to know three.js, or this site. Games are made with **Nixkit** (`src/lib/nixkit/`),
@@ -11,7 +11,7 @@ controls, and blocks to build with. Vibe coding is welcome: point your AI assist
 
 > **한국어 요약**: `src/games/_template/`을 `src/games/<게임-id>/`로 복사하고, `meta.ts`(제목, 만든
 > 사람, 색)와 `game.ts`(게임)를 고친 다음 PR을 보내면 돼요. 그 폴더 밖의 파일은 건드리지 않아도
-> 돼요. 머지되면 `/games/<id>/` 페이지와 갤러리 포털이 자동으로 생겨요. AI로 만든다면 아래
+> 돼요. 머지되면 `/play/<id>/` 페이지와 갤러리 포털이 자동으로 생겨요. AI로 만든다면 아래
 > [For AI assistants](#for-ai-assistants)의 프롬프트를 그대로 붙여넣으세요.
 
 ## Quick start
@@ -21,7 +21,7 @@ git clone https://github.com/jihoo12/jihoo12.github.io
 cd jihoo12.github.io
 npm ci
 cp -r src/games/_template src/games/my-game   # your game's id: lower case, numbers, dashes
-npx astro dev                                 # then open http://localhost:4321/games/my-game/
+npx astro dev                                 # then open http://localhost:4321/play/my-game/
 ```
 
 1. Fill in `src/games/my-game/meta.ts`: the title, a few words for the portal, a description, your
@@ -92,7 +92,7 @@ every game before it's merged.
 ## What happens to your pull request
 
 The checks run: the game rules and a build of the site. Then it's played, and the code read. Small
-changes may be asked for. Once it's merged, your game is live at `/games/<id>/`, with a portal in
+changes may be asked for. Once it's merged, your game is live at `/play/<id>/`, with a portal in
 the gallery that says it's by you.
 
 ## For AI assistants
