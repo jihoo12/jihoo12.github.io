@@ -7,6 +7,7 @@
 // The cracks and the shards are cut along the same lines: rays out from the knock, crossed by rings
 // at a few distances. A shard is the piece between two neighbouring rays and two neighbouring rings.
 import * as THREE from 'three';
+import { pick } from './lang';
 
 export interface WallContext {
 	renderer: THREE.WebGLRenderer;
@@ -82,7 +83,7 @@ export function createFourthWall(ctx: WallContext) {
 		};
 
 		const steps: [number, () => void][] = [
-			[400, () => ctx.say('Hello? Is somebody there?')],
+			[400, () => ctx.say(pick({ en: 'Hello? Is somebody there?', ko: '저기요? 거기 누구 있어요?' }))],
 			[1900, () => (ctx.knock(), shake(6), crackTo(1))],
 			[2700, () => (ctx.knock(), shake(10), crackTo(2))],
 			[3600, () => (ctx.knock(), shake(16), crackTo(3))],

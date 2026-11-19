@@ -159,12 +159,13 @@ const scene = { projects, posts, comics, art };
 			}
 		</script>
 		<div class="prologue" data-prologue hidden aria-live="polite">
-			<p data-line>Past the end of the path, the sky keeps going.</p>
-			<p data-line>Somewhere in it floats a small island — a garden, a forge, a pond where the fish bite at dusk.</p>
-			<p data-line>Nobody lives there yet. Just an otter, a few seeds, and an owl no one has seen.</p>
-			<p data-line>So Nixchan filled her mug, tied her laces, and stepped through the gate.</p>
-			<p data-line data-title class="title">Nixchan's Island<span class="period">.</span></p>
-			<span class="skip" aria-hidden="true">any key or tap to skip</span>
+			<!-- data-ko: the same in Korean, for whoever reads the site in Korean (island/lang.ts). -->
+			<p data-line data-ko="길이 끝난 그 너머에도, 하늘은 계속 이어져요.">Past the end of the path, the sky keeps going.</p>
+			<p data-line data-ko="그 어딘가에 작은 섬 하나가 떠 있어요. 정원과 대장간, 해 질 녘이면 물고기가 입질하는 연못이 있는 섬이에요.">Somewhere in it floats a small island — a garden, a forge, a pond where the fish bite at dusk.</p>
+			<p data-line data-ko="아직 거기 사는 이는 없어요. 수달 한 마리와 씨앗 몇 알, 그리고 아무도 본 적 없는 부엉이뿐이죠.">Nobody lives there yet. Just an otter, a few seeds, and an owl no one has seen.</p>
+			<p data-line data-ko="그래서 닉스쨩은 머그잔을 채우고, 신발 끈을 묶고, 문 너머로 걸어 들어갔어요.">So Nixchan filled her mug, tied her laces, and stepped through the gate.</p>
+			<p data-line data-title class="title"><span data-ko="닉스쨩의 섬">Nixchan's Island</span><span class="period">.</span></p>
+			<span class="skip" aria-hidden="true" data-ko="아무 키나 누르거나 탭하면 건너뛰어요">any key or tap to skip</span>
 		</div>
 		<p class="keyhint" data-keyhint hidden>
 			<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span>
@@ -294,6 +295,7 @@ const scene = { projects, posts, comics, art };
 		color: #1c1a3e; cursor: pointer;
 	}
 	.prologue[hidden] { display: none; }
+	.prologue:lang(ko) { word-break: keep-all; }
 	:global([data-time='night']) .prologue { color: #fbf8ff; text-shadow: 0 1px 14px rgba(42, 47, 122, 0.85), 0 0 2px rgba(42, 47, 122, 0.6); }
 	.prologue p {
 		grid-area: 1 / 1; max-width: 26em; margin: 0; text-align: center;

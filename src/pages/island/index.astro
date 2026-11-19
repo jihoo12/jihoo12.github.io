@@ -560,6 +560,7 @@ const description = "Roam a little toon island with Nixchan: climb, swim, glide,
 		border: 7px solid transparent; border-bottom: 0; border-top-color: var(--surface);
 	}
 	.bubble[hidden] { display: none; }
+	.bubble:lang(ko), .talk:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
 	.talk {
 		position: fixed; z-index: 28; left: 50%; bottom: 24px; transform: translateX(-50%);
 		width: min(620px, calc(100% - 32px)); padding: 26px 20px 16px; border-radius: 16px;

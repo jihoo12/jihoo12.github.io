@@ -3,6 +3,7 @@
 // opens it gives their name and colour; their words type out, then the choices show, and the keys
 // (or a tap) pick one. Only one of them talks at a time.
 import * as THREE from 'three';
+import { josa, lang, pick } from './lang';
 
 export interface Choice {
 	label: string;
@@ -28,6 +29,8 @@ export function createTalk(camera: THREE.Camera) {
 		choices: $('[data-talk-choices]'),
 		bubble: $('[data-bubble]'),
 	};
+	// Whatever language they're speaking in (lang.ts), so it's read out and wrapped as that.
+	for (const el of [ui.talk, ui.bubble]) if (el) el.lang = lang;
 
 	let speaker: Speaker | null = null;
 	let typing = '';
@@ -75,7 +78,7 @@ export function createTalk(camera: THREE.Camera) {
 		speaker = who;
 		closeAt = 0;
 		ui.talk.hidden = false;
-		ui.talk.setAttribute('aria-label', `Talking with ${who.name}`);
+		ui.talk.setAttribute('aria-label', pick({ en: `Talking with ${who.name}`, ko: `${josa(who.name, '과', '와')} 이야기하는 중` }));
 		if (ui.name) {
 			ui.name.textContent = who.name;
 			ui.name.style.background = who.color;

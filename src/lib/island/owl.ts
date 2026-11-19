@@ -14,8 +14,75 @@ import { loadText, saveText } from './save';
 import { MAIN, WINDSPOUT, skyCeiling, type Crag } from './skyisle';
 import type { Choice, Speaker, Talk } from './talk';
 import { clamp, damp, noise } from '../nixkit/util';
+import { josa, pick } from './lang';
 
-const NAME = 'Hollis';
+const NAME = pick({ en: 'Hollis', ko: '홀리스' });
+
+const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+
+/** What she says, and what Nixchan says back. She's old and kind (in Korean, a grandmother's 반말). */
+const W = pick({
+	en: {
+		bye: 'Bye!',
+		byeNight: 'Hoo. Fly safe in the dark.',
+		byeDay: 'Off you go. Mind the drop!',
+		tips: [
+			'Dash right at the top of a jump, and you clear twice the gap.',
+			"A dash in the air folds your glider away. Open it again straight after and you'll go further still.",
+			'The swifts only dash once in the air. Touch the ground, and you have it back.',
+			"Dashing's quicker than running, but it tires you a moment. Catch your breath between.",
+		],
+		featherHome: "Thank you for bringing my feather home. It's just there, see?",
+		featherLost: "I lost a feather to the wind a while back. It blew somewhere strange: the end of a long path, by a gate full of sky. If you see it, it's mine.",
+		anyTips: 'Any tips?',
+		teach: `Hoo hoo! Anyone who finds me down here has earned it. Watch the swifts: tuck in, and go! Press ${touch ? 'the » button' : 'Q'} to dash the way you're heading. On your feet, or once in the air before you land.`,
+		thanks: 'Thank you!',
+		tryIt: "Go on, try it. Not off the ledge, mind! Well. Unless you've got your glider.",
+		featherSeen: ' And is that my feather you found? Well, well.',
+		hello: 'Hoo? A visitor, all the way down here? Nobody comes under the rock. Nobody but the swifts.',
+		who: 'Who are you?',
+		iAm: "Hollis. I've lived under Cloudrest longer than the island's had a name. I sit here and watch the swifts dart in and out of the crags. Quick as a blink, they are.",
+		canYou: 'Can you teach me that?',
+		again: "Back again? You've the look of someone who wants to move like a swift.",
+		teachMe: 'Teach me!',
+		helloNight: 'Hoo. Lovely night, Nixchan. Best time there is, for an owl.',
+		helloDay: 'Mm? Oh, Nixchan. I was only resting my eyes.',
+		bubbleNew: 'Hoo?',
+		bubbleMet: 'Hoo hoo!',
+		talkNew: 'Talk to the owl',
+		talkTo: `Talk to ${NAME}`,
+	},
+	ko: {
+		bye: '안녕!',
+		byeNight: '부엉. 어두우니 조심해서 날렴.',
+		byeDay: '자, 가 보렴. 떨어지지 않게 조심하고!',
+		tips: [
+			'점프 맨 꼭대기에서 대시하면, 두 배나 먼 틈도 건널 수 있단다.',
+			'공중에서 대시하면 글라이더가 접힌단다. 바로 다시 펴면 더 멀리 갈 수 있지.',
+			'칼새들도 공중에선 한 번만 대시해. 땅에 발이 닿으면 다시 할 수 있단다.',
+			'대시는 달리기보다 빠르지만, 잠깐 숨이 차지. 사이사이 숨을 고르렴.',
+		],
+		featherHome: '내 깃털을 찾아다 줘서 고맙구나. 바로 저기 있지, 보이니?',
+		featherLost: '얼마 전에 바람에 깃털을 하나 잃어버렸단다. 이상한 데로 날아갔지. 긴 길 끝, 하늘이 가득한 문 옆으로. 혹시 보거든, 그게 내 거란다.',
+		anyTips: '팁 있어?',
+		teach: `부엉부엉! 여기까지 날 찾아온 아이라면 배울 자격이 있지. 칼새들을 보렴. 몸을 웅크리고, 쓩! ${touch ? '» 버튼을' : 'Q를'} 누르면 가는 쪽으로 대시한단다. 땅 위에서든, 내려앉기 전 공중에서 한 번이든.`,
+		thanks: '고마워!',
+		tryIt: '어서 해 보렴. 절벽 밖으로는 말고! 음. 글라이더가 있다면야 모르지만.',
+		featherSeen: ' 그런데 그거, 네가 찾은 내 깃털이니? 어머나, 세상에.',
+		hello: '부엉? 이 밑에까지 손님이? 바위 밑엔 아무도 안 온단다. 칼새들 말고는.',
+		who: '누구야?',
+		iAm: '홀리스란다. 이 섬에 이름이 붙기 전부터 구름쉼터 밑에서 살았지. 여기 앉아서 칼새들이 바위 사이를 드나드는 걸 본단다. 눈 깜짝할 새지.',
+		canYou: '그거 나도 가르쳐 줄래?',
+		again: '또 왔니? 칼새처럼 날쌔게 움직이고 싶은 얼굴이구나.',
+		teachMe: '가르쳐 줘!',
+		helloNight: '부엉. 좋은 밤이구나, 닉스쨩. 부엉이한텐 제일 좋은 때지.',
+		helloDay: '음? 아, 닉스쨩이구나. 잠깐 눈만 붙이고 있었단다.',
+		bubbleNew: '부엉?',
+		bubbleMet: '부엉부엉!',
+		talkNew: '부엉이와 이야기하기',
+		talkTo: `${josa(NAME, '과', '와')} 이야기하기`,
+	},
+});
 
 export interface OwlContext {
 	scene: THREE.Scene;
@@ -198,31 +265,20 @@ export function createOwl(ctx: OwlContext) {
 		state = s;
 		saveText('owl', s);
 	};
-	const touch = matchMedia('(pointer: coarse)').matches;
-	const button = touch ? 'the » button' : 'Q';
 	let happyUntil = 0;
 	const speaker: Speaker = { name: NAME, color: '#7a5c8e' };
 	const say = (text: string, next: Choice[]) => ctx.talk.say(text, next);
-	const bye = (): Choice => ({ label: 'Bye!', run: () => ctx.talk.bye(ctx.night() ? 'Hoo. Fly safe in the dark.' : 'Off you go. Mind the drop!') });
+	const bye = (): Choice => ({ label: W.bye, run: () => ctx.talk.bye(ctx.night() ? W.byeNight : W.byeDay) });
 
-	const TIPS = [
-		() => 'Dash right at the top of a jump, and you clear twice the gap.',
-		() => "A dash in the air folds your glider away. Open it again straight after and you'll go further still.",
-		() => 'The swifts only dash once in the air. Touch the ground, and you have it back.',
-		() => "Dashing's quicker than running, but it tires you a moment. Catch your breath between.",
-		() =>
-			loadText('feather') === '1'
-				? "Thank you for bringing my feather home. It's just there, see?"
-				: "I lost a feather to the wind a while back. It blew somewhere strange: the end of a long path, by a gate full of sky. If you see it, it's mine.",
-	];
+	const TIPS = [...W.tips.map((t) => () => t), () => (loadText('feather') === '1' ? W.featherHome : W.featherLost)];
 	let tip = Math.floor(Math.random() * TIPS.length);
-	const tips = (): Choice => ({ label: 'Any tips?', run: () => say(TIPS[tip++ % TIPS.length](), [tips(), bye()]) });
+	const tips = (): Choice => ({ label: W.anyTips, run: () => say(TIPS[tip++ % TIPS.length](), [tips(), bye()]) });
 
 	const teach = () => {
 		save('taught');
 		happyUntil = performance.now() + 2200;
-		say(`Hoo hoo! Anyone who finds me down here has earned it. Watch the swifts: tuck in, and go! Press ${button} to dash the way you're heading. On your feet, or once in the air before you land.`, [
-			{ label: 'Thank you!', run: () => ctx.talk.bye("Go on, try it. Not off the ledge, mind! Well. Unless you've got your glider.") },
+		say(W.teach, [
+			{ label: W.thanks, run: () => ctx.talk.bye(W.tryIt) },
 		]);
 		ctx.learned();
 	};
@@ -230,23 +286,21 @@ export function createOwl(ctx: OwlContext) {
 		if (!ctx.talk.open(speaker)) return;
 		if (state === '') {
 			save('met');
-			const feather = featherFound ? ' And is that my feather you found? Well, well.' : '';
-			say(`Hoo? A visitor, all the way down here? Nobody comes under the rock. Nobody but the swifts.${feather}`, [
+			say(W.hello + (featherFound ? W.featherSeen : ''), [
 				{
-					label: 'Who are you?',
+					label: W.who,
 					run: () =>
-						say("Hollis. I've lived under Cloudrest longer than the island's had a name. I sit here and watch the swifts dart in and out of the crags. Quick as a blink, they are.", [
-							{ label: 'Can you teach me that?', run: teach },
+						say(W.iAm, [
+							{ label: W.canYou, run: teach },
 							bye(),
 						]),
 				},
 				bye(),
 			]);
 		} else if (state === 'met') {
-			say("Back again? You've the look of someone who wants to move like a swift.", [{ label: 'Teach me!', run: teach }, bye()]);
+			say(W.again, [{ label: W.teachMe, run: teach }, bye()]);
 		} else {
-			const hello = ctx.night() ? "Hoo. Lovely night, Nixchan. Best time there is, for an owl." : 'Mm? Oh, Nixchan. I was only resting my eyes.';
-			say(hello, [tips(), bye()]);
+			say(ctx.night() ? W.helloNight : W.helloDay, [tips(), bye()]);
 		}
 	};
 
@@ -271,7 +325,7 @@ export function createOwl(ctx: OwlContext) {
 		const dist = Math.hypot(flat, dy);
 		if (!near && dist < 10) {
 			near = true;
-			if (!ctx.talk.talking) ctx.talk.bubble(state === '' ? 'Hoo?' : 'Hoo hoo!', above);
+			if (!ctx.talk.talking) ctx.talk.bubble(state === '' ? W.bubbleNew : W.bubbleMet, above);
 		} else if (near && dist > 16) near = false;
 		if (!landed && onLedge()) {
 			landed = true;
@@ -314,7 +368,7 @@ export function createOwl(ctx: OwlContext) {
 		/** E on her ledge, by her. */
 		offer: (): Offer | null => {
 			if (talking() || !onLedge() || Math.hypot(ctx.pos.x - root.position.x, ctx.pos.z - root.position.z) > 2.8 || !ctx.canAct()) return null;
-			return { label: state === '' ? 'Talk to the owl' : `Talk to ${NAME}`, go: open };
+			return { label: state === '' ? W.talkNew : W.talkTo, go: open };
 		},
 		get talking() {
 			return talking();

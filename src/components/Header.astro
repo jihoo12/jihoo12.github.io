@@ -37,6 +37,17 @@ links.push({ label: t.gallery, href: '/gallery/', active: current.startsWith('/g
 	</div>
 </header>
 <script>
+	// The language the site's read in is remembered, for the pages with no /ko/ of their own (the
+	// island and its games, island/lang.ts): reading a Korean page remembers Korean (BaseHead), and
+	// pressing the language sign remembers whichever it leads to.
+	document.querySelector<HTMLAnchorElement>('.sign.lang')?.addEventListener('click', (e) => {
+		try {
+			localStorage.setItem('lang', (e.currentTarget as HTMLAnchorElement).dataset.lang ?? 'en');
+		} catch {
+			// It just won't be remembered.
+		}
+	});
+
 	const button = document.querySelector<HTMLButtonElement>('[data-clock]');
 	button?.addEventListener('click', () => {
 		const next = document.documentElement.dataset.time === 'night' ? 'day' : 'night';

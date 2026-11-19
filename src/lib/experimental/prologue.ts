@@ -1,7 +1,8 @@
 // The few lines that play in the sky between the gate and the island: once the page has faded into
 // the sky in the gate (the .warp), these come up one at a time, then the island's name, and then
 // she's there. Any key, click or tap skips the lot. Meanwhile the island is fetched, so it's quick
-// to come up after.
+// to come up after. Each line has its Korean in data-ko, used when the site's read in Korean.
+import { lang } from '../island/lang';
 
 const LINE_MS = 2600;
 const TITLE_MS = 2200;
@@ -15,6 +16,10 @@ export function playPrologue(prefetch?: string): Promise<void> {
 		link.rel = 'prefetch';
 		link.href = prefetch;
 		document.head.append(link);
+	}
+	if (lang === 'ko' && root.lang !== 'ko') {
+		root.lang = 'ko';
+		root.querySelectorAll<HTMLElement>('[data-ko]').forEach((el) => (el.textContent = el.dataset.ko!));
 	}
 	const lines = [...root.querySelectorAll<HTMLElement>('[data-line]')];
 	return new Promise((resolve) => {
