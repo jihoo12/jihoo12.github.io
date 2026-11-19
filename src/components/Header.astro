@@ -19,8 +19,8 @@ const links = [
 	{ label: t.comics, href: '/comics/', active: current.startsWith('/comics'), drop: 30 },
 	{ label: t.about, href: '/about/', active: current.startsWith('/about'), drop: 36 },
 ].map((link) => ({ ...link, href: localize(link.href, lang) }));
-// The gallery is one page in 3D, the same in either language.
-links.push({ label: t.gallery, href: '/gallery/', active: current.startsWith('/gallery'), drop: 24 });
+// Nixchan's world is a site of its own now, at /nixchan/ (github.com/jihoo12/nixchan).
+links.push({ label: t.nixchan, href: lang === 'ko' ? '/nixchan/ko/' : '/nixchan/', active: false, drop: 24 });
 ---
 <header class="signs wrap">
 	<a class="sign brand" style="--drop:30px" href={localize('/', lang)} aria-label={t.homeLabel}><Image class="brand-mark" src={face} alt="" width={64} height={64} loading="eager" /><span class="brand-word">jihoo<span class="period">.</span></span></a>
@@ -30,7 +30,7 @@ links.push({ label: t.gallery, href: '/gallery/', active: current.startsWith('/g
 		))}
 	</nav>
 	<div class="right">
-		<a class="sign three-d" style="--drop:34px" href="/?view=3d" aria-label={t.threeDLabel}>{t.threeD}</a>
+		<a class="sign three-d" style="--drop:34px" href="/nixchan/experimental/" aria-label={t.threeDLabel}>{t.threeD}</a>
 		<a class="sign github" style="--drop:22px" href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 		<a class="sign lang" style="--drop:30px" href={alternate} hreflang={other} lang={other} aria-label={t.switchLabel} data-lang={other}>{t.switchTo}</a>
 		<button class="sign clock" style="--drop:40px" type="button" data-clock aria-label={t.clock}><span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span></button>

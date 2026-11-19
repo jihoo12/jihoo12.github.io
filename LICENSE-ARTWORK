@@ -8,12 +8,13 @@ Attribution 4.0 International License (CC BY 4.0):
 
 This covers:
 
-  - src/assets/nixchan/   Nixchan illustrations, her live parts and the 3D model
-  - src/assets/island/    the island's 3D models (fish, garden, Pebble the otter)
+  - src/assets/nixchan/   Nixchan illustrations and her live parts
+
+Her 3D model and her island's models moved to https://github.com/jihoo12/nixchan, under the same
+license.
 
 You may share and adapt it for any purpose, including commercially, as long as
 you give credit (for example "Nixchan by jihoo, CC BY 4.0", with a link to
 https://jihoo12.github.io/), link to the license, and say if you changed it.
 
-Everything else, including the Blender scripts in tools/ that build the 3D
-models, is code and is licensed under the Apache License 2.0 (see LICENSE).
+Everything else is code and is licensed under the Apache License 2.0 (see LICENSE).

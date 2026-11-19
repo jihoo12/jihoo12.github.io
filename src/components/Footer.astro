@@ -21,7 +21,7 @@ const ko = lang === 'ko';
 				<a href={localize('/about/', lang)}>{t.about}</a>
 				<a href="https://github.com/jihoo12" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 			</nav>
-			<small>© {new Date().getFullYear()} Jihoo. {ko ? '그림: ' : 'Illustrations: '}<a href={localize('/nixchan/', lang)}>{ko ? '닉스쨩' : 'Nixchan'}</a>.</small>
+			<small>© {new Date().getFullYear()} Jihoo. {ko ? '그림: ' : 'Illustrations: '}<a href={ko ? '/nixchan/ko/' : '/nixchan/'}>{ko ? '닉스쨩' : 'Nixchan'}</a>.</small>
 		</div>
 	</div>
 </footer>

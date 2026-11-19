@@ -5,9 +5,9 @@ pubDate: 2026-11-17
 heroImage: "../../assets/nixchan/nixchan-island-3d-01.png"
 ---
 
-There's a little game on this site now. At [/island](/island/), Nixchan has a toon island to run about on. She can swim off the beach, fish from the pier, grow turnips, sell them to Pebble the otter at the market stand, mine ore at the Old Forge, and glide up on a column of wind to Cloudrest, a cluster of islands floating in the sky.
+There's a little game on this site now. At [/island](/nixchan/island/), Nixchan has a toon island to run about on. She can swim off the beach, fish from the pier, grow turnips, sell them to Pebble the otter at the market stand, mine ore at the Old Forge, and glide up on a column of wind to Cloudrest, a cluster of islands floating in the sky.
 
-It started as one evening's idea: the 3D Nixchan from the [experimental homepage](/experimental/) could already walk and jump, so what if she had somewhere to go? It grew one thing at a time. The game is about 7,000 lines of TypeScript on three.js, and it has no physics engine. This post is about how it gets away without one.
+It started as one evening's idea: the 3D Nixchan from the [experimental homepage](/nixchan/experimental/) could already walk and jump, so what if she had somewhere to go? It grew one thing at a time. The game is about 7,000 lines of TypeScript on three.js, and it has no physics engine. This post is about how it gets away without one.
 
 ## The one question
 
@@ -105,4 +105,4 @@ Pick the question the game actually asks before reaching for a general solution.
 
 It does have limits. Nothing pushes back on Nixchan, nothing tumbles, and two moving things never collide. For this island, that's fine.
 
-Go and [visit her](/island/). It works on computers and phones, and it remembers her bag, her garden and the places she has found.
+Go and [visit her](/nixchan/island/). It works on computers and phones, and it remembers her bag, her garden and the places she has found.

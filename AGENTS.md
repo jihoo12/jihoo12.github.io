@@ -21,8 +21,8 @@ Consult these guides before working on related tasks:
 - [Adding styles or using Tailwind](https://docs.astro.build/en/guides/styling/)
 - [Supporting multiple languages](https://docs.astro.build/en/guides/internationalization/)
 
-## Making a game
+## Nixchan
 
-Games with Nixchan live in `src/games/<id>/`, one folder each, made with Nixkit (`src/lib/nixkit/`).
-To add one, follow `CONTRIBUTING.md`: copy `src/games/_template/`, change only files in that
-folder, and run `npm run check:games` and `npm run build` before finishing.
+Nixchan's world (the island, the 3D path, the gallery, games and Nixkit) lives in its own
+repository, github.com/jihoo12/nixchan, published at /nixchan/. Make games there. Here, keep
+`src/pages/home-scene.json.ts` working: her 3D path reads it.
