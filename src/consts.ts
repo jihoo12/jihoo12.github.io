@@ -4,7 +4,7 @@ export const SITE_DESCRIPTION = 'A little corner of the internet for things I ma
 export const GITHUB_USER = 'jihoo12';
 
 // Accounts whose repos count as my projects (contributions to other people's repos are left out).
-export const PROJECT_OWNERS = [GITHUB_USER, 'jihoolang', 'gloaming-dusk'];
+export const PROJECT_OWNERS = [GITHUB_USER, 'jihoo-language', 'gloaming-dusk'];
 
 // GitHub doesn't know where a repo is published, so packages are listed here by lowercase `owner/name`.
 export const PACKAGES: Record<string, { registry: 'npm' | 'pypi'; name: string }> = {
