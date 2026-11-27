@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -19,6 +20,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      PAGES_ARTIFACT_NAME: github-pages-${{ github.run_attempt }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -40,9 +43,38 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
+        id: pages-artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
+          name: ${{ env.PAGES_ARTIFACT_NAME }}
+      - name: Wait for Pages artifact registration
+        shell: bash
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_UPLOAD_ID: ${{ steps.pages-artifact.outputs.artifact_id }}
+        run: |
+          if [[ ! "$PAGES_UPLOAD_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::Pages artifact upload did not return an artifact ID."
+            exit 1
+          fi
+          for ((check=1; check<=12; check++)); do
+            if listed_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=$PAGES_ARTIFACT_NAME" \
+              --jq '.artifacts[] | select(.expired == false) | .id' 2>/dev/null) \
+              && [[ "$listed_id" == "$PAGES_UPLOAD_ID" ]]; then
+              echo "Pages artifact $PAGES_UPLOAD_ID is visible in this workflow run."
+              # deploy-pages uses a separate artifact service from the REST check.
+              sleep 10
+              exit 0
+            fi
+            echo "Waiting for Pages artifact $PAGES_UPLOAD_ID ($check/12)."
+            sleep 5
+          done
+          echo "::error::Pages artifact $PAGES_UPLOAD_ID never became visible in this run."
+          exit 1
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ env.PAGES_ARTIFACT_NAME }}
